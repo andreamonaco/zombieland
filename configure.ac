@@ -24,7 +24,7 @@ AC_INIT([zombieland], [0.1], [monacoandrea94@gmail.com])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
 
-AC_CONFIG_SRCDIR([main.c])
+AC_CONFIG_SRCDIR([zombieland.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])
 
