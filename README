@@ -1,0 +1,60 @@
+__What is Zombieland?__
+
+Zombieland is a working title for a game, a little MMO about the struggle for
+survival of humans against zombies.
+
+
+
+__The game doesn't run, where are the assets?__
+
+They are currently not available.  I use non-free assets to write and test the
+game, so I can't distribute them legally.  As soon as I find free assets or make
+my own, I will ship them.
+
+
+
+__How can I play Zombieland?__
+
+Move around with the arrows, close the game with Esc.
+
+
+
+__Can I test Zombieland locally?__
+
+Yes.  After building, start first the server (zombielandd), then the client
+(zombieland) on another terminal, the latter with 127.0.0.1 and any username as
+arguments.
+
+
+
+__What is Zombieland capable to do?__
+
+I tested Zombieland on a LAN and I confirmed that a player can move in a little
+2D map.
+
+
+
+__On which platforms does Zombieland run?__
+
+Zombieland is written in portable C and uses SDL2, SDL2_image and SDL2_ttf for
+multimedia, so that part is fairly portable.
+Networking code uses the Posix API, so consult the docs of your platform about
+that.
+The configure and build toolchain is autotools, but building is easy enough that
+you can do it yourself.
+
+
+
+__How can I build Zombieland?__
+
+If you have the dependencies installed (including the autotools), just do the
+usual from the directory of the repository:
+
+ $ autoreconf -fi && ./configure && make
+
+
+
+__Why can't I shut down the server with Ctrl-C?__
+
+I'm not sure, but probably reading sockets non-blockingly changes the default
+handling of SIGINT.  I will look into it further.
