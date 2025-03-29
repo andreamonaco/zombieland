@@ -93,6 +93,7 @@ main (int argc, char *argv[])
     character_dest = {0, 0, 14, 21}, pers;
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
+  struct other_player opl;
 
   SDL_Window *win;
   SDL_Renderer *rend;
@@ -471,19 +472,20 @@ main (int argc, char *argv[])
 		  state->args.server_state.num_entities);
 	  for (i = 0; i < state->args.server_state.num_entities; i++)
 	    {
-	      pers = *(SDL_Rect *)(latest_srv_state+sizeof (struct message)
-				   +i*sizeof (SDL_Rect));
-	      printf ("this entity is x=%d y=%d\n", pers.x, pers.y);
+	      opl = *(struct other_player *)(latest_srv_state
+					     +sizeof (struct message)
+					     +i*sizeof (opl));
+	      printf ("this entity is x=%d y=%d\n", opl.x, opl.y);
 
 	      pers.x = screen_dest.x - screen_src.x + cave.display_src.x
-		+ cave.walkable.x + pers.x + character_origin.x;
+		+ cave.walkable.x + opl.x + character_origin.x;
 	      pers.y = screen_dest.y - screen_src.y + cave.display_src.y
-		+ cave.walkable.y + pers.y + character_origin.y;
+		+ cave.walkable.y + opl.y + character_origin.y;
 	      pers.w = character_dest.w;
 	      pers.h = character_dest.h;
 	      SDL_RenderCopy (rend, charactertxtr,
-			      &character_srcs [state->args.server_state.char_facing*3+
-					       ((loc_char_speed_x || loc_char_speed_y)
+			      &character_srcs [opl.facing*3+
+					       ((opl.speed_x || opl.speed_y)
 						? 1+(frame_counter%12)/6 : 0)],
 			      &pers);
 	    }

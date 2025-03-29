@@ -76,6 +76,15 @@ client_char_state_args
 
 
 struct
+other_player
+{
+  uint32_t x, y, w, h;
+  enum facing facing;
+  int32_t speed_x, speed_y;
+};
+
+
+struct
 server_state_args
 {
   uint32_t frame_counter;

@@ -264,6 +264,7 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
 {
   char buf [MAXMSGSIZE];
   struct message *msg = (struct message *) &buf;
+  struct other_player opl;
 
   printf ("entered send_server_state\n");
 
@@ -278,15 +279,22 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
 
   while (pls)
     {
-      if (sizeof (msg)+(msg->args.server_state.num_entities+1)*sizeof (SDL_Rect)
-	  > MAXMSGSIZE)
+      if (sizeof (msg)+(msg->args.server_state.num_entities+1)
+	  *sizeof (struct other_player) > MAXMSGSIZE)
 	break;
 
       if (pls != p)
 	{
+	  opl.x = pls->place.x;
+	  opl.y = pls->place.y;
+	  opl.w = pls->place.w;
+	  opl.h = pls->place.h;
+	  opl.facing = pls->facing;
+	  opl.speed_x = pls->speed_x;
+	  opl.speed_y = pls->speed_y;
 	  printf ("adding entity x=%d y=%d\n", pls->place.x, pls->place.y);
 	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_entities
-			*sizeof (SDL_Rect)], &pls->place, sizeof (SDL_Rect));
+			*sizeof (opl)], &opl, sizeof (opl));
 	  msg->args.server_state.num_entities++;
 	}
 
@@ -294,7 +302,7 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
     }
 
   if (sendto (sockfd, buf,
-	      sizeof (*msg)+(msg->args.server_state.num_entities)*sizeof (SDL_Rect),
+	      sizeof (*msg)+msg->args.server_state.num_entities*sizeof (opl),
 	      0, (struct sockaddr *)&p->address, sizeof (p->address)) < 0)
     {
       fprintf (stderr, "could not send data\n");
