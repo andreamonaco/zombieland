@@ -266,8 +266,6 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
   struct message *msg = (struct message *) &buf;
   struct other_player opl;
 
-  printf ("entered send_server_state\n");
-
   msg->type = htonl (MSG_SERVER_STATE);
   msg->args.server_state.frame_counter = frame_counter;
   msg->args.server_state.x = p->place.x;
@@ -292,7 +290,6 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
 	  opl.facing = pls->facing;
 	  opl.speed_x = pls->speed_x;
 	  opl.speed_y = pls->speed_y;
-	  printf ("adding entity x=%d y=%d\n", pls->place.x, pls->place.y);
 	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_entities
 			*sizeof (opl)], &opl, sizeof (opl));
 	  msg->args.server_state.num_entities++;
@@ -488,9 +485,6 @@ main (int argc, char *argv[])
 		}
 	      break;
 	    case MSG_CLIENT_CHAR_STATE:
-	      printf ("got client char state speedx = %d speedy = %d\n",
-		      msg->args.client_char_state.char_speed_x,
-		      msg->args.client_char_state.char_speed_y);
 	      p = players, pl = NULL;
 
 	      while (p)
@@ -532,8 +526,6 @@ main (int argc, char *argv[])
 				     cave.walkable, cave.unwalkables,
 				     cave.unwalkables_num, NULL, &char_hit);
 
-	  printf ("sending server state x = %d y = %d w = %d h = %d\n", p->place.x,
-		  p->place.y, p->place.w, p->place.h);
 	  send_server_state (sockfd, frame_counter, p, players);
 
 	  p = p->next;
@@ -571,10 +563,7 @@ main (int argc, char *argv[])
       delay = FRAME_DURATION - (t2 - t1);
 
       if (delay > 0)
-	{
-	  printf ("end of frame\n");
-	  SDL_Delay (delay);
-	}
+	SDL_Delay (delay);
       else
 	printf ("warning: frame skipped\n");
     }

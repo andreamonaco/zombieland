@@ -371,10 +371,7 @@ main (int argc, char *argv[])
 	  state = (struct message *)buf;
 
 	  if (recvlen < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
-	    {
-	      printf ("got no message\n");
-	      break;
-	    }
+	    break;
 
 	  if (recvlen < 0)
 	    {
@@ -393,9 +390,6 @@ main (int argc, char *argv[])
 	  switch (state->type)
 	    {
 	    case MSG_SERVER_STATE:
-	      printf ("received server char state x=%d y=%d\n",
-		      state->args.server_state.x,
-		      state->args.server_state.y);
 	      if (!latest_srv_state ||
 		  last_update < state->args.server_state.frame_counter)
 		{
@@ -468,14 +462,11 @@ main (int argc, char *argv[])
 
       if (latest_srv_state)
 	{
-	  printf ("there are %d entities\n",
-		  state->args.server_state.num_entities);
 	  for (i = 0; i < state->args.server_state.num_entities; i++)
 	    {
 	      opl = *(struct other_player *)(latest_srv_state
 					     +sizeof (struct message)
 					     +i*sizeof (opl));
-	      printf ("this entity is x=%d y=%d\n", opl.x, opl.y);
 
 	      pers.x = screen_dest.x - screen_src.x + cave.display_src.x
 		+ cave.walkable.x + opl.x + character_origin.x;
@@ -490,8 +481,6 @@ main (int argc, char *argv[])
 			      &pers);
 	    }
 	}
-
-      printf ("character_box x=%d y=%d\n", character_box.x, character_box.y);
 
       character_dest.x = screen_dest.x - screen_src.x + cave.display_src.x
 	+ cave.walkable.x + character_box.x + character_origin.x;
@@ -512,10 +501,7 @@ main (int argc, char *argv[])
       delay = FRAME_DURATION - (t2 - t1);
 
       if (delay > 0)
-	{
-	  SDL_Delay (delay);
-	  printf ("end of frame\n");
-	}
+	SDL_Delay (delay);
       else
 	printf ("warning: frame skipped by %f\n", delay);
     }
