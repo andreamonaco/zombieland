@@ -252,7 +252,6 @@ main (int argc, char *argv[])
 
   SDL_SetRenderDrawColor (rend, 100, 100, 100, 255);
   SDL_RenderClear (rend);
-  SDL_RenderPresent (rend);
 
   cavetxtr = IMG_LoadTexture (rend, "cave.png");
 
@@ -487,7 +486,6 @@ main (int argc, char *argv[])
 					       ((loc_char_speed_x || loc_char_speed_y)
 						? 1+(frame_counter%12)/6 : 0)],
 			      &pers);
-	      SDL_RenderPresent (rend);
 	    }
 	}
 
