@@ -76,8 +76,9 @@ main (int argc, char *argv[])
   uint16_t portoff = 0, tmp;
   struct hostent *server;
 
-  struct message msg;
-  char logname [MAX_LOGNAME_LEN+1];
+  struct message msg, *state;
+  char buf1 [MAXMSGSIZE], buf2 [MAXMSGSIZE];
+  char *buf, *latest_srv_state = NULL;
 
   uint32_t id, last_update = 0;
 
@@ -89,7 +90,7 @@ main (int argc, char *argv[])
 				{112, 9, 14, 21}, {110, 38, 14, 21}, {127, 38, 14, 21},
 				{165, 8, 14, 21}, {161, 38, 14, 21}, {178, 38, 14, 21}},
     character_box = RECT_BY_GRID (2, 5, 1, 1), character_origin = {1, -5, 0, 0},
-    character_dest = {0, 0, 14, 21};
+    character_dest = {0, 0, 14, 21}, pers;
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
 
@@ -101,7 +102,7 @@ main (int argc, char *argv[])
 
   SDL_Rect screen_src, screen_dest;
 
-  int quit = 0;
+  int quit = 0, i;
   uint32_t frame_counter = 1;
   Uint32 t1, t2;
   double delay;
@@ -363,9 +364,11 @@ main (int argc, char *argv[])
 
       while (1)
 	{
-	get_new_message:
-	  recvlen = recvfrom (sockfd, (char *)&msg, sizeof (msg), MSG_DONTWAIT,
+	  buf = (char *)&buf1 == latest_srv_state ? (char *)&buf2 : (char *)&buf1;
+
+	  recvlen = recvfrom (sockfd, buf, MAXMSGSIZE, MSG_DONTWAIT,
 			      (struct sockaddr *) &recv_addr, &recv_addr_len);
+	  state = (struct message *)buf;
 
 	  if (recvlen < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
 	    {
@@ -385,28 +388,36 @@ main (int argc, char *argv[])
 	      return 1;
 	    }
 
-	  msg.type = ntohl (msg.type);
+	  state->type = ntohl (state->type);
 
-	  switch (msg.type)
+	  switch (state->type)
 	    {
-	    case MSG_SERVER_CHAR_STATE:
+	    case MSG_SERVER_STATE:
 	      printf ("received server char state x=%d y=%d\n",
-		      msg.args.server_char_state.x,
-		      msg.args.server_char_state.y);
-	      if (last_update < msg.args.server_char_state.frame_counter)
+		      state->args.server_state.x,
+		      state->args.server_state.y);
+	      if (!latest_srv_state ||
+		  last_update < state->args.server_state.frame_counter)
 		{
-		  character_box.x = msg.args.server_char_state.x;
-		  character_box.y = msg.args.server_char_state.y;
-		  character_box.w = msg.args.server_char_state.w;
-		  character_box.h = msg.args.server_char_state.h;
-		  srv_char_facing = msg.args.server_char_state.char_facing;
-		  last_update = msg.args.server_char_state.frame_counter;
+		  last_update = state->args.server_state.frame_counter;
+		  latest_srv_state = buf;
 		}
 	      break;
 	    default:
-	      fprintf (stderr, "got wrong response from server (%d)\n", msg.type);
+	      fprintf (stderr, "got wrong response from server (%d)\n", state->type);
 	      return 1;
 	    }
+	}
+
+      if (latest_srv_state)
+	{
+	  state = (struct message *)latest_srv_state;
+
+	  character_box.x = state->args.server_state.x;
+	  character_box.y = state->args.server_state.y;
+	  character_box.w = state->args.server_state.w;
+	  character_box.h = state->args.server_state.h;
+	  srv_char_facing = state->args.server_state.char_facing;
 	}
 
       /*screen_src.x = -WINDOW_WIDTH/2 + cave.display_src.x + character_box.w/2
@@ -455,6 +466,33 @@ main (int argc, char *argv[])
       SDL_RenderClear (rend);
       SDL_RenderCopy (rend, cave.texture, &screen_src, &screen_dest);
 
+      if (latest_srv_state)
+	{
+	  printf ("there are %d entities\n",
+		  state->args.server_state.num_entities);
+	  for (i = 0; i < state->args.server_state.num_entities; i++)
+	    {
+	      pers = *(SDL_Rect *)(latest_srv_state+sizeof (struct message)
+				   +i*sizeof (SDL_Rect));
+	      printf ("this entity is x=%d y=%d\n", pers.x, pers.y);
+
+	      pers.x = screen_dest.x - screen_src.x + cave.display_src.x
+		+ cave.walkable.x + pers.x + character_origin.x;
+	      pers.y = screen_dest.y - screen_src.y + cave.display_src.y
+		+ cave.walkable.y + pers.y + character_origin.y;
+	      pers.w = character_dest.w;
+	      pers.h = character_dest.h;
+	      SDL_RenderCopy (rend, charactertxtr,
+			      &character_srcs [state->args.server_state.char_facing*3+
+					       ((loc_char_speed_x || loc_char_speed_y)
+						? 1+(frame_counter%12)/6 : 0)],
+			      &pers);
+	      SDL_RenderPresent (rend);
+	    }
+	}
+
+      printf ("character_box x=%d y=%d\n", character_box.x, character_box.y);
+
       character_dest.x = screen_dest.x - screen_src.x + cave.display_src.x
 	+ cave.walkable.x + character_box.x + character_origin.x;
       character_dest.y = screen_dest.y - screen_src.y + cave.display_src.y
@@ -465,7 +503,6 @@ main (int argc, char *argv[])
 					? 1+(frame_counter%12)/6 : 0)],
 		      &character_dest);
 
-      printf ("character_box x=%d y=%d\n", character_box.x, character_box.y);
       SDL_RenderPresent (rend);
 
       frame_counter++;

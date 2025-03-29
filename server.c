@@ -259,6 +259,51 @@ move_character (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable,
 
 
 void
+send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
+		   struct player *pls)
+{
+  char buf [MAXMSGSIZE];
+  struct message *msg = (struct message *) &buf;
+
+  printf ("entered send_server_state\n");
+
+  msg->type = htonl (MSG_SERVER_STATE);
+  msg->args.server_state.frame_counter = frame_counter;
+  msg->args.server_state.x = p->place.x;
+  msg->args.server_state.y = p->place.y;
+  msg->args.server_state.w = p->place.w;
+  msg->args.server_state.h = p->place.h;
+  msg->args.server_state.char_facing = p->facing;
+  msg->args.server_state.num_entities = 0;
+
+  while (pls)
+    {
+      if (sizeof (msg)+(msg->args.server_state.num_entities+1)*sizeof (SDL_Rect)
+	  > MAXMSGSIZE)
+	break;
+
+      if (pls != p)
+	{
+	  printf ("adding entity x=%d y=%d\n", pls->place.x, pls->place.y);
+	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_entities
+			*sizeof (SDL_Rect)], &pls->place, sizeof (SDL_Rect));
+	  msg->args.server_state.num_entities++;
+	}
+
+      pls = pls->next;
+    }
+
+  if (sendto (sockfd, buf,
+	      sizeof (*msg)+(msg->args.server_state.num_entities)*sizeof (SDL_Rect),
+	      0, (struct sockaddr *)&p->address, sizeof (p->address)) < 0)
+    {
+      fprintf (stderr, "could not send data\n");
+      exit (1);
+    }
+}
+
+
+void
 print_welcome_message (void)
 {
   puts ("zombieland server " PACKAGE_VERSION "\n"
@@ -285,7 +330,6 @@ main (int argc, char *argv[])
   socklen_t client_addr_sz = sizeof (client_addr);
 
   struct message *msg;
-  uint32_t arg;
 
   struct server_area cave = {0};
   SDL_Rect cave_walkable = {0, 0, 176, 160},
@@ -480,14 +524,9 @@ main (int argc, char *argv[])
 				     cave.walkable, cave.unwalkables,
 				     cave.unwalkables_num, NULL, &char_hit);
 
-	  /*if (!(frame_counter % 10))
-	    {*/
-	      printf ("sending server state x = %d y = %d w = %d h = %d\n", p->place.x,
-		      p->place.y, p->place.w, p->place.h);
-	      send_message (sockfd, &p->address, p->portoffset, MSG_SERVER_CHAR_STATE,
-			    frame_counter, p->place.x, p->place.y, p->place.w,
-			    p->place.h, p->facing);
-	      /*}*/
+	  printf ("sending server state x = %d y = %d w = %d h = %d\n", p->place.x,
+		  p->place.y, p->place.w, p->place.h);
+	  send_server_state (sockfd, frame_counter, p, players);
 
 	  p = p->next;
 	}

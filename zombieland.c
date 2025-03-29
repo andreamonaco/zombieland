@@ -53,14 +53,14 @@ send_message (int sockfd, struct sockaddr_in *addr, uint16_t portoff,
       msg.args.client_char_state.char_facing = va_arg (valist, enum facing);
       va_end (valist);
       break;
-    case MSG_SERVER_CHAR_STATE:
+    case MSG_SERVER_STATE:
       va_start (valist, type);
-      msg.args.server_char_state.frame_counter = va_arg (valist, uint32_t);
-      msg.args.server_char_state.x = va_arg (valist, uint32_t);
-      msg.args.server_char_state.y = va_arg (valist, uint32_t);
-      msg.args.server_char_state.w = va_arg (valist, uint32_t);
-      msg.args.server_char_state.h = va_arg (valist, uint32_t);
-      msg.args.server_char_state.char_facing = va_arg (valist, enum facing);
+      msg.args.server_state.frame_counter = va_arg (valist, uint32_t);
+      msg.args.server_state.x = va_arg (valist, uint32_t);
+      msg.args.server_state.y = va_arg (valist, uint32_t);
+      msg.args.server_state.w = va_arg (valist, uint32_t);
+      msg.args.server_state.h = va_arg (valist, uint32_t);
+      msg.args.server_state.char_facing = va_arg (valist, enum facing);
       va_end (valist);
       break;
     }

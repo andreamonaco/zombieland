@@ -47,7 +47,7 @@ facing
 #define MSG_LOGINOK            1
 #define MSG_LOGINFAIL          2
 #define MSG_CLIENT_CHAR_STATE  3
-#define MSG_SERVER_CHAR_STATE  4
+#define MSG_SERVER_STATE       4
 
 
 struct
@@ -76,11 +76,12 @@ client_char_state_args
 
 
 struct
-server_char_state_args
+server_state_args
 {
   uint32_t frame_counter;
   uint32_t x, y, w, h;
   enum facing char_facing;
+  uint32_t num_entities;
 };
 
 
@@ -90,7 +91,7 @@ args_union
   struct login_args login;
   struct loginok_args loginok;
   struct client_char_state_args client_char_state;
-  struct server_char_state_args server_char_state;
+  struct server_state_args server_state;
 };
 
 
