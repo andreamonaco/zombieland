@@ -23,14 +23,14 @@ __Can I test Zombieland locally?__
 
 Yes.  After building, start first the server (zombielandd), then the client
 (zombieland) on another terminal, the latter with 127.0.0.1 and any username as
-arguments.
+arguments.  You can even run multiple clients on the same system.
 
 
 
 __What is Zombieland capable to do?__
 
-I tested Zombieland on a LAN and I confirmed that a player can move in a little
-2D map.
+I tested Zombieland on a LAN and I confirmed that multiple players can move in a
+little 2D map.
 
 
 
@@ -42,6 +42,13 @@ Networking code uses the Posix API, so consult the docs of your platform about
 that.
 The configure and build toolchain is autotools, but building is easy enough that
 you can do it yourself.
+
+
+
+__Does Zombieland work across architectures?__
+
+Not yet probably: endianness conversions are still not applied consistently.  I
+will fix this soon enough.
 
 
 
@@ -58,3 +65,9 @@ __Why can't I shut down the server with Ctrl-C?__
 
 I'm not sure, but probably reading sockets non-blockingly changes the default
 handling of SIGINT.  I will look into it further.
+
+
+
+__Does Zombieland contain any line of code written by AI?__
+
+No!  This is a game about zombies, not written by zombies.
