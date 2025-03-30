@@ -89,9 +89,19 @@ struct zombie
 
 
 struct
+warp
+{
+  SDL_Rect place;
+  struct server_area *dest;
+  SDL_Rect spawn;
+  struct warp *next;
+};
+
+
+struct
 server_area
 {
-  int id;
+  uint32_t id;
   SDL_Rect walkable;
   SDL_Rect *unwalkables;
   int unwalkables_num;
@@ -130,6 +140,26 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   ret->speed_x = ret->speed_y = ret->facing = 0;
   ret->life = 10;
   ret->timeout = CLIENT_TIMEOUT;
+  ret->next = next;
+
+  return ret;
+}
+
+
+struct warp *
+make_warp_by_grid (int placex, int placey, int placew, int placeh,
+		   struct server_area *dest, int spawnx, int spawny,
+		   struct warp *next)
+{
+  struct warp *ret = malloc_and_check (sizeof (*ret));
+
+  ret->place.x = placex * GRID_CELL_W;
+  ret->place.y = placey * GRID_CELL_H;
+  ret->place.w = placew * GRID_CELL_W;
+  ret->place.h = placeh * GRID_CELL_H;
+  ret->dest = dest;
+  ret->spawn.x = spawnx * GRID_CELL_W;
+  ret->spawn.y = spawny * GRID_CELL_H;
   ret->next = next;
 
   return ret;
@@ -268,6 +298,7 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
 
   msg->type = htonl (MSG_SERVER_STATE);
   msg->args.server_state.frame_counter = frame_counter;
+  msg->args.server_state.areaid = p->area->id;
   msg->args.server_state.x = p->place.x;
   msg->args.server_state.y = p->place.y;
   msg->args.server_state.w = p->place.w;
@@ -281,7 +312,7 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
 	  *sizeof (struct other_player) > MAXMSGSIZE)
 	break;
 
-      if (pls != p)
+      if (pls != p && pls->area == p->area)
 	{
 	  opl.x = pls->place.x;
 	  opl.y = pls->place.y;
@@ -336,6 +367,8 @@ main (int argc, char *argv[])
 
   struct message *msg;
 
+  struct warp *w;
+
   struct server_area cave = {0};
   SDL_Rect cave_walkable = {0, 0, 176, 160},
     cave_unwalkables [] = {RECT_BY_GRID (0, 0, 1, 2), RECT_BY_GRID (10, 0, 1, 2),
@@ -343,6 +376,13 @@ main (int argc, char *argv[])
     RECT_BY_GRID (3, 1, 1, 1), RECT_BY_GRID (7, 1, 1, 1), RECT_BY_GRID (1, 4, 1, 1),
     RECT_BY_GRID (9, 4, 1, 1), RECT_BY_GRID (3, 7, 1, 1), RECT_BY_GRID (7, 7, 1, 1),
     RECT_BY_GRID (0, 9, 5, 1), RECT_BY_GRID (6, 9, 5, 1)};
+
+  struct server_area cave2 = {0};
+  SDL_Rect cave2_walkable = {0, 0, 176, 176},
+    cave2_unwalkables [] = {RECT_BY_GRID (0, 0, 5, 1), RECT_BY_GRID (6, 0, 5, 1),
+    RECT_BY_GRID (0, 1, 1, 2), RECT_BY_GRID (10, 1, 1, 2),
+    RECT_BY_GRID (0, 8, 1, 2), RECT_BY_GRID (10, 8, 1, 2),
+    RECT_BY_GRID (0, 10, 5, 1), RECT_BY_GRID (6, 10, 5, 1)};
 
   SDL_Event event;
 
@@ -380,13 +420,23 @@ main (int argc, char *argv[])
       return 1;
     }
 
+  cave.id = 0;
   cave.walkable = cave_walkable;
   cave.unwalkables = (SDL_Rect *)&cave_unwalkables;
   cave.unwalkables_num = 12;
-  cave.warps = NULL;
+  cave.warps = make_warp_by_grid (5, 9, 1, 1, &cave2, 5, 1, NULL);
   cave.interactibles = NULL;
   cave.zombies = NULL;
   cave.zombies_num = 0;
+
+  cave2.id = 1;
+  cave2.walkable = cave2_walkable;
+  cave2.unwalkables = (SDL_Rect *)&cave2_unwalkables;
+  cave2.unwalkables_num = 8;
+  cave2.warps = make_warp_by_grid (5, 0, 1, 1, &cave, 5, 8, NULL);
+  cave2.interactibles = NULL;
+  cave2.zombies = NULL;
+  cave2.zombies_num = 0;
 
   while (!quit)
     {
@@ -523,8 +573,23 @@ main (int argc, char *argv[])
       while (p)
 	{
 	  p->place = move_character (p->place, p->speed_x, p->speed_y,
-				     cave.walkable, cave.unwalkables,
-				     cave.unwalkables_num, NULL, &char_hit);
+				     p->area->walkable, p->area->unwalkables,
+				     p->area->unwalkables_num, NULL, &char_hit);
+
+	  w = p->area->warps;
+
+	  while (w)
+	    {
+	      if (p->place.x == w->place.x && p->place.y == w->place.y)
+		{
+		  p->area = w->dest;
+		  p->place.x = w->spawn.x;
+		  p->place.y = w->spawn.y;
+		  break;
+		}
+
+	      w = w->next;
+	    }
 
 	  send_server_state (sockfd, frame_counter, p, players);
 

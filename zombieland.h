@@ -88,6 +88,7 @@ struct
 server_state_args
 {
   uint32_t frame_counter;
+  uint32_t areaid;
   uint32_t x, y, w, h;
   enum facing char_facing;
   uint32_t num_entities;

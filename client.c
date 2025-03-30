@@ -46,9 +46,10 @@
 struct
 client_area
 {
-  int id;
+  uint32_t id;
   SDL_Texture *texture;
   SDL_Rect display_src, walkable;
+  struct client_area *next;
 };
 
 
@@ -85,12 +86,18 @@ main (int argc, char *argv[])
   struct client_area cave;
   SDL_Rect cave_src = {0, 0, 274, 236}, cave_walkable = {50, 50, 176, 160};
 
+  struct client_area cave2;
+  SDL_Rect cave2_src = {0, 294, 274, 236}, cave2_walkable = {50, 28, 176, 176};
+
+  struct client_area *areas = &cave2, *area = &cave, *ar;
+
   SDL_Rect character_srcs [] = {{8, 7, 14, 21}, {8, 38, 14, 21}, {25, 38, 14, 21},
 				{60, 7, 14, 21}, {59, 38, 14, 21}, {76, 38, 14, 21},
 				{112, 9, 14, 21}, {110, 38, 14, 21}, {127, 38, 14, 21},
 				{165, 8, 14, 21}, {161, 38, 14, 21}, {178, 38, 14, 21}},
     character_box = RECT_BY_GRID (2, 5, 1, 1), character_origin = {1, -5, 0, 0},
     character_dest = {0, 0, 14, 21}, pers;
+
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct other_player opl;
@@ -272,9 +279,17 @@ main (int argc, char *argv[])
       return 1;
     }
 
+  cave.id = 0;
   cave.texture = cavetxtr;
   cave.display_src = cave_src;
   cave.walkable = cave_walkable;
+  cave.next = NULL;
+
+  cave2.id = 1;
+  cave2.texture = cavetxtr;
+  cave2.display_src = cave2_src;
+  cave2.walkable = cave2_walkable;
+  cave2.next = &cave;
 
   SDL_RenderCopy (rend, cave.texture, NULL, NULL);
   character_dest.x = character_box.x + character_origin.x;
@@ -407,6 +422,26 @@ main (int argc, char *argv[])
 	{
 	  state = (struct message *)latest_srv_state;
 
+	  ar = areas;
+
+	  while (ar)
+	    {
+	      if (ar->id == state->args.server_state.areaid)
+		{
+		  area = ar;
+		  break;
+		}
+
+	      ar = ar->next;
+	    }
+
+	  if (!ar)
+	    {
+	      fprintf (stderr, "got unknown area id from server (%d)\n",
+		       state->args.server_state.areaid);
+	      return 1;
+	    }
+
 	  character_box.x = state->args.server_state.x;
 	  character_box.y = state->args.server_state.y;
 	  character_box.w = state->args.server_state.w;
@@ -421,8 +456,8 @@ main (int argc, char *argv[])
       screen_src.w = WINDOW_WIDTH;
       screen_src.h = WINDOW_HEIGHT;*/
 
-      screen_src.x = 0;
-      screen_src.y = 0;
+      screen_src.x = area->display_src.x;
+      screen_src.y = area->display_src.y;
       screen_src.w = WINDOW_WIDTH;
       screen_src.h = WINDOW_HEIGHT;
 
@@ -458,7 +493,7 @@ main (int argc, char *argv[])
 	  }*/
 
       SDL_RenderClear (rend);
-      SDL_RenderCopy (rend, cave.texture, &screen_src, &screen_dest);
+      SDL_RenderCopy (rend, area->texture, &screen_src, &screen_dest);
 
       if (latest_srv_state)
 	{
@@ -468,10 +503,10 @@ main (int argc, char *argv[])
 					     +sizeof (struct message)
 					     +i*sizeof (opl));
 
-	      pers.x = screen_dest.x - screen_src.x + cave.display_src.x
-		+ cave.walkable.x + opl.x + character_origin.x;
-	      pers.y = screen_dest.y - screen_src.y + cave.display_src.y
-		+ cave.walkable.y + opl.y + character_origin.y;
+	      pers.x = screen_dest.x - screen_src.x + area->display_src.x
+		+ area->walkable.x + opl.x + character_origin.x;
+	      pers.y = screen_dest.y - screen_src.y + area->display_src.y
+		+ area->walkable.y + opl.y + character_origin.y;
 	      pers.w = character_dest.w;
 	      pers.h = character_dest.h;
 	      SDL_RenderCopy (rend, charactertxtr,
@@ -482,10 +517,10 @@ main (int argc, char *argv[])
 	    }
 	}
 
-      character_dest.x = screen_dest.x - screen_src.x + cave.display_src.x
-	+ cave.walkable.x + character_box.x + character_origin.x;
-      character_dest.y = screen_dest.y - screen_src.y + cave.display_src.y
-	+ cave.walkable.y + character_box.y + character_origin.y;
+      character_dest.x = screen_dest.x - screen_src.x + area->display_src.x
+	+ area->walkable.x + character_box.x + character_origin.x;
+      character_dest.y = screen_dest.y - screen_src.y + area->display_src.y
+	+ area->walkable.y + character_box.y + character_origin.y;
       SDL_RenderCopy (rend, charactertxtr,
 		      &character_srcs [loc_char_facing*3+
 				       ((loc_char_speed_x || loc_char_speed_y)
