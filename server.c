@@ -46,6 +46,9 @@
 #define RECT_INTERSECT(x,y) (RECT_X_INTERSECT(x,y) && RECT_Y_INTERSECT(x,y))
 
 
+#define IS_RECT_CONTAINED(i,j) ((i).x>=(j).x&&(i).x+(i).w<=(j).x+(j).w	\
+				&&(i).y>=(j).y&&(i).y+(i).h<=(j).y+(j).h)
+
 
 uint32_t next_id = 0;
 
@@ -577,7 +580,7 @@ main (int argc, char *argv[])
 
 	  while (w)
 	    {
-	      if (p->place.x == w->place.x && p->place.y == w->place.y)
+	      if (IS_RECT_CONTAINED (p->place, w->place))
 		{
 		  p->area = w->dest;
 		  p->place.x = w->spawn.x;
