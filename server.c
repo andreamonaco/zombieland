@@ -136,7 +136,7 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   ret->last_update = 0;
   strcpy (ret->name, name);
   ret->area = area;
-  set_rect (&ret->place, 50, 50, 16, 16);
+  set_rect (&ret->place, 96, 16, 16, 16);
   ret->speed_x = ret->speed_y = ret->facing = 0;
   ret->life = 10;
   ret->timeout = CLIENT_TIMEOUT;
@@ -369,20 +369,17 @@ main (int argc, char *argv[])
 
   struct warp *w;
 
-  struct server_area cave = {0};
-  SDL_Rect cave_walkable = {0, 0, 176, 160},
-    cave_unwalkables [] = {RECT_BY_GRID (0, 0, 1, 2), RECT_BY_GRID (10, 0, 1, 2),
-    RECT_BY_GRID (0, 7, 1, 2), RECT_BY_GRID (10, 7, 1, 2),
-    RECT_BY_GRID (3, 1, 1, 1), RECT_BY_GRID (7, 1, 1, 1), RECT_BY_GRID (1, 4, 1, 1),
-    RECT_BY_GRID (9, 4, 1, 1), RECT_BY_GRID (3, 7, 1, 1), RECT_BY_GRID (7, 7, 1, 1),
-    RECT_BY_GRID (0, 9, 5, 1), RECT_BY_GRID (6, 9, 5, 1)};
+  struct server_area field = {0};
+  SDL_Rect field_walkable = {0, 0, 256, 256},
+    field_unwalkables [] = {RECT_BY_GRID (1, 3, 4, 4),
+    RECT_BY_GRID (1, 10, 3, 3), RECT_BY_GRID (10, 9, 2, 5),
+    RECT_BY_GRID (13, 9, 2, 5), RECT_BY_GRID (12, 9, 1, 3)};
 
-  struct server_area cave2 = {0};
-  SDL_Rect cave2_walkable = {0, 0, 176, 176},
-    cave2_unwalkables [] = {RECT_BY_GRID (0, 0, 5, 1), RECT_BY_GRID (6, 0, 5, 1),
-    RECT_BY_GRID (0, 1, 1, 2), RECT_BY_GRID (10, 1, 1, 2),
-    RECT_BY_GRID (0, 8, 1, 2), RECT_BY_GRID (10, 8, 1, 2),
-    RECT_BY_GRID (0, 10, 5, 1), RECT_BY_GRID (6, 10, 5, 1)};
+  struct server_area room = {0};
+  SDL_Rect room_walkable = RECT_BY_GRID (0, 0, 12, 12),
+    room_unwalkables [] = {RECT_BY_GRID (1, 6, 1, 3),
+    RECT_BY_GRID (7, 2, 3, 3), RECT_BY_GRID (7, 5, 1, 2),
+    RECT_BY_GRID (0, 11, 5, 1), RECT_BY_GRID (7, 11, 5, 1)};
 
   SDL_Event event;
 
@@ -420,23 +417,23 @@ main (int argc, char *argv[])
       return 1;
     }
 
-  cave.id = 0;
-  cave.walkable = cave_walkable;
-  cave.unwalkables = (SDL_Rect *)&cave_unwalkables;
-  cave.unwalkables_num = 12;
-  cave.warps = make_warp_by_grid (5, 9, 1, 1, &cave2, 5, 1, NULL);
-  cave.interactibles = NULL;
-  cave.zombies = NULL;
-  cave.zombies_num = 0;
+  field.id = 0;
+  field.walkable = field_walkable;
+  field.unwalkables = field_unwalkables;
+  field.unwalkables_num = 5;
+  field.warps = make_warp_by_grid (12, 13, 1, 1, &room, 5, 11, NULL);
+  field.interactibles = NULL;
+  field.zombies = NULL;
+  field.zombies_num = 0;
 
-  cave2.id = 1;
-  cave2.walkable = cave2_walkable;
-  cave2.unwalkables = (SDL_Rect *)&cave2_unwalkables;
-  cave2.unwalkables_num = 8;
-  cave2.warps = make_warp_by_grid (5, 0, 1, 1, &cave, 5, 8, NULL);
-  cave2.interactibles = NULL;
-  cave2.zombies = NULL;
-  cave2.zombies_num = 0;
+  room.id = 1;
+  room.walkable = room_walkable;
+  room.unwalkables = room_unwalkables;
+  room.unwalkables_num = 5;
+  room.warps = make_warp_by_grid (5, 11, 2, 1, &field, 12, 14, NULL);
+  room.interactibles = NULL;
+  room.zombies = NULL;
+  room.zombies_num = 0;
 
   while (!quit)
     {
@@ -517,7 +514,7 @@ main (int argc, char *argv[])
 		}
 
 	      players = create_player (msg->args.login.logname, &client_addr,
-				       ntohs (msg->args.login.portoff), &cave,
+				       ntohs (msg->args.login.portoff), &field,
 				       players);
 	      printf ("created player %s with port offset %d\n",
 		      msg->args.login.logname, players->portoffset);

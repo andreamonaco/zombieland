@@ -22,8 +22,8 @@
 
 
 
-#define WINDOW_WIDTH 274
-#define WINDOW_HEIGHT 236
+#define WINDOW_WIDTH 256
+#define WINDOW_HEIGHT 256
 
 
 #include <stdio.h>
@@ -83,20 +83,21 @@ main (int argc, char *argv[])
 
   uint32_t id, last_update = 0;
 
-  struct client_area cave;
-  SDL_Rect cave_src = {0, 0, 274, 236}, cave_walkable = {50, 50, 176, 160};
+  struct client_area field;
+  SDL_Rect field_src = {0, 0, 256, 256}, field_walkable = {0, 0, 256, 256};
 
-  struct client_area cave2;
-  SDL_Rect cave2_src = {0, 294, 274, 236}, cave2_walkable = {50, 28, 176, 176};
+  struct client_area room;
+  SDL_Rect room_src = {0, 256, 256, 256},
+    room_walkable = RECT_BY_GRID (2, 2, 12, 12);
 
-  struct client_area *areas = &cave2, *area = &cave, *ar;
+  struct client_area *areas = &field, *area = &field, *ar;
 
-  SDL_Rect character_srcs [] = {{8, 7, 14, 21}, {8, 38, 14, 21}, {25, 38, 14, 21},
-				{60, 7, 14, 21}, {59, 38, 14, 21}, {76, 38, 14, 21},
-				{112, 9, 14, 21}, {110, 38, 14, 21}, {127, 38, 14, 21},
-				{165, 8, 14, 21}, {161, 38, 14, 21}, {178, 38, 14, 21}},
-    character_box = RECT_BY_GRID (2, 5, 1, 1), character_origin = {1, -5, 0, 0},
-    character_dest = {0, 0, 14, 21}, pers;
+  SDL_Rect character_srcs [] = {{0, 6, 16, 21}, {16, 6, 16, 21}, {48, 6, 16, 21},
+				{0, 69, 16, 21}, {16, 69, 16, 21}, {48, 69, 16, 21},
+				{0, 38, 16, 21}, {16, 38, 16, 21}, {48, 38, 16, 21},
+				{0, 102, 16, 21}, {16, 102, 16, 21}, {48, 102, 16, 21}},
+    character_box = RECT_BY_GRID (6, 1, 1, 1), character_origin = {0, -5, 0, 0},
+    character_dest = {0, 0, 16, 21}, pers;
 
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
@@ -106,7 +107,7 @@ main (int argc, char *argv[])
   SDL_Renderer *rend;
   SDL_Event event;
 
-  SDL_Texture *cavetxtr, *charactertxtr;
+  SDL_Texture *areatxtr, *charactertxtr;
 
   SDL_Rect screen_src, screen_dest;
 
@@ -261,16 +262,16 @@ main (int argc, char *argv[])
   SDL_SetRenderDrawColor (rend, 100, 100, 100, 255);
   SDL_RenderClear (rend);
 
-  cavetxtr = IMG_LoadTexture (rend, "cave.png");
+  areatxtr = IMG_LoadTexture (rend, "area.png");
 
-  if (!cavetxtr)
+  if (!areatxtr)
     {
       fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
       SDL_Quit ();
       return 1;
     }
 
-  charactertxtr = IMG_LoadTexture (rend, "main-character.png");
+  charactertxtr = IMG_LoadTexture (rend, "character.png");
 
   if (!charactertxtr)
     {
@@ -279,19 +280,19 @@ main (int argc, char *argv[])
       return 1;
     }
 
-  cave.id = 0;
-  cave.texture = cavetxtr;
-  cave.display_src = cave_src;
-  cave.walkable = cave_walkable;
-  cave.next = NULL;
+  field.id = 0;
+  field.texture = areatxtr;
+  field.display_src = field_src;
+  field.walkable = field_walkable;
+  field.next = &room;
 
-  cave2.id = 1;
-  cave2.texture = cavetxtr;
-  cave2.display_src = cave2_src;
-  cave2.walkable = cave2_walkable;
-  cave2.next = &cave;
+  room.id = 1;
+  room.texture = areatxtr;
+  room.display_src = room_src;
+  room.walkable = room_walkable;
+  room.next = NULL;
 
-  SDL_RenderCopy (rend, cave.texture, NULL, NULL);
+  SDL_RenderCopy (rend, field.texture, NULL, NULL);
   character_dest.x = character_box.x + character_origin.x;
   character_dest.y = character_box.y + character_origin.y;
   SDL_RenderCopy (rend, charactertxtr, &character_srcs [loc_char_facing],
