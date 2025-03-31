@@ -5,11 +5,17 @@ survival of humans against zombies.
 
 
 
-__The game doesn't run, where are the assets?__
+__Who made the assets?__
 
-They are currently not available.  I use non-free assets to write and test the
-game, so I can't distribute them legally.  As soon as I find free assets or make
-my own, I will ship them.
+I made the maps using a tileset taken by https://opengameart.org:
+
+"Zelda-like tilesets and sprites" by ArMM1998 licensed CC0 1.0 Universal:
+https://opengameart.org/content/zelda-like-tilesets-and-sprites
+
+The player sprite comes from the same set.
+
+These assets are not final, I will probably make my own along the way, but they
+show that the engine works.
 
 
 
@@ -29,8 +35,8 @@ arguments.  You can even run multiple clients on the same system.
 
 __What is Zombieland capable to do?__
 
-I tested Zombieland on a LAN and I confirmed that multiple players can move in a
-little 2D map.
+I tested Zombieland on a LAN and I confirmed that multiple players can move in
+the same 2D map.
 
 
 
