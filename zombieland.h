@@ -72,6 +72,7 @@ client_char_state_args
   uint32_t frame_counter;
   int32_t char_speed_x, char_speed_y;
   enum facing char_facing;
+  uint32_t do_shoot;
 };
 
 
@@ -92,6 +93,7 @@ server_state_args
   uint32_t x, y, w, h;
   enum facing char_facing;
   uint32_t num_entities;
+  uint32_t num_shots;
 };
 
 

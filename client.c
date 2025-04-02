@@ -97,9 +97,9 @@ main (int argc, char *argv[])
 				{0, 38, 16, 21}, {16, 38, 16, 21}, {48, 38, 16, 21},
 				{0, 102, 16, 21}, {16, 102, 16, 21}, {48, 102, 16, 21}},
     character_box = RECT_BY_GRID (6, 1, 1, 1), character_origin = {0, -5, 0, 0},
-    character_dest = {0, 0, 16, 21}, pers;
+    character_dest = {0, 0, 16, 21}, pers, shot_src = {40, 18, 16, 16}, sh;
 
-  int32_t loc_char_speed_x = 0, loc_char_speed_y = 0;
+  int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_shoot = 0;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct other_player opl;
 
@@ -107,7 +107,7 @@ main (int argc, char *argv[])
   SDL_Renderer *rend;
   SDL_Event event;
 
-  SDL_Texture *areatxtr, *charactertxtr;
+  SDL_Texture *areatxtr, *charactertxtr, *effectstxtr;
 
   SDL_Rect screen_src, screen_dest;
 
@@ -280,6 +280,15 @@ main (int argc, char *argv[])
       return 1;
     }
 
+  effectstxtr = IMG_LoadTexture (rend, "effects.png");
+
+  if (!effectstxtr)
+    {
+      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
   field.id = 0;
   field.texture = areatxtr;
   field.display_src = field_src;
@@ -333,6 +342,9 @@ main (int argc, char *argv[])
 		  if (!loc_char_speed_x || loc_char_facing == FACING_UP)
 		    loc_char_facing = FACING_DOWN;
 		  break;
+		case SDLK_f:
+		  do_shoot = 1;
+		  break;
 		}
 	      break;
 	    case SDL_KEYUP:
@@ -376,7 +388,9 @@ main (int argc, char *argv[])
 
       send_message (sockfd, &server_addr, -1, MSG_CLIENT_CHAR_STATE, id,
 		    frame_counter, loc_char_speed_x, loc_char_speed_y,
-		    loc_char_facing);
+		    loc_char_facing, do_shoot);
+
+      do_shoot = 0;
 
       while (1)
 	{
@@ -527,6 +541,26 @@ main (int argc, char *argv[])
 				       ((loc_char_speed_x || loc_char_speed_y)
 					? 1+(frame_counter%12)/6 : 0)],
 		      &character_dest);
+
+      if (latest_srv_state)
+	{
+	  for (i = 0; i < state->args.server_state.num_shots; i++)
+	    {
+	      sh = *(struct SDL_Rect *)(latest_srv_state
+					+sizeof (struct message)
+					+sizeof (struct other_player)
+					*state->args.server_state.num_entities
+					+i*sizeof (SDL_Rect));
+
+	      sh.x = screen_dest.x - screen_src.x + area->display_src.x
+		+ area->walkable.x + sh.x;
+	      sh.y = screen_dest.y - screen_src.y + area->display_src.y
+		+ area->walkable.y + sh.y;
+	      sh.w = GRID_CELL_W;
+	      sh.h = GRID_CELL_H;
+	      SDL_RenderCopy (rend, effectstxtr, &shot_src, &sh);
+	    }
+	}
 
       SDL_RenderPresent (rend);
 

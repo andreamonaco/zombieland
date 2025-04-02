@@ -50,6 +50,9 @@
 				&&(i).y>=(j).y&&(i).y+(i).h<=(j).y+(j).h)
 
 
+#define SHOOT_REST 10
+
+
 uint32_t next_id = 0;
 
 struct
@@ -65,10 +68,20 @@ player
   SDL_Rect place;
   int32_t speed_x, speed_y;
   enum facing facing;
-  int life;
+  int life, shoot_rest;
 
   int timeout;
   struct player *next;
+};
+
+
+struct
+shot
+{
+  uint32_t areaid;
+  SDL_Rect target;
+  int duration;
+  struct shot *next;
 };
 
 
@@ -142,6 +155,7 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   set_rect (&ret->place, 96, 16, 16, 16);
   ret->speed_x = ret->speed_y = ret->facing = 0;
   ret->life = 10;
+  ret->shoot_rest = 0;
   ret->timeout = CLIENT_TIMEOUT;
   ret->next = next;
 
@@ -291,9 +305,153 @@ move_character (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable,
 }
 
 
+int
+is_target_hit (SDL_Rect charbox, enum facing facing, SDL_Rect target,
+	       SDL_Rect *hitpart)
+{
+  switch (facing)
+    {
+    case FACING_DOWN:
+      if (charbox.y+charbox.h<=target.y
+	  && target.x<=charbox.x+charbox.w/2
+	  && charbox.x+charbox.w/2 <= target.x+target.w)
+	{
+	  hitpart->x = charbox.x;
+	  hitpart->y = target.y;
+	  return 1;
+	}
+      break;
+    case FACING_UP:
+      if (charbox.y>=target.y+target.h
+	  && target.x<=charbox.x+charbox.w/2
+	  && charbox.x+charbox.w/2 <= target.x+target.w)
+	{
+	  hitpart->x = charbox.x;
+	  hitpart->y = target.y+target.h-GRID_CELL_H;
+	  return 1;
+	}
+      break;
+    case FACING_RIGHT:
+      if (charbox.x+charbox.w<=target.x
+	  && target.y<=charbox.y+charbox.h/2
+	  && charbox.y+charbox.h/2 <= target.y+target.h)
+	{
+	  hitpart->x = target.x;
+	  hitpart->y = charbox.y;
+	  return 1;
+	}
+      break;
+    case FACING_LEFT:
+      if (charbox.x>=target.x+target.w
+	  && target.y<=charbox.y+charbox.h/2
+	  && charbox.y+charbox.h/2 <= target.y+target.h)
+	{
+	  hitpart->x = target.x+target.w-GRID_CELL_W;
+	  hitpart->y = charbox.y;
+	  return 1;
+	}
+      break;
+    }
+
+  return 0;
+}
+
+
+int
+is_closer (enum facing facing, SDL_Rect rect1, SDL_Rect rect2)
+{
+  switch (facing)
+    {
+    case FACING_DOWN:
+      return rect1.y<rect2.y;
+    case FACING_UP:
+      return rect1.y>rect2.y;
+    case FACING_RIGHT:
+      return rect1.x<rect2.x;
+    case FACING_LEFT:
+      return rect1.x>rect2.x;
+    }
+
+  return 0;
+}
+
+
+SDL_Rect
+get_shot_rect (SDL_Rect charbox, enum facing facing, SDL_Rect walkable,
+	       SDL_Rect unwalkables[], int unwalkables_num, struct zombie *zs,
+	       struct zombie **shotz, struct zombie **prevshotz)
+{
+  int i, found = 0;
+  SDL_Rect ret, hitpart;
+  struct zombie *pr = NULL;
+
+  *shotz = NULL;
+
+  for (i = 0; i < unwalkables_num; i++)
+    {
+      if (is_target_hit (charbox, facing, unwalkables [i], &hitpart))
+	{
+	  if (!found || is_closer (facing, hitpart, ret))
+	    {
+	      found = 1;
+	      ret = hitpart;
+	    }
+	}
+    }
+
+  *prevshotz = NULL;
+
+  while (zs)
+    {
+      if (is_target_hit (charbox, facing, zs->place, &hitpart))
+	{
+	  if (!found || is_closer (facing, hitpart, ret))
+	    {
+	      found = 1;
+	      *shotz = zs;
+	      *prevshotz = pr;
+	      ret = hitpart;
+	    }
+	}
+
+      pr = zs;
+      zs = zs->next;
+    }
+
+  if (found)
+    {
+      ret.w = GRID_CELL_W;
+      ret.h = GRID_CELL_H;
+      return ret;
+    }
+
+  switch (facing)
+    {
+    case FACING_DOWN:
+      ret.x = charbox.x;
+      ret.y = walkable.h;
+      break;
+    case FACING_UP:
+      ret.x = charbox.x;
+      ret.y = -GRID_CELL_H;
+      break;
+    case FACING_RIGHT:
+      ret.x = walkable.w;
+      ret.y = charbox.y;
+      break;
+    case FACING_LEFT:
+      ret.x = -GRID_CELL_W;
+      ret.y = charbox.y;
+      break;
+    }
+
+  return ret;
+}
+
+
 void
 send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
-		   struct player *pls)
+		   struct player *pls, struct shot *ss)
 {
   char buf [MAXMSGSIZE];
   struct message *msg = (struct message *) &buf;
@@ -308,6 +466,7 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
   msg->args.server_state.h = p->place.h;
   msg->args.server_state.char_facing = p->facing;
   msg->args.server_state.num_entities = 0;
+  msg->args.server_state.num_shots = 0;
 
   while (pls)
     {
@@ -332,8 +491,27 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
       pls = pls->next;
     }
 
+  while (ss)
+    {
+      if (sizeof (msg)+msg->args.server_state.num_entities
+	  *sizeof (struct other_player)+(msg->args.server_state.num_entities+1)
+	  *sizeof (struct SDL_Rect) > MAXMSGSIZE)
+	break;
+
+      if (ss->areaid == p->area->id)
+	{
+	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_entities
+			*sizeof (opl)+msg->args.server_state.num_shots
+			*sizeof (struct SDL_Rect)], &ss->target, sizeof (ss->target));
+	  msg->args.server_state.num_shots++;
+	}
+
+      ss = ss->next;
+    }
+
   if (sendto (sockfd, buf,
-	      sizeof (*msg)+msg->args.server_state.num_entities*sizeof (opl),
+	      sizeof (*msg)+msg->args.server_state.num_entities*sizeof (opl)
+	      +msg->args.server_state.num_shots*sizeof (struct SDL_Rect),
 	      0, (struct sockaddr *)&p->address, sizeof (p->address)) < 0)
     {
       fprintf (stderr, "could not send data\n");
@@ -359,6 +537,8 @@ int
 main (int argc, char *argv[])
 {
   struct player *players = NULL, *p, *pl, *pr;
+  struct zombie *z, *prz;
+  struct shot *shots = NULL, *s, *prs;
 
   int sockfd;
   fd_set fdset;
@@ -558,6 +738,10 @@ main (int argc, char *argv[])
 		  pl->speed_x = msg->args.client_char_state.char_speed_x;
 		  pl->speed_y = msg->args.client_char_state.char_speed_y;
 		  pl->facing = msg->args.client_char_state.char_facing;
+
+		  if (!pl->shoot_rest && msg->args.client_char_state.do_shoot)
+		    pl->shoot_rest = SHOOT_REST;
+
 		  pl->last_update = msg->args.client_char_state.frame_counter;
 		  pl->timeout = CLIENT_TIMEOUT;
 		}
@@ -576,6 +760,45 @@ main (int argc, char *argv[])
 				     p->area->walkable, p->area->unwalkables,
 				     p->area->unwalkables_num, NULL, &char_hit);
 
+	  if (p->shoot_rest == SHOOT_REST)
+	    {
+	      s = malloc_and_check (sizeof (*s));
+	      s->areaid = p->area->id;
+	      s->target = get_shot_rect (p->place, p->facing, p->area->walkable,
+					 p->area->unwalkables,
+					 p->area->unwalkables_num, NULL, &z,
+					 &prz);
+	      s->duration = 10;
+	      s->next = shots;
+	      shots = s;
+	    }
+
+	  if (p->shoot_rest)
+	    p->shoot_rest--;
+
+	  s = shots, prs = NULL;
+
+	  while (s)
+	    {
+	      s->duration--;
+
+	      if (!s->duration)
+		{
+		  if (prs)
+		    prs->next = s->next;
+		  else
+		    shots = s->next;
+
+		  free (s);
+		  s = prs ? prs->next : shots;
+		}
+	      else
+		{
+		  prs = s;
+		  s = s->next;
+		}
+	    }
+
 	  w = p->area->warps;
 
 	  while (w)
@@ -591,7 +814,14 @@ main (int argc, char *argv[])
 	      w = w->next;
 	    }
 
-	  send_server_state (sockfd, frame_counter, p, players);
+	  p = p->next;
+	}
+
+      p = players;
+
+      while (p)
+	{
+	  send_server_state (sockfd, frame_counter, p, players, shots);
 
 	  p = p->next;
 	}
