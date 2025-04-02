@@ -379,13 +379,16 @@ is_closer (enum facing facing, SDL_Rect rect1, SDL_Rect rect2)
 SDL_Rect
 get_shot_rect (SDL_Rect charbox, enum facing facing, SDL_Rect walkable,
 	       SDL_Rect unwalkables[], int unwalkables_num, struct zombie *zs,
-	       struct zombie **shotz, struct zombie **prevshotz)
+	       struct zombie **shotz, struct zombie **prevshotz,
+	       struct player *ps, struct player **shotp,
+	       struct player **prevshotp)
 {
   int i, found = 0;
   SDL_Rect ret, hitpart;
   struct zombie *pr = NULL;
+  struct player *pp = NULL;
 
-  *shotz = NULL;
+  *shotz = NULL, *shotp = NULL;
 
   for (i = 0; i < unwalkables_num; i++)
     {
@@ -416,6 +419,25 @@ get_shot_rect (SDL_Rect charbox, enum facing facing, SDL_Rect walkable,
 
       pr = zs;
       zs = zs->next;
+    }
+
+  *prevshotp = NULL;
+
+  while (ps)
+    {
+      if (is_target_hit (charbox, facing, ps->place, &hitpart))
+	{
+	  if (!found || is_closer (facing, hitpart, ret))
+	    {
+	      found = 1;
+	      *shotp = ps;
+	      *prevshotp = pp;
+	      ret = hitpart;
+	    }
+	}
+
+      pp = ps;
+      ps = ps->next;
     }
 
   if (found)
@@ -536,7 +558,7 @@ print_welcome_message (void)
 int
 main (int argc, char *argv[])
 {
-  struct player *players = NULL, *p, *pl, *pr;
+  struct player *players = NULL, *p, *pl, *pr, *hitp, *prevhitp;
   struct zombie *z, *prz;
   struct shot *shots = NULL, *s, *prs;
 
@@ -769,7 +791,7 @@ main (int argc, char *argv[])
 	      s->target = get_shot_rect (p->place, p->facing, p->area->walkable,
 					 p->area->unwalkables,
 					 p->area->unwalkables_num, NULL, &z,
-					 &prz);
+					 &prz, players, &hitp, &prevhitp);
 	      s->duration = 10;
 	      s->next = shots;
 	      shots = s;
