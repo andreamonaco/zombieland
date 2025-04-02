@@ -181,6 +181,8 @@ main (int argc, char *argv[])
   memcpy (&msg.args.login.portoff, &tmp, sizeof (tmp));
   strcpy (msg.args.login.logname, argv [2]);
 
+  printf ("contacting server %s... ", argv [1]);
+
   if (sendto (sockfd, (char *)&msg, sizeof (msg), 0,
 	      (struct sockaddr *) &server_addr, sizeof (server_addr)) < 0)
     {
@@ -575,7 +577,7 @@ main (int argc, char *argv[])
       if (delay > 0)
 	SDL_Delay (delay);
       else
-	printf ("warning: frame skipped by %f\n", delay);
+	printf ("warning: frame skipped by %f\n", -delay);
     }
 
   SDL_Quit ();
