@@ -117,8 +117,8 @@ main (int argc, char *argv[])
 
   SDL_Rect screen_src, screen_dest;
 
-  int quit = 0, i;
-  uint32_t frame_counter = 1;
+  int quit = 0, i, got_update;
+  uint32_t frame_counter = 1, timeout = SERVER_TIMEOUT;
   Uint32 t1, t2;
   double delay;
 
@@ -411,6 +411,8 @@ main (int argc, char *argv[])
 
       do_shoot = 0;
 
+      got_update = 0;
+
       while (1)
 	{
 	  buf = (char *)&buf1 == latest_srv_state ? (char *)&buf2 : (char *)&buf1;
@@ -434,6 +436,8 @@ main (int argc, char *argv[])
 	      return 1;
 	    }
 
+	  got_update = 1;
+
 	  state->type = ntohl (state->type);
 
 	  switch (state->type)
@@ -454,6 +458,19 @@ main (int argc, char *argv[])
 	      return 1;
 	    }
 	}
+
+      if (!got_update)
+	{
+	  timeout--;
+
+	  if (!timeout)
+	    {
+	      fprintf (stderr, "no data from server until timeout\n");
+	      return 1;
+	    }
+	}
+      else
+	timeout = SERVER_TIMEOUT;
 
       if (latest_srv_state)
 	{
