@@ -14,6 +14,11 @@ https://opengameart.org/content/zelda-like-tilesets-and-sprites
 
 The player sprite comes from the same set.
 
+The spark effect in effects.png comes from:
+
+"5x special effects - 2D" by rubberduck licensed CC0 1.0 Universal:
+https://opengameart.org/content/5x-special-effects-2d
+
 These assets are not final, I will probably make my own along the way, but they
 show that the engine works.
 
@@ -21,7 +26,8 @@ show that the engine works.
 
 __How can I play Zombieland?__
 
-Move around with the arrows, close the game with Esc.
+Move around with the arrows, fire at the scenario with F and close the game with
+Esc.
 
 
 
