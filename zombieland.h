@@ -48,6 +48,7 @@ facing
 #define MSG_LOGINFAIL          2
 #define MSG_CLIENT_CHAR_STATE  3
 #define MSG_SERVER_STATE       4
+#define MSG_PLAYER_DIED        5
 
 
 struct

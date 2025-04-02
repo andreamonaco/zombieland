@@ -795,6 +795,9 @@ main (int argc, char *argv[])
 	      s->duration = 10;
 	      s->next = shots;
 	      shots = s;
+
+	      if (hitp)
+		hitp->life--;
 	    }
 
 	  if (p->shoot_rest)
@@ -841,13 +844,29 @@ main (int argc, char *argv[])
 	  p = p->next;
 	}
 
-      p = players;
+      p = players, pr = NULL;
 
       while (p)
 	{
-	  send_server_state (sockfd, frame_counter, p, players, shots);
+	  if (p->life <= 0)
+	    {
+	      send_message (sockfd, &p->address, -1, MSG_PLAYER_DIED);
 
-	  p = p->next;
+	      if (pr)
+		pr->next = p->next;
+	      else
+		players = p->next;
+
+	      free (p);
+	      p = pr ? pr->next : players;
+	    }
+	  else
+	    {
+	      send_server_state (sockfd, frame_counter, p, players, shots);
+
+	      pr = p;
+	      p = p->next;
+	    }
 	}
 
       p = players, pr = NULL;

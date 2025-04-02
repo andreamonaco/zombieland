@@ -431,6 +431,9 @@ main (int argc, char *argv[])
 		  latest_srv_state = buf;
 		}
 	      break;
+	    case MSG_PLAYER_DIED:
+	      printf ("you died!\n");
+	      return 1;
 	    default:
 	      fprintf (stderr, "got wrong response from server (%d)\n", state->type);
 	      return 1;
