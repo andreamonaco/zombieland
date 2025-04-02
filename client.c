@@ -160,6 +160,8 @@ main (int argc, char *argv[])
       return 1;
     }
 
+  printf ("listening on port %d...\n", ZOMBIELAND_PORT+portoff);
+
   server = gethostbyname (argv [1]);
 
   if (!server)

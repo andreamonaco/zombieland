@@ -600,6 +600,8 @@ main (int argc, char *argv[])
       return 1;
     }
 
+  printf ("listening on port %d...\n", ZOMBIELAND_PORT);
+
   field.id = 0;
   field.walkable = field_walkable;
   field.unwalkables = field_unwalkables;
