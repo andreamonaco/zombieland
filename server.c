@@ -68,7 +68,7 @@ player
   SDL_Rect place;
   int32_t speed_x, speed_y;
   enum facing facing;
-  int life, shoot_rest;
+  int32_t life, shoot_rest;
 
   int timeout;
   struct player *next;
@@ -487,6 +487,7 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
   msg->args.server_state.w = p->place.w;
   msg->args.server_state.h = p->place.h;
   msg->args.server_state.char_facing = p->facing;
+  msg->args.server_state.life = p->life;
   msg->args.server_state.num_entities = 0;
   msg->args.server_state.num_shots = 0;
 

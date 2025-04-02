@@ -93,6 +93,7 @@ server_state_args
   uint32_t areaid;
   uint32_t x, y, w, h;
   enum facing char_facing;
+  int32_t life;
   uint32_t num_entities;
   uint32_t num_shots;
 };

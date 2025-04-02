@@ -99,7 +99,7 @@ main (int argc, char *argv[])
     character_box = RECT_BY_GRID (6, 1, 1, 1), character_origin = {0, -5, 0, 0},
     character_dest = {0, 0, 16, 21}, pers, shot_src = {40, 18, 16, 16}, sh;
 
-  int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_shoot = 0;
+  int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_shoot = 0, life = 10;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct other_player opl;
 
@@ -107,7 +107,13 @@ main (int argc, char *argv[])
   SDL_Renderer *rend;
   SDL_Event event;
 
-  SDL_Texture *areatxtr, *charactertxtr, *effectstxtr;
+  SDL_Texture *areatxtr, *charactertxtr, *effectstxtr, *charlifetxtr;
+  SDL_Surface *charlifesurf;
+  TTF_Font *font;
+  char charlifetext [20];
+  SDL_Rect charliferect = {10, 10, 40, 40};
+
+  SDL_Color textcol = {0, 0, 0, 255};
 
   SDL_Rect screen_src, screen_dest;
 
@@ -293,6 +299,15 @@ main (int argc, char *argv[])
       return 1;
     }
 
+  font = TTF_OpenFont ("Boxy-Bold.ttf", 12);
+
+  if (!font)
+    {
+      fprintf (stderr, "could not load font: %s\n", TTF_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
   field.id = 0;
   field.texture = areatxtr;
   field.display_src = field_src;
@@ -469,6 +484,7 @@ main (int argc, char *argv[])
 	  character_box.w = state->args.server_state.w;
 	  character_box.h = state->args.server_state.h;
 	  srv_char_facing = state->args.server_state.char_facing;
+	  life = state->args.server_state.life;
 	}
 
       /*screen_src.x = -WINDOW_WIDTH/2 + cave.display_src.x + character_box.w/2
@@ -568,6 +584,31 @@ main (int argc, char *argv[])
 	      SDL_RenderCopy (rend, effectstxtr, &shot_src, &sh);
 	    }
 	}
+
+
+      sprintf (charlifetext, "LIFE %2d/10", life);
+      charlifesurf = TTF_RenderText_Solid (font, charlifetext, textcol);
+
+      if (!charlifesurf)
+	{
+	  fprintf (stderr, "could not print text: %s\n", TTF_GetError ());
+	  return 1;
+	}
+
+      charlifetxtr = SDL_CreateTextureFromSurface (rend, charlifesurf);
+
+      if (!charlifetxtr)
+	{
+	  fprintf (stderr, "could not create texture for text: %s\n",
+		   SDL_GetError ());
+	  return 1;
+	}
+
+      charliferect.w = charlifesurf->w;
+      charliferect.h = charlifesurf->h;
+
+      SDL_RenderCopy (rend, charlifetxtr, NULL, &charliferect);
+
 
       SDL_RenderPresent (rend);
 
