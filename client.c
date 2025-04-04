@@ -99,7 +99,8 @@ main (int argc, char *argv[])
     character_box = RECT_BY_GRID (6, 1, 1, 1), character_origin = {0, -5, 0, 0},
     character_dest = {0, 0, 16, 21}, pers, shot_src = {40, 18, 16, 16}, sh;
 
-  int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_shoot = 0, life = 10;
+  int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
+    do_shoot = 0, life = 10;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct other_player opl;
 
@@ -107,13 +108,17 @@ main (int argc, char *argv[])
   SDL_Renderer *rend;
   SDL_Event event;
 
-  SDL_Texture *areatxtr, *charactertxtr, *effectstxtr, *charlifetxtr;
-  SDL_Surface *charlifesurf;
+  SDL_Texture *areatxtr, *charactertxtr, *effectstxtr, *texttxtr, *charlifetxtr;
+  SDL_Surface *textsurf, *charlifesurf;
   TTF_Font *font;
-  char charlifetext [20];
-  SDL_Rect charliferect = {10, 10, 40, 40};
+  char textbox [MAXTEXTSIZE], charlifetext [20];
+  int textcursor = -1;
+  SDL_Rect charliferect = {10, 10, 40, 40},
+    textbackrect = {0, WINDOW_HEIGHT-50, WINDOW_WIDTH, 50},
+    textrect = {10, WINDOW_HEIGHT-40, 0, 0};
 
   SDL_Color textcol = {0, 0, 0, 255};
+  Uint8 colr, colg, colb, cola;
 
   SDL_Rect screen_src, screen_dest;
 
@@ -361,6 +366,9 @@ main (int argc, char *argv[])
 		  if (!loc_char_speed_x || loc_char_facing == FACING_UP)
 		    loc_char_facing = FACING_DOWN;
 		  break;
+		case SDLK_SPACE:
+		  do_interact = 1;
+		  break;
 		case SDLK_f:
 		  do_shoot = 1;
 		  break;
@@ -407,8 +415,9 @@ main (int argc, char *argv[])
 
       send_message (sockfd, &server_addr, -1, MSG_CLIENT_CHAR_STATE, id,
 		    frame_counter, loc_char_speed_x, loc_char_speed_y,
-		    loc_char_facing, do_shoot);
+		    loc_char_facing, do_interact, do_shoot);
 
+      do_interact = 0;
       do_shoot = 0;
 
       got_update = 0;
@@ -494,6 +503,13 @@ main (int argc, char *argv[])
 	      fprintf (stderr, "got unknown area id from server (%d)\n",
 		       state->args.server_state.areaid);
 	      return 1;
+	    }
+
+	  if ((character_box.x != state->args.server_state.x
+	       || character_box.y != state->args.server_state.y)
+	      && textcursor >= 0)
+	    {
+	      textcursor = -1;
 	    }
 
 	  character_box.x = state->args.server_state.x;
@@ -602,6 +618,44 @@ main (int argc, char *argv[])
 	    }
 	}
 
+      if (latest_srv_state && state->args.server_state.textbox_len)
+	{
+	  strcpy (textbox, latest_srv_state+sizeof (struct message)
+		  +sizeof (struct other_player)
+		  *state->args.server_state.num_entities+sizeof (SDL_Rect)
+		  *state->args.server_state.num_shots);
+	  textcursor = 0;
+	}
+
+      if (textcursor >= 0)
+	{
+	  SDL_GetRenderDrawColor (rend, &colr, &colg, &colb, &cola);
+	  SDL_SetRenderDrawColor (rend, 255, 255, 255, 255);
+	  SDL_RenderFillRect (rend, &textbackrect);
+	  SDL_SetRenderDrawColor (rend, colr, colg, colb, cola);
+
+	  textsurf = TTF_RenderText_Solid (font, textbox, textcol);
+
+	  if (!textsurf)
+	    {
+	      fprintf (stderr, "could not print text: %s\n", TTF_GetError ());
+	      return 1;
+	    }
+
+	  texttxtr = SDL_CreateTextureFromSurface (rend, textsurf);
+
+	  if (!texttxtr)
+	    {
+	      fprintf (stderr, "could not create texture for text: %s\n",
+		       SDL_GetError ());
+	      return 1;
+	    }
+
+	  textrect.w = textsurf->w;
+	  textrect.h = textsurf->h;
+
+	  SDL_RenderCopy (rend, texttxtr, NULL, &textrect);
+	}
 
       sprintf (charlifetext, "LIFE %2d/10", life);
       charlifesurf = TTF_RenderText_Solid (font, charlifetext, textcol);

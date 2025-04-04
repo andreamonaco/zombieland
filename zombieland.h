@@ -31,6 +31,7 @@
 #define SERVER_TIMEOUT 1800
 #define MAXMSGSIZE 256
 #define MAX_LOGNAME_LEN 15
+#define MAXTEXTSIZE 512
 
 
 enum
@@ -50,6 +51,7 @@ facing
 #define MSG_CLIENT_CHAR_STATE  3
 #define MSG_SERVER_STATE       4
 #define MSG_PLAYER_DIED        5
+#define MSG_INTERACT           6
 
 
 struct
@@ -74,6 +76,7 @@ client_char_state_args
   uint32_t frame_counter;
   int32_t char_speed_x, char_speed_y;
   enum facing char_facing;
+  uint32_t do_interact;
   uint32_t do_shoot;
 };
 
@@ -97,6 +100,7 @@ server_state_args
   int32_t life;
   uint32_t num_entities;
   uint32_t num_shots;
+  uint32_t textbox_len;
 };
 
 

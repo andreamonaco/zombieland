@@ -51,6 +51,7 @@ send_message (int sockfd, struct sockaddr_in *addr, uint16_t portoff,
       msg.args.client_char_state.char_speed_x = va_arg (valist, int32_t);
       msg.args.client_char_state.char_speed_y = va_arg (valist, int32_t);
       msg.args.client_char_state.char_facing = va_arg (valist, enum facing);
+      msg.args.client_char_state.do_interact = va_arg (valist, uint32_t);
       msg.args.client_char_state.do_shoot = va_arg (valist, uint32_t);
       va_end (valist);
       break;

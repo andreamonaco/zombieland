@@ -68,6 +68,8 @@ player
   SDL_Rect place;
   int32_t speed_x, speed_y;
   enum facing facing;
+  int interact;
+  char *textbox;
   int32_t life, shoot_rest;
 
   int timeout;
@@ -85,15 +87,6 @@ shot
 };
 
 
-struct
-interactible
-{
-  SDL_Rect place;
-  char *text;
-  struct interactible *next;
-};
-
-
 struct zombie
 {
   SDL_Rect place;
@@ -101,6 +94,15 @@ struct zombie
   int speed_x, speed_y;
   int life;
   struct zombie *next;
+};
+
+
+struct
+interactible
+{
+  SDL_Rect place;
+  char *text;
+  struct interactible *next;
 };
 
 
@@ -154,9 +156,28 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   ret->area = area;
   set_rect (&ret->place, 96, 16, 16, 16);
   ret->speed_x = ret->speed_y = ret->facing = 0;
+  ret->interact = 0;
+  ret->textbox = NULL;
   ret->life = 10;
   ret->shoot_rest = 0;
   ret->timeout = CLIENT_TIMEOUT;
+  ret->next = next;
+
+  return ret;
+}
+
+
+struct interactible *
+make_interactible_by_grid (int placex, int placey, int placew, int placeh,
+			   char *text, struct interactible *next)
+{
+  struct interactible *ret = malloc (sizeof (*ret));
+
+  ret->place.x = placex * GRID_CELL_W;
+  ret->place.y = placey * GRID_CELL_H;
+  ret->place.w = placew * GRID_CELL_W;
+  ret->place.h = placeh * GRID_CELL_H;
+  ret->text = text;
   ret->next = next;
 
   return ret;
@@ -471,6 +492,38 @@ get_shot_rect (SDL_Rect charbox, enum facing facing, SDL_Rect walkable,
 }
 
 
+int
+does_character_face_object (SDL_Rect character, enum facing facing,
+			    SDL_Rect square)
+{
+  switch (facing)
+    {
+    case FACING_DOWN:
+      if (character.x > square.x-square.w/2 && character.x < square.x+square.w*3/2
+	  && character.y+character.h == square.y)
+	return 1;
+      break;
+    case FACING_UP:
+      if (character.x > square.x-square.w/2 && character.x < square.x+square.w*3/2
+	  && character.y == square.y+square.h)
+	return 1;
+      break;
+    case FACING_RIGHT:
+      if (character.y > square.y-square.h/2 && character.y < square.y+square.h*3/2
+	  && character.x+character.w == square.x)
+	return 1;
+      break;
+    case FACING_LEFT:
+      if (character.y > square.y-square.h/2 && character.y < square.y+square.h*3/2
+	  && character.x == square.x+square.w)
+	return 1;
+      break;
+    }
+
+  return 0;
+}
+
+
 void
 send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
 		   struct player *pls, struct shot *ss)
@@ -490,6 +543,7 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
   msg->args.server_state.life = p->life;
   msg->args.server_state.num_entities = 0;
   msg->args.server_state.num_shots = 0;
+  msg->args.server_state.textbox_len = p->textbox ? strlen (p->textbox) : 0;
 
   while (pls)
     {
@@ -517,7 +571,7 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
   while (ss)
     {
       if (sizeof (msg)+msg->args.server_state.num_entities
-	  *sizeof (struct other_player)+(msg->args.server_state.num_entities+1)
+	  *sizeof (struct other_player)+(msg->args.server_state.num_shots+1)
 	  *sizeof (struct SDL_Rect) > MAXMSGSIZE)
 	break;
 
@@ -532,10 +586,24 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
       ss = ss->next;
     }
 
+  if (p->textbox
+      && sizeof (msg)+msg->args.server_state.num_entities
+      *sizeof (struct other_player)+msg->args.server_state.num_shots
+      *sizeof (struct SDL_Rect)+msg->args.server_state.textbox_len+1
+      <= MAXMSGSIZE)
+    {
+      strcpy (&buf [sizeof (*msg)+msg->args.server_state.num_entities
+		    *sizeof (opl)+msg->args.server_state.num_shots
+		    *sizeof (struct SDL_Rect)], p->textbox);
+    }
+  else
+    msg->args.server_state.textbox_len = 0;
+
   if (sendto (sockfd, buf,
 	      sizeof (*msg)+msg->args.server_state.num_entities*sizeof (opl)
-	      +msg->args.server_state.num_shots*sizeof (struct SDL_Rect),
-	      0, (struct sockaddr *)&p->address, sizeof (p->address)) < 0)
+	      +msg->args.server_state.num_shots*sizeof (struct SDL_Rect)
+	      +msg->args.server_state.textbox_len+1, 0,
+	      (struct sockaddr *)&p->address, sizeof (p->address)) < 0)
     {
       fprintf (stderr, "could not send data\n");
       exit (1);
@@ -573,6 +641,7 @@ main (int argc, char *argv[])
 
   struct message *msg;
 
+  struct interactible *in;
   struct warp *w;
 
   struct server_area field = {0};
@@ -639,7 +708,8 @@ main (int argc, char *argv[])
   room.unwalkables = room_unwalkables;
   room.unwalkables_num = 5;
   room.warps = make_warp_by_grid (5, 11, 2, 1, &field, 12, 14, NULL);
-  room.interactibles = NULL;
+  room.interactibles = make_interactible_by_grid
+    (1, 6, 1, 3, "Can't sleep now!", NULL);
   room.zombies = NULL;
   room.zombies_num = 0;
 
@@ -764,7 +834,10 @@ main (int argc, char *argv[])
 		  pl->speed_y = msg->args.client_char_state.char_speed_y;
 		  pl->facing = msg->args.client_char_state.char_facing;
 
-		  if (!pl->shoot_rest && msg->args.client_char_state.do_shoot)
+		  pl->interact = msg->args.client_char_state.do_interact;
+
+		  if (!pl->interact && !pl->shoot_rest
+		      && msg->args.client_char_state.do_shoot)
 		    pl->shoot_rest = SHOOT_REST;
 
 		  pl->last_update = msg->args.client_char_state.frame_counter;
@@ -784,6 +857,25 @@ main (int argc, char *argv[])
 	  p->place = move_character (p->place, p->speed_x, p->speed_y,
 				     p->area->walkable, p->area->unwalkables,
 				     p->area->unwalkables_num, NULL, &char_hit);
+
+	  if (p->interact)
+	    {
+	      in = p->area->interactibles;
+
+	      while (in)
+		{
+		  if (does_character_face_object (p->place, p->facing,
+						  in->place))
+		    {
+		      p->textbox = in->text;
+		      break;
+		    }
+
+		  in = in->next;
+		}
+
+	      p->interact = 0;
+	    }
 
 	  if (p->shoot_rest == SHOOT_REST)
 	    {
@@ -864,6 +956,8 @@ main (int argc, char *argv[])
 	  else
 	    {
 	      send_server_state (sockfd, frame_counter, p, players, shots);
+
+	      p->textbox = NULL;
 
 	      pr = p;
 	      p = p->next;
