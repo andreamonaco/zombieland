@@ -110,12 +110,13 @@ main (int argc, char *argv[])
 
   SDL_Texture *areatxtr, *charactertxtr, *effectstxtr, *texttxtr, *charlifetxtr;
   SDL_Surface *textsurf, *charlifesurf;
-  TTF_Font *font;
+  TTF_Font *hudfont, *textfont;
   char textbox [MAXTEXTSIZE], charlifetext [20];
-  int textcursor = -1;
+  int textlines = 0, textcursor;
+  char tmpch;
   SDL_Rect charliferect = {10, 10, 40, 40},
     textbackrect = {0, WINDOW_HEIGHT-50, WINDOW_WIDTH, 50},
-    textrect = {10, WINDOW_HEIGHT-40, 0, 0};
+    textrect [] = {{10, WINDOW_HEIGHT-40, 0, 0}, {10, WINDOW_HEIGHT-20, 0, 0}};
 
   SDL_Color textcol = {0, 0, 0, 255};
   Uint8 colr, colg, colb, cola;
@@ -304,9 +305,18 @@ main (int argc, char *argv[])
       return 1;
     }
 
-  font = TTF_OpenFont ("Boxy-Bold.ttf", 12);
+  hudfont = TTF_OpenFont ("Boxy-Bold.ttf", 12);
 
-  if (!font)
+  if (!hudfont)
+    {
+      fprintf (stderr, "could not load font: %s\n", TTF_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
+  textfont = TTF_OpenFont ("DigitalJots.ttf", 20);
+
+  if (!textfont)
     {
       fprintf (stderr, "could not load font: %s\n", TTF_GetError ());
       SDL_Quit ();
@@ -367,7 +377,15 @@ main (int argc, char *argv[])
 		    loc_char_facing = FACING_DOWN;
 		  break;
 		case SDLK_SPACE:
-		  do_interact = 1;
+		  if (!textlines)
+		    do_interact = 1;
+		  else
+		    {
+		      textcursor += 2;
+
+		      if (textcursor >= textlines)
+			textlines = 0;
+		    }
 		  break;
 		case SDLK_f:
 		  do_shoot = 1;
@@ -507,9 +525,9 @@ main (int argc, char *argv[])
 
 	  if ((character_box.x != state->args.server_state.x
 	       || character_box.y != state->args.server_state.y)
-	      && textcursor >= 0)
+	      && textlines)
 	    {
-	      textcursor = -1;
+	      textlines = 0;
 	    }
 
 	  character_box.x = state->args.server_state.x;
@@ -618,47 +636,59 @@ main (int argc, char *argv[])
 	    }
 	}
 
-      if (latest_srv_state && state->args.server_state.textbox_len)
+      if (latest_srv_state && state->args.server_state.textbox_lines_num)
 	{
 	  strcpy (textbox, latest_srv_state+sizeof (struct message)
 		  +sizeof (struct other_player)
 		  *state->args.server_state.num_entities+sizeof (SDL_Rect)
 		  *state->args.server_state.num_shots);
+	  textlines = state->args.server_state.textbox_lines_num;
 	  textcursor = 0;
 	}
 
-      if (textcursor >= 0)
+      if (textlines)
 	{
 	  SDL_GetRenderDrawColor (rend, &colr, &colg, &colb, &cola);
 	  SDL_SetRenderDrawColor (rend, 255, 255, 255, 255);
 	  SDL_RenderFillRect (rend, &textbackrect);
 	  SDL_SetRenderDrawColor (rend, colr, colg, colb, cola);
 
-	  textsurf = TTF_RenderText_Solid (font, textbox, textcol);
-
-	  if (!textsurf)
+	  for (i = 0; i <= 1; i++)
 	    {
-	      fprintf (stderr, "could not print text: %s\n", TTF_GetError ());
-	      return 1;
+	      if (textcursor+i>=textlines)
+		break;
+
+	      tmpch = textbox [TEXTLINESIZE*(textcursor+i+1)];
+	      textbox [TEXTLINESIZE*(textcursor+i+1)] = 0;
+	      textsurf = TTF_RenderText_Solid (textfont,
+					       &textbox [TEXTLINESIZE*(textcursor+i)],
+					       textcol);
+	      textbox [TEXTLINESIZE*(textcursor+i+1)] = tmpch;
+
+	      if (!textsurf)
+		{
+		  fprintf (stderr, "could not print text: %s\n", TTF_GetError ());
+		  return 1;
+		}
+
+	      texttxtr = SDL_CreateTextureFromSurface (rend, textsurf);
+
+	      if (!texttxtr)
+		{
+		  fprintf (stderr, "could not create texture for text: %s\n",
+			   SDL_GetError ());
+		  return 1;
+		}
+
+	      textrect [i].w = textsurf->w;
+	      textrect [i].h = textsurf->h;
+
+	      SDL_RenderCopy (rend, texttxtr, NULL, &textrect [i]);
 	    }
-
-	  texttxtr = SDL_CreateTextureFromSurface (rend, textsurf);
-
-	  if (!texttxtr)
-	    {
-	      fprintf (stderr, "could not create texture for text: %s\n",
-		       SDL_GetError ());
-	      return 1;
-	    }
-
-	  textrect.w = textsurf->w;
-	  textrect.h = textsurf->h;
-
-	  SDL_RenderCopy (rend, texttxtr, NULL, &textrect);
 	}
 
       sprintf (charlifetext, "LIFE %2d/10", life);
-      charlifesurf = TTF_RenderText_Solid (font, charlifetext, textcol);
+      charlifesurf = TTF_RenderText_Solid (hudfont, charlifetext, textcol);
 
       if (!charlifesurf)
 	{

@@ -31,7 +31,10 @@
 #define SERVER_TIMEOUT 1800
 #define MAXMSGSIZE 256
 #define MAX_LOGNAME_LEN 15
+
 #define MAXTEXTSIZE 512
+#define TEXTLINESIZE 30
+
 
 
 enum
@@ -100,7 +103,7 @@ server_state_args
   int32_t life;
   uint32_t num_entities;
   uint32_t num_shots;
-  uint32_t textbox_len;
+  uint32_t textbox_lines_num;
 };
 
 

@@ -68,8 +68,11 @@ player
   SDL_Rect place;
   int32_t speed_x, speed_y;
   enum facing facing;
+
   int interact;
   char *textbox;
+  int textbox_lines_num;
+
   int32_t life, shoot_rest;
 
   int timeout;
@@ -102,6 +105,7 @@ interactible
 {
   SDL_Rect place;
   char *text;
+  int text_lines_num;
   struct interactible *next;
 };
 
@@ -158,6 +162,7 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   ret->speed_x = ret->speed_y = ret->facing = 0;
   ret->interact = 0;
   ret->textbox = NULL;
+  ret->textbox_lines_num = 0;
   ret->life = 10;
   ret->shoot_rest = 0;
   ret->timeout = CLIENT_TIMEOUT;
@@ -178,6 +183,7 @@ make_interactible_by_grid (int placex, int placey, int placew, int placeh,
   ret->place.w = placew * GRID_CELL_W;
   ret->place.h = placeh * GRID_CELL_H;
   ret->text = text;
+  ret->text_lines_num = strlen (text) / TEXTLINESIZE;
   ret->next = next;
 
   return ret;
@@ -543,7 +549,7 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
   msg->args.server_state.life = p->life;
   msg->args.server_state.num_entities = 0;
   msg->args.server_state.num_shots = 0;
-  msg->args.server_state.textbox_len = p->textbox ? strlen (p->textbox) : 0;
+  msg->args.server_state.textbox_lines_num = p->textbox_lines_num;
 
   while (pls)
     {
@@ -589,20 +595,20 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
   if (p->textbox
       && sizeof (msg)+msg->args.server_state.num_entities
       *sizeof (struct other_player)+msg->args.server_state.num_shots
-      *sizeof (struct SDL_Rect)+msg->args.server_state.textbox_len+1
-      <= MAXMSGSIZE)
+      *sizeof (struct SDL_Rect)+msg->args.server_state.textbox_lines_num
+      *TEXTLINESIZE+1 <= MAXMSGSIZE)
     {
       strcpy (&buf [sizeof (*msg)+msg->args.server_state.num_entities
 		    *sizeof (opl)+msg->args.server_state.num_shots
 		    *sizeof (struct SDL_Rect)], p->textbox);
     }
   else
-    msg->args.server_state.textbox_len = 0;
+    msg->args.server_state.textbox_lines_num = 0;
 
   if (sendto (sockfd, buf,
 	      sizeof (*msg)+msg->args.server_state.num_entities*sizeof (opl)
 	      +msg->args.server_state.num_shots*sizeof (struct SDL_Rect)
-	      +msg->args.server_state.textbox_len+1, 0,
+	      +msg->args.server_state.textbox_lines_num*TEXTLINESIZE+1, 0,
 	      (struct sockaddr *)&p->address, sizeof (p->address)) < 0)
     {
       fprintf (stderr, "could not send data\n");
@@ -709,7 +715,8 @@ main (int argc, char *argv[])
   room.unwalkables_num = 5;
   room.warps = make_warp_by_grid (5, 11, 2, 1, &field, 12, 14, NULL);
   room.interactibles = make_interactible_by_grid
-    (1, 6, 1, 3, "Can't sleep now!", NULL);
+    (1, 6, 1, 3, "Can't sleep now!              "
+     "There might be zombies around." "Better take a look            ", NULL);
   room.zombies = NULL;
   room.zombies_num = 0;
 
@@ -868,6 +875,7 @@ main (int argc, char *argv[])
 						  in->place))
 		    {
 		      p->textbox = in->text;
+		      p->textbox_lines_num = in->text_lines_num;
 		      break;
 		    }
 
@@ -958,6 +966,7 @@ main (int argc, char *argv[])
 	      send_server_state (sockfd, frame_counter, p, players, shots);
 
 	      p->textbox = NULL;
+	      p->textbox_lines_num = 0;
 
 	      pr = p;
 	      p = p->next;
