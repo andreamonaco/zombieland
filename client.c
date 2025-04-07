@@ -102,7 +102,7 @@ main (int argc, char *argv[])
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
     do_shoot = 0, life = 10;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
-  struct other_player opl;
+  struct visible vis;
 
   SDL_Window *win;
   SDL_Renderer *rend;
@@ -586,21 +586,23 @@ main (int argc, char *argv[])
 
       if (latest_srv_state)
 	{
-	  for (i = 0; i < state->args.server_state.num_entities; i++)
+	  for (i = 0; i < state->args.server_state.num_visibles; i++)
 	    {
-	      opl = *(struct other_player *)(latest_srv_state
-					     +sizeof (struct message)
-					     +i*sizeof (opl));
+	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
+					+i*sizeof (vis));
+
+	      if (vis.type != VISIBLE_PLAYER)
+		continue;
 
 	      pers.x = screen_dest.x - screen_src.x + area->display_src.x
-		+ area->walkable.x + opl.x + character_origin.x;
+		+ area->walkable.x + vis.x + character_origin.x;
 	      pers.y = screen_dest.y - screen_src.y + area->display_src.y
-		+ area->walkable.y + opl.y + character_origin.y;
+		+ area->walkable.y + vis.y + character_origin.y;
 	      pers.w = character_dest.w;
 	      pers.h = character_dest.h;
 	      SDL_RenderCopy (rend, charactertxtr,
-			      &character_srcs [opl.facing*3+
-					       ((opl.speed_x || opl.speed_y)
+			      &character_srcs [vis.facing*3+
+					       ((vis.speed_x || vis.speed_y)
 						? 1+(frame_counter%12)/6 : 0)],
 			      &pers);
 	    }
@@ -618,18 +620,18 @@ main (int argc, char *argv[])
 
       if (latest_srv_state)
 	{
-	  for (i = 0; i < state->args.server_state.num_shots; i++)
+	  for (i = 0; i < state->args.server_state.num_visibles; i++)
 	    {
-	      sh = *(struct SDL_Rect *)(latest_srv_state
-					+sizeof (struct message)
-					+sizeof (struct other_player)
-					*state->args.server_state.num_entities
-					+i*sizeof (SDL_Rect));
+	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
+					+i*sizeof (vis));
+
+	      if (vis.type != VISIBLE_SHOT)
+		continue;
 
 	      sh.x = screen_dest.x - screen_src.x + area->display_src.x
-		+ area->walkable.x + sh.x;
+		+ area->walkable.x + vis.x;
 	      sh.y = screen_dest.y - screen_src.y + area->display_src.y
-		+ area->walkable.y + sh.y;
+		+ area->walkable.y + vis.y;
 	      sh.w = GRID_CELL_W;
 	      sh.h = GRID_CELL_H;
 	      SDL_RenderCopy (rend, effectstxtr, &shot_src, &sh);
@@ -639,9 +641,8 @@ main (int argc, char *argv[])
       if (latest_srv_state && state->args.server_state.textbox_lines_num)
 	{
 	  strcpy (textbox, latest_srv_state+sizeof (struct message)
-		  +sizeof (struct other_player)
-		  *state->args.server_state.num_entities+sizeof (SDL_Rect)
-		  *state->args.server_state.num_shots);
+		  +sizeof (struct visible)
+		  *state->args.server_state.num_visibles);
 	  textlines = state->args.server_state.textbox_lines_num;
 	  textcursor = 0;
 	}

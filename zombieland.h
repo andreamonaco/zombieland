@@ -87,9 +87,14 @@ client_char_state_args
 };
 
 
+#define VISIBLE_PLAYER 0
+#define VISIBLE_ZOMBIE 1
+#define VISIBLE_SHOT   2
+
 struct
-other_player
+visible
 {
+  uint32_t type;
   uint32_t x, y, w, h;
   enum facing facing;
   int32_t speed_x, speed_y;
@@ -104,8 +109,7 @@ server_state_args
   uint32_t x, y, w, h;
   enum facing char_facing;
   int32_t life;
-  uint32_t num_entities;
-  uint32_t num_shots;
+  uint32_t num_visibles;
   uint32_t textbox_lines_num;
 };
 

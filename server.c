@@ -559,7 +559,7 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 {
   char buf [MAXMSGSIZE];
   struct message *msg = (struct message *) &buf;
-  struct other_player opl;
+  struct visible vis;
   int i;
 
   msg->type = htonl (MSG_SERVER_STATE);
@@ -571,66 +571,65 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
   msg->args.server_state.h = pls [id].agent->place.h;
   msg->args.server_state.char_facing = pls [id].facing;
   msg->args.server_state.life = pls [id].life;
-  msg->args.server_state.num_entities = 0;
-  msg->args.server_state.num_shots = 0;
+  msg->args.server_state.num_visibles = 0;
   msg->args.server_state.textbox_lines_num = pls [id].textbox_lines_num;
 
   for (i = 0; i < MAX_PLAYERS; i++)
     {
-      if (sizeof (msg)+(msg->args.server_state.num_entities+1)
-	  *sizeof (struct other_player) > MAXMSGSIZE)
+      if (sizeof (msg)+(msg->args.server_state.num_visibles+1)
+	  *sizeof (struct visible) > MAXMSGSIZE)
 	break;
 
       if (i != id && pls [i].id != -1
 	  && pls [i].agent->area == pls [id].agent->area)
 	{
-	  opl.x = pls [i].agent->place.x;
-	  opl.y = pls [i].agent->place.y;
-	  opl.w = pls [i].agent->place.w;
-	  opl.h = pls [i].agent->place.h;
-	  opl.facing = pls [i].facing;
-	  opl.speed_x = pls [i].speed_x;
-	  opl.speed_y = pls [i].speed_y;
-	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_entities
-			*sizeof (opl)], &opl, sizeof (opl));
-	  msg->args.server_state.num_entities++;
+	  vis.type = VISIBLE_PLAYER;
+	  vis.x = pls [i].agent->place.x;
+	  vis.y = pls [i].agent->place.y;
+	  vis.w = pls [i].agent->place.w;
+	  vis.h = pls [i].agent->place.h;
+	  vis.facing = pls [i].facing;
+	  vis.speed_x = pls [i].speed_x;
+	  vis.speed_y = pls [i].speed_y;
+	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
+			*sizeof (vis)], &vis, sizeof (vis));
+	  msg->args.server_state.num_visibles++;
 	}
     }
 
   while (ss)
     {
-      if (sizeof (msg)+msg->args.server_state.num_entities
-	  *sizeof (struct other_player)+(msg->args.server_state.num_shots+1)
-	  *sizeof (struct SDL_Rect) > MAXMSGSIZE)
+      if (sizeof (msg)+msg->args.server_state.num_visibles*sizeof (struct visible)
+	  > MAXMSGSIZE)
 	break;
 
       if (ss->areaid == pls [id].agent->area->id)
 	{
-	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_entities
-			*sizeof (opl)+msg->args.server_state.num_shots
-			*sizeof (struct SDL_Rect)], &ss->target, sizeof (ss->target));
-	  msg->args.server_state.num_shots++;
+	  vis.type = VISIBLE_SHOT;
+	  vis.x = ss->target.x;
+	  vis.y = ss->target.y;
+	  vis.w = ss->target.w;
+	  vis.h = ss->target.h;
+	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
+			*sizeof (vis)], &vis, sizeof (vis));
+	  msg->args.server_state.num_visibles++;
 	}
 
       ss = ss->next;
     }
 
   if (pls [id].textbox
-      && sizeof (msg)+msg->args.server_state.num_entities
-      *sizeof (struct other_player)+msg->args.server_state.num_shots
-      *sizeof (struct SDL_Rect)+msg->args.server_state.textbox_lines_num
-      *TEXTLINESIZE+1 <= MAXMSGSIZE)
+      && sizeof (msg)+msg->args.server_state.num_visibles*sizeof (struct visible)
+      +msg->args.server_state.textbox_lines_num*TEXTLINESIZE+1 <= MAXMSGSIZE)
     {
-      strcpy (&buf [sizeof (*msg)+msg->args.server_state.num_entities
-		    *sizeof (opl)+msg->args.server_state.num_shots
-		    *sizeof (struct SDL_Rect)], pls [id].textbox);
+      strcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
+		    *sizeof (vis)], pls [id].textbox);
     }
   else
     msg->args.server_state.textbox_lines_num = 0;
 
   if (sendto (sockfd, buf,
-	      sizeof (*msg)+msg->args.server_state.num_entities*sizeof (opl)
-	      +msg->args.server_state.num_shots*sizeof (struct SDL_Rect)
+	      sizeof (*msg)+msg->args.server_state.num_visibles*sizeof (vis)
 	      +msg->args.server_state.textbox_lines_num*TEXTLINESIZE+1, 0,
 	      (struct sockaddr *)&pls [id].address, sizeof (pls [id].address)) < 0)
     {
