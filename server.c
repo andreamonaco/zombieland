@@ -53,19 +53,18 @@
 #define SHOOT_REST 10
 
 
-uint32_t next_id = 0;
 
 struct
 player
 {
   uint32_t id;
+  struct agent *agent;
+
   struct sockaddr_in address;
   uint16_t portoffset;
   uint32_t last_update;
 
   char name [MAX_LOGNAME_LEN+1];
-  struct server_area *area;
-  SDL_Rect place;
   int32_t speed_x, speed_y;
   enum facing facing;
 
@@ -76,7 +75,46 @@ player
   int32_t life, shoot_rest;
 
   int timeout;
-  struct player *next;
+};
+
+
+struct zombie
+{
+  SDL_Rect place;
+  enum facing facing;
+  int speed_x, speed_y;
+  int life;
+
+  struct zombie *next;
+};
+
+
+enum
+agent_type
+  {
+    AGENT_PLAYER,
+    AGENT_ZOMBIE
+  };
+
+
+union
+agent_data_ptr
+{
+  struct player *player;
+  struct zombie *zombie;
+};
+
+
+struct
+agent
+{
+  enum agent_type type;
+  struct server_area *area;
+  SDL_Rect place;
+  union agent_data_ptr data_ptr;
+
+  struct agent *prev;
+  struct agent *next;
 };
 
 
@@ -87,16 +125,6 @@ shot
   SDL_Rect target;
   int duration;
   struct shot *next;
-};
-
-
-struct zombie
-{
-  SDL_Rect place;
-  enum facing facing;
-  int speed_x, speed_y;
-  int life;
-  struct zombie *next;
 };
 
 
@@ -145,30 +173,52 @@ set_rect (SDL_Rect *rect, int x, int y, int w, int h)
 }
 
 
-struct player *
+uint32_t
 create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
-	       struct server_area *area, struct player *next)
+	       struct server_area *area, struct player pls [],
+	       struct agent **agents)
 {
-  struct player *ret = malloc_and_check (sizeof (*ret));
+  int i;
+  struct agent *a;
 
-  ret->id = next_id++;
-  memcpy (&ret->address, addr, sizeof (*addr));
-  ret->address.sin_port = htons (ZOMBIELAND_PORT+portoff);
-  ret->portoffset = portoff;
-  ret->last_update = 0;
-  strcpy (ret->name, name);
-  ret->area = area;
-  set_rect (&ret->place, 96, 16, 16, 16);
-  ret->speed_x = ret->speed_y = ret->facing = 0;
-  ret->interact = 0;
-  ret->textbox = NULL;
-  ret->textbox_lines_num = 0;
-  ret->life = 10;
-  ret->shoot_rest = 0;
-  ret->timeout = CLIENT_TIMEOUT;
-  ret->next = next;
+  for (i = 0; i < MAX_PLAYERS; i++)
+    {
+      if (pls [i].id == -1)
+	break;
+    }
 
-  return ret;
+  if (i == MAX_PLAYERS)
+    return -1;
+
+  a = malloc_and_check (sizeof (*a));
+  a->type = AGENT_PLAYER;
+  a->area = area;
+  set_rect (&a->place, 96, 16, 16, 16);
+  a->data_ptr.player = &pls [i];
+  a->prev = NULL;
+  a->next = *agents;
+
+  if (*agents)
+    (*agents)->prev = a;
+
+  *agents = a;
+
+  pls [i].id = i;
+  pls [i].agent = a;
+  memcpy (&pls [i].address, addr, sizeof (*addr));
+  pls [i].address.sin_port = htons (ZOMBIELAND_PORT+portoff);
+  pls [i].portoffset = portoff;
+  pls [i].last_update = 0;
+  strcpy (pls [i].name, name);
+  pls [i].speed_x = pls [i].speed_y = pls [i].facing = 0;
+  pls [i].interact = 0;
+  pls [i].textbox = NULL;
+  pls [i].textbox_lines_num = 0;
+  pls [i].life = 10;
+  pls [i].shoot_rest = 0;
+  pls [i].timeout = CLIENT_TIMEOUT;
+
+  return i;
 }
 
 
@@ -405,17 +455,13 @@ is_closer (enum facing facing, SDL_Rect rect1, SDL_Rect rect2)
 
 SDL_Rect
 get_shot_rect (SDL_Rect charbox, enum facing facing, SDL_Rect walkable,
-	       SDL_Rect unwalkables[], int unwalkables_num, struct zombie *zs,
-	       struct zombie **shotz, struct zombie **prevshotz,
-	       struct player *ps, struct player **shotp,
-	       struct player **prevshotp)
+	       SDL_Rect unwalkables[], int unwalkables_num, struct agent *as,
+	       struct agent **shotag)
 {
   int i, found = 0;
   SDL_Rect ret, hitpart;
-  struct zombie *pr = NULL;
-  struct player *pp = NULL;
 
-  *shotz = NULL, *shotp = NULL;
+  *shotag = NULL;
 
   for (i = 0; i < unwalkables_num; i++)
     {
@@ -429,42 +475,19 @@ get_shot_rect (SDL_Rect charbox, enum facing facing, SDL_Rect walkable,
 	}
     }
 
-  *prevshotz = NULL;
-
-  while (zs)
+  while (as)
     {
-      if (is_target_hit (charbox, facing, zs->place, &hitpart))
+      if (is_target_hit (charbox, facing, as->place, &hitpart))
 	{
 	  if (!found || is_closer (facing, hitpart, ret))
 	    {
 	      found = 1;
-	      *shotz = zs;
-	      *prevshotz = pr;
+	      *shotag = as;
 	      ret = hitpart;
 	    }
 	}
 
-      pr = zs;
-      zs = zs->next;
-    }
-
-  *prevshotp = NULL;
-
-  while (ps)
-    {
-      if (is_target_hit (charbox, facing, ps->place, &hitpart))
-	{
-	  if (!found || is_closer (facing, hitpart, ret))
-	    {
-	      found = 1;
-	      *shotp = ps;
-	      *prevshotp = pp;
-	      ret = hitpart;
-	    }
-	}
-
-      pp = ps;
-      ps = ps->next;
+      as = as->next;
     }
 
   if (found)
@@ -531,47 +554,47 @@ does_character_face_object (SDL_Rect character, enum facing facing,
 
 
 void
-send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
-		   struct player *pls, struct shot *ss)
+send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pls,
+		   struct shot *ss)
 {
   char buf [MAXMSGSIZE];
   struct message *msg = (struct message *) &buf;
   struct other_player opl;
+  int i;
 
   msg->type = htonl (MSG_SERVER_STATE);
   msg->args.server_state.frame_counter = frame_counter;
-  msg->args.server_state.areaid = p->area->id;
-  msg->args.server_state.x = p->place.x;
-  msg->args.server_state.y = p->place.y;
-  msg->args.server_state.w = p->place.w;
-  msg->args.server_state.h = p->place.h;
-  msg->args.server_state.char_facing = p->facing;
-  msg->args.server_state.life = p->life;
+  msg->args.server_state.areaid = pls [id].agent->area->id;
+  msg->args.server_state.x = pls [id].agent->place.x;
+  msg->args.server_state.y = pls [id].agent->place.y;
+  msg->args.server_state.w = pls [id].agent->place.w;
+  msg->args.server_state.h = pls [id].agent->place.h;
+  msg->args.server_state.char_facing = pls [id].facing;
+  msg->args.server_state.life = pls [id].life;
   msg->args.server_state.num_entities = 0;
   msg->args.server_state.num_shots = 0;
-  msg->args.server_state.textbox_lines_num = p->textbox_lines_num;
+  msg->args.server_state.textbox_lines_num = pls [id].textbox_lines_num;
 
-  while (pls)
+  for (i = 0; i < MAX_PLAYERS; i++)
     {
       if (sizeof (msg)+(msg->args.server_state.num_entities+1)
 	  *sizeof (struct other_player) > MAXMSGSIZE)
 	break;
 
-      if (pls != p && pls->area == p->area)
+      if (i != id && pls [i].id != -1
+	  && pls [i].agent->area == pls [id].agent->area)
 	{
-	  opl.x = pls->place.x;
-	  opl.y = pls->place.y;
-	  opl.w = pls->place.w;
-	  opl.h = pls->place.h;
-	  opl.facing = pls->facing;
-	  opl.speed_x = pls->speed_x;
-	  opl.speed_y = pls->speed_y;
+	  opl.x = pls [i].agent->place.x;
+	  opl.y = pls [i].agent->place.y;
+	  opl.w = pls [i].agent->place.w;
+	  opl.h = pls [i].agent->place.h;
+	  opl.facing = pls [i].facing;
+	  opl.speed_x = pls [i].speed_x;
+	  opl.speed_y = pls [i].speed_y;
 	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_entities
 			*sizeof (opl)], &opl, sizeof (opl));
 	  msg->args.server_state.num_entities++;
 	}
-
-      pls = pls->next;
     }
 
   while (ss)
@@ -581,7 +604,7 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
 	  *sizeof (struct SDL_Rect) > MAXMSGSIZE)
 	break;
 
-      if (ss->areaid == p->area->id)
+      if (ss->areaid == pls [id].agent->area->id)
 	{
 	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_entities
 			*sizeof (opl)+msg->args.server_state.num_shots
@@ -592,7 +615,7 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
       ss = ss->next;
     }
 
-  if (p->textbox
+  if (pls [id].textbox
       && sizeof (msg)+msg->args.server_state.num_entities
       *sizeof (struct other_player)+msg->args.server_state.num_shots
       *sizeof (struct SDL_Rect)+msg->args.server_state.textbox_lines_num
@@ -600,7 +623,7 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
     {
       strcpy (&buf [sizeof (*msg)+msg->args.server_state.num_entities
 		    *sizeof (opl)+msg->args.server_state.num_shots
-		    *sizeof (struct SDL_Rect)], p->textbox);
+		    *sizeof (struct SDL_Rect)], pls [id].textbox);
     }
   else
     msg->args.server_state.textbox_lines_num = 0;
@@ -609,7 +632,7 @@ send_server_state (int sockfd, uint32_t frame_counter, struct player *p,
 	      sizeof (*msg)+msg->args.server_state.num_entities*sizeof (opl)
 	      +msg->args.server_state.num_shots*sizeof (struct SDL_Rect)
 	      +msg->args.server_state.textbox_lines_num*TEXTLINESIZE+1, 0,
-	      (struct sockaddr *)&p->address, sizeof (p->address)) < 0)
+	      (struct sockaddr *)&pls [id].address, sizeof (pls [id].address)) < 0)
     {
       fprintf (stderr, "could not send data\n");
       exit (1);
@@ -633,8 +656,9 @@ print_welcome_message (void)
 int
 main (int argc, char *argv[])
 {
-  struct player *players = NULL, *p, *pl, *pr, *hitp, *prevhitp;
-  struct zombie *z, *prz;
+  struct agent *agents = NULL, *shotag;
+  struct player players [MAX_PLAYERS];
+  struct zombie zombies [MAX_ZOMBIES];
   struct shot *shots = NULL, *s, *prs;
 
   int sockfd;
@@ -664,11 +688,16 @@ main (int argc, char *argv[])
 
   SDL_Event event;
 
-  uint32_t frame_counter = 1;
-  int char_hit, quit = 0;
+  uint32_t frame_counter = 1, id;
+  int char_hit, quit = 0, i;
   Uint32 t1, t2;
   double delay;
 
+
+  for (i = 0; i < MAX_PLAYERS; i++)
+    {
+      players [i].id = -1;
+    }
 
   print_welcome_message ();
 
@@ -781,11 +810,11 @@ main (int argc, char *argv[])
 	    {
 	    case MSG_LOGIN:
 	      msg->args.login.logname [MAX_LOGNAME_LEN] = 0;
-	      p = players;
 
-	      while (p)
+	      for (i = 0; i < MAX_PLAYERS; i++)
 		{
-		  if (!strcmp (p->name, msg->args.login.logname))
+		  if (players [i].id != -1
+		      && !strcmp (players [i].name, msg->args.login.logname))
 		    {
 		      fprintf (stderr, "username %s already log in\n",
 			       msg->args.login.logname);
@@ -794,20 +823,19 @@ main (int argc, char *argv[])
 				    MSG_LOGINFAIL);
 		      goto get_new_message;
 		    }
-
-		  p = p->next;
 		}
 
-	      players = create_player (msg->args.login.logname, &client_addr,
-				       ntohs (msg->args.login.portoff), &field,
-				       players);
+	      id = create_player (msg->args.login.logname, &client_addr,
+				  ntohs (msg->args.login.portoff), &field,
+				  players, &agents);
 	      printf ("created player %s with port offset %d\n",
-		      msg->args.login.logname, players->portoffset);
+		      msg->args.login.logname, players [id].portoffset);
 
 	      msg->type = htonl (MSG_LOGINOK);
-	      msg->args.loginok.id = htonl (players->id);
+	      msg->args.loginok.id = htonl (id);
 
-	      client_addr.sin_port = htons (ZOMBIELAND_PORT+players->portoffset);
+	      client_addr.sin_port = htons (ZOMBIELAND_PORT
+					    +players [id].portoffset);
 
 	      if (sendto (sockfd, (char *)msg, sizeof (*msg), 0,
 			  (struct sockaddr *) &client_addr, client_addr_sz) < 0)
@@ -817,92 +845,88 @@ main (int argc, char *argv[])
 		}
 	      break;
 	    case MSG_CLIENT_CHAR_STATE:
-	      p = players, pl = NULL;
+	      id = msg->args.client_char_state.id;
 
-	      while (p)
+	      if (players [id].id == -1)
 		{
-		  if (p->id == msg->args.client_char_state.id)
-		    {
-		      pl = p;
-		      break;
-		    }
-
-		  p = p->next;
+		  fprintf (stderr, "got state from unknown id %d\n", id);
 		}
-
-	      if (!pl)
+	      else if (players [id].last_update
+		       < msg->args.client_char_state.frame_counter)
 		{
-		  fprintf (stderr, "got state from unknown id %d\n",
-			   msg->args.client_char_state.id);
-		}
-	      else if (pl->last_update < msg->args.client_char_state.frame_counter)
-		{
-		  pl->speed_x = msg->args.client_char_state.char_speed_x;
-		  pl->speed_y = msg->args.client_char_state.char_speed_y;
-		  pl->facing = msg->args.client_char_state.char_facing;
+		  players [id].speed_x = msg->args.client_char_state.char_speed_x;
+		  players [id].speed_y = msg->args.client_char_state.char_speed_y;
+		  players [id].facing = msg->args.client_char_state.char_facing;
 
-		  pl->interact = msg->args.client_char_state.do_interact;
+		  players [id].interact = msg->args.client_char_state.do_interact;
 
-		  if (!pl->interact && !pl->shoot_rest
+		  if (!players [id].interact && !players [id].shoot_rest
 		      && msg->args.client_char_state.do_shoot)
-		    pl->shoot_rest = SHOOT_REST;
+		    players [id].shoot_rest = SHOOT_REST;
 
-		  pl->last_update = msg->args.client_char_state.frame_counter;
-		  pl->timeout = CLIENT_TIMEOUT;
+		  players [id].last_update
+		    = msg->args.client_char_state.frame_counter;
+		  players [id].timeout = CLIENT_TIMEOUT;
 		}
 	      break;
 	    default:
-	      fprintf (stderr, "message type not known\n");
+	      fprintf (stderr, "message type not known (%d)\n", msg->type);
 	      return 1;
 	    }
 	}
 
-      p = players;
-
-      while (p)
+      for (i = 0; i < MAX_PLAYERS; i++)
 	{
-	  p->place = move_character (p->place, p->speed_x, p->speed_y,
-				     p->area->walkable, p->area->unwalkables,
-				     p->area->unwalkables_num, NULL, &char_hit);
+	  if (players [i].id == -1)
+	    continue;
 
-	  if (p->interact)
+	  players [i].agent->place =
+	    move_character (players [i].agent->place, players [i].speed_x,
+			    players [i].speed_y, players [i].agent->area->walkable,
+			    players [i].agent->area->unwalkables,
+			    players [i].agent->area->unwalkables_num, NULL,
+			    &char_hit);
+
+	  if (players [i].interact)
 	    {
-	      in = p->area->interactibles;
+	      in = players [i].agent->area->interactibles;
 
 	      while (in)
 		{
-		  if (does_character_face_object (p->place, p->facing,
-						  in->place))
+		  if (does_character_face_object (players [i].agent->place,
+						  players [i].facing, in->place))
 		    {
-		      p->textbox = in->text;
-		      p->textbox_lines_num = in->text_lines_num;
+		      players [i].textbox = in->text;
+		      players [i].textbox_lines_num = in->text_lines_num;
 		      break;
 		    }
 
 		  in = in->next;
 		}
 
-	      p->interact = 0;
+	      players [i].interact = 0;
 	    }
 
-	  if (p->shoot_rest == SHOOT_REST)
+	  if (players [i].shoot_rest == SHOOT_REST)
 	    {
 	      s = malloc_and_check (sizeof (*s));
-	      s->areaid = p->area->id;
-	      s->target = get_shot_rect (p->place, p->facing, p->area->walkable,
-					 p->area->unwalkables,
-					 p->area->unwalkables_num, NULL, &z,
-					 &prz, players, &hitp, &prevhitp);
+	      s->areaid = players [i].agent->area->id;
+	      s->target = get_shot_rect (players [i].agent->place,
+					 players [i].facing,
+					 players [i].agent->area->walkable,
+					 players [i].agent->area->unwalkables,
+					 players [i].agent->area->unwalkables_num,
+					 agents, &shotag);
 	      s->duration = 10;
 	      s->next = shots;
 	      shots = s;
 
-	      if (hitp)
-		hitp->life--;
+	      if (shotag && shotag->type == AGENT_PLAYER)
+		shotag->data_ptr.player->life--;
 	    }
 
-	  if (p->shoot_rest)
-	    p->shoot_rest--;
+	  if (players [i].shoot_rest)
+	    players [i].shoot_rest--;
 
 	  s = shots, prs = NULL;
 
@@ -927,74 +951,57 @@ main (int argc, char *argv[])
 		}
 	    }
 
-	  w = p->area->warps;
+	  w = players [i].agent->area->warps;
 
 	  while (w)
 	    {
-	      if (IS_RECT_CONTAINED (p->place, w->place))
+	      if (IS_RECT_CONTAINED (players [i].agent->place, w->place))
 		{
-		  p->area = w->dest;
-		  p->place.x = w->spawn.x;
-		  p->place.y = w->spawn.y;
+		  players [i].agent->area = w->dest;
+		  players [i].agent->place.x = w->spawn.x;
+		  players [i].agent->place.y = w->spawn.y;
 		  break;
 		}
 
 	      w = w->next;
 	    }
-
-	  p = p->next;
 	}
 
-      p = players, pr = NULL;
-
-      while (p)
+      for (i = 0; i < MAX_PLAYERS; i++)
 	{
-	  if (p->life <= 0)
+	  if (players [i].id != -1 && players [i].life <= 0)
 	    {
-	      send_message (sockfd, &p->address, -1, MSG_PLAYER_DIED);
+	      send_message (sockfd, &players [i].address, -1, MSG_PLAYER_DIED);
+	      players [i].id = -1;
 
-	      if (pr)
-		pr->next = p->next;
+	      if (players [i].agent->prev)
+		players [i].agent->prev->next = players [i].agent->next;
 	      else
-		players = p->next;
+		agents = players [i].agent;
 
-	      free (p);
-	      p = pr ? pr->next : players;
+	      free (players [i].agent);
 	    }
-	  else
+	  else if (players [i].id != -1)
 	    {
-	      send_server_state (sockfd, frame_counter, p, players, shots);
+	      send_server_state (sockfd, frame_counter, i, players, shots);
 
-	      p->textbox = NULL;
-	      p->textbox_lines_num = 0;
-
-	      pr = p;
-	      p = p->next;
+	      players [i].textbox = NULL;
+	      players [i].textbox_lines_num = 0;
 	    }
 	}
 
-      p = players, pr = NULL;
-
-      while (p)
+      for (i = 0; i < MAX_PLAYERS; i++)
 	{
-	  p->timeout--;
-
-	  if (!p->timeout)
+	  if (players [i].id != -1)
 	    {
-	      printf ("player %s disconnected due to timeout\n", p->name);
+	      players [i].timeout--;
 
-	      if (pr)
-		pr->next = p->next;
-	      else
-		players = p->next;
-
-	      free (p);
-	      p = pr ? pr->next : players;
-	    }
-	  else
-	    {
-	      pr = p;
-	      p = p->next;
+	      if (!players [i].timeout)
+		{
+		  printf ("player %s disconnected due to timeout\n",
+			  players [i].name);
+		  players [i].id = -1;
+		}
 	    }
 	}
 

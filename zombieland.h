@@ -32,6 +32,9 @@
 #define MAXMSGSIZE 256
 #define MAX_LOGNAME_LEN 15
 
+#define MAX_PLAYERS 128
+#define MAX_ZOMBIES 128
+
 #define MAXTEXTSIZE 512
 #define TEXTLINESIZE 30
 
