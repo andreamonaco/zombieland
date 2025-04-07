@@ -685,6 +685,8 @@ main (int argc, char *argv[])
 	      textrect [i].h = textsurf->h;
 
 	      SDL_RenderCopy (rend, texttxtr, NULL, &textrect [i]);
+	      SDL_DestroyTexture (texttxtr);
+	      SDL_FreeSurface (textsurf);
 	    }
 	}
 
@@ -710,7 +712,8 @@ main (int argc, char *argv[])
       charliferect.h = charlifesurf->h;
 
       SDL_RenderCopy (rend, charlifetxtr, NULL, &charliferect);
-
+      SDL_DestroyTexture (charlifetxtr);
+      SDL_FreeSurface (charlifesurf);
 
       SDL_RenderPresent (rend);
 
