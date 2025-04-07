@@ -977,7 +977,7 @@ main (int argc, char *argv[])
 	      if (players [i].agent->prev)
 		players [i].agent->prev->next = players [i].agent->next;
 	      else
-		agents = players [i].agent;
+		agents = players [i].agent->next;
 
 	      free (players [i].agent);
 	    }
@@ -1001,6 +1001,13 @@ main (int argc, char *argv[])
 		  printf ("player %s disconnected due to timeout\n",
 			  players [i].name);
 		  players [i].id = -1;
+
+		  if (players [i].agent->prev)
+		    players [i].agent->prev->next = players [i].agent->next;
+		  else
+		    agents = players [i].agent->next;
+
+		  free (players [i].agent);
 		}
 	    }
 	}
