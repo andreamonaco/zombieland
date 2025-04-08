@@ -97,7 +97,12 @@ main (int argc, char *argv[])
 				{0, 38, 16, 21}, {16, 38, 16, 21}, {48, 38, 16, 21},
 				{0, 102, 16, 21}, {16, 102, 16, 21}, {48, 102, 16, 21}},
     character_box = RECT_BY_GRID (6, 1, 1, 1), character_origin = {0, -5, 0, 0},
-    character_dest = {0, 0, 16, 21}, pers, shot_src = {40, 18, 16, 16}, sh;
+    character_dest = {0, 0, 16, 21}, pers, shot_src = {40, 18, 16, 16}, sh,
+    zombie_srcs [] = {{0, 6, 16, 21}, {16, 6, 16, 21}, {48, 6, 16, 21},
+		      {0, 69, 16, 21}, {16, 69, 16, 21}, {48, 69, 16, 21},
+		      {0, 38, 16, 21}, {16, 38, 16, 21}, {48, 38, 16, 21},
+		      {0, 102, 16, 21}, {16, 102, 16, 21}, {48, 102, 16, 21}},
+    zombie_origin = {0, -5, 0, 0};
 
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
     do_shoot = 0, life = 10;
@@ -108,7 +113,8 @@ main (int argc, char *argv[])
   SDL_Renderer *rend;
   SDL_Event event;
 
-  SDL_Texture *areatxtr, *charactertxtr, *effectstxtr, *texttxtr, *charlifetxtr;
+  SDL_Texture *areatxtr, *charactertxtr, *zombietxtr, *effectstxtr, *texttxtr,
+    *charlifetxtr;
   SDL_Surface *textsurf, *charlifesurf;
   TTF_Font *hudfont, *textfont;
   char textbox [MAXTEXTSIZE], charlifetext [20];
@@ -290,6 +296,15 @@ main (int argc, char *argv[])
   charactertxtr = IMG_LoadTexture (rend, "character.png");
 
   if (!charactertxtr)
+    {
+      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
+  zombietxtr = IMG_LoadTexture (rend, "NPC_test.png");
+
+  if (!zombietxtr)
     {
       fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
       SDL_Quit ();
@@ -604,6 +619,27 @@ main (int argc, char *argv[])
 			      &character_srcs [vis.facing*3+
 					       ((vis.speed_x || vis.speed_y)
 						? 1+(frame_counter%12)/6 : 0)],
+			      &pers);
+	    }
+
+	  for (i = 0; i < state->args.server_state.num_visibles; i++)
+	    {
+	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
+					+i*sizeof (vis));
+
+	      if (vis.type != VISIBLE_ZOMBIE)
+		continue;
+
+	      pers.x = screen_dest.x - screen_src.x + area->display_src.x
+		+ area->walkable.x + vis.x + zombie_origin.x;
+	      pers.y = screen_dest.y - screen_src.y + area->display_src.y
+		+ area->walkable.y + vis.y + zombie_origin.y;
+	      pers.w = character_dest.w;
+	      pers.h = character_dest.h;
+	      SDL_RenderCopy (rend, zombietxtr,
+			      &zombie_srcs [vis.facing*3+
+					    ((vis.speed_x || vis.speed_y)
+					     ? 1+(frame_counter%12)/6 : 0)],
 			      &pers);
 	    }
 	}

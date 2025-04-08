@@ -80,7 +80,8 @@ player
 
 struct zombie
 {
-  SDL_Rect place;
+  struct agent *agent;
+
   enum facing facing;
   int speed_x, speed_y;
   int life;
@@ -155,10 +156,16 @@ server_area
   SDL_Rect walkable;
   SDL_Rect *unwalkables;
   int unwalkables_num;
+
   struct warp *warps;
   struct interactible *interactibles;
+
   struct zombie *zombies;
   int zombies_num;
+  SDL_Rect *zombie_spawns;
+  int zombie_spawns_num;
+
+  struct server_area *next;
 };
 
 
@@ -226,7 +233,7 @@ struct interactible *
 make_interactible_by_grid (int placex, int placey, int placew, int placeh,
 			   char *text, struct interactible *next)
 {
-  struct interactible *ret = malloc (sizeof (*ret));
+  struct interactible *ret = malloc_and_check (sizeof (*ret));
 
   ret->place.x = placex * GRID_CELL_W;
   ret->place.y = placey * GRID_CELL_H;
@@ -254,6 +261,36 @@ make_warp_by_grid (int placex, int placey, int placew, int placeh,
   ret->dest = dest;
   ret->spawn.x = spawnx * GRID_CELL_W;
   ret->spawn.y = spawny * GRID_CELL_H;
+  ret->next = next;
+
+  return ret;
+}
+
+
+struct zombie *
+make_zombie (int placex, int placey, enum facing facing,
+	     struct server_area *area, struct zombie *next,
+	     struct agent **agents)
+{
+  struct zombie *ret = malloc_and_check (sizeof (*ret));
+  struct agent *a = malloc_and_check (sizeof (*a));
+
+  a->type = AGENT_ZOMBIE;
+  a->area = area;
+  set_rect (&a->place, placex, placey, GRID_CELL_W, GRID_CELL_H);
+  a->data_ptr.zombie = ret;
+  a->prev = NULL;
+  a->next = *agents;
+
+  if (*agents)
+    (*agents)->prev = a;
+
+  *agents = a;
+
+  ret->agent = a;
+  ret->facing = facing;
+  ret->speed_x = ret->speed_y = 0;
+  ret->life = 2;
   ret->next = next;
 
   return ret;
@@ -367,7 +404,7 @@ move_character (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable,
   charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y, unwalkables,
 					  unwalkables_num, &collided);
 
-  while (z)
+  /*while (z)
     {
       charbox = check_and_resolve_collision (charbox, &speed_x, &speed_y, z->place,
 					     &collided);
@@ -376,7 +413,7 @@ move_character (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable,
 	*character_hit = 1;
 
       z = z->next;
-    }
+      }*/
 
   return check_boundary (charbox, speed_x, speed_y, walkable);
 }
@@ -555,12 +592,11 @@ does_character_face_object (SDL_Rect character, enum facing facing,
 
 void
 send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pls,
-		   struct shot *ss)
+		   struct agent *as, struct shot *ss)
 {
   char buf [MAXMSGSIZE];
   struct message *msg = (struct message *) &buf;
   struct visible vis;
-  int i;
 
   msg->type = htonl (MSG_SERVER_STATE);
   msg->args.server_state.frame_counter = frame_counter;
@@ -574,27 +610,40 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
   msg->args.server_state.num_visibles = 0;
   msg->args.server_state.textbox_lines_num = pls [id].textbox_lines_num;
 
-  for (i = 0; i < MAX_PLAYERS; i++)
+  while (as)
     {
       if (sizeof (msg)+(msg->args.server_state.num_visibles+1)
 	  *sizeof (struct visible) > MAXMSGSIZE)
 	break;
 
-      if (i != id && pls [i].id != -1
-	  && pls [i].agent->area == pls [id].agent->area)
+      if ((as->type != AGENT_PLAYER || as->data_ptr.player != &pls [id])
+	  && as->area == pls [id].agent->area)
 	{
-	  vis.type = VISIBLE_PLAYER;
-	  vis.x = pls [i].agent->place.x;
-	  vis.y = pls [i].agent->place.y;
-	  vis.w = pls [i].agent->place.w;
-	  vis.h = pls [i].agent->place.h;
-	  vis.facing = pls [i].facing;
-	  vis.speed_x = pls [i].speed_x;
-	  vis.speed_y = pls [i].speed_y;
+	  vis.type = as->type == AGENT_PLAYER ? VISIBLE_PLAYER : VISIBLE_ZOMBIE;
+	  vis.x = as->place.x;
+	  vis.y = as->place.y;
+	  vis.w = as->place.w;
+	  vis.h = as->place.h;
+
+	  if (as->type == AGENT_PLAYER)
+	    {
+	      vis.facing = as->data_ptr.player->facing;
+	      vis.speed_x = as->data_ptr.player->speed_x;
+	      vis.speed_y = as->data_ptr.player->speed_y;
+	    }
+	  else
+	    {
+	      vis.facing = as->data_ptr.zombie->facing;
+	      vis.speed_x = as->data_ptr.zombie->speed_x;
+	      vis.speed_y = as->data_ptr.zombie->speed_y;
+	    }
+
 	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
 			*sizeof (vis)], &vis, sizeof (vis));
 	  msg->args.server_state.num_visibles++;
 	}
+
+      as = as->next;
     }
 
   while (ss)
@@ -657,7 +706,7 @@ main (int argc, char *argv[])
 {
   struct agent *agents = NULL, *shotag;
   struct player players [MAX_PLAYERS];
-  struct zombie zombies [MAX_ZOMBIES];
+  struct zombie *z;
   struct shot *shots = NULL, *s, *prs;
 
   int sockfd;
@@ -673,11 +722,12 @@ main (int argc, char *argv[])
   struct interactible *in;
   struct warp *w;
 
-  struct server_area field = {0};
+  struct server_area field = {0}, *area;
   SDL_Rect field_walkable = {0, 0, 256, 256},
     field_unwalkables [] = {RECT_BY_GRID (1, 3, 4, 4),
     RECT_BY_GRID (1, 10, 3, 3), RECT_BY_GRID (10, 9, 2, 5),
-    RECT_BY_GRID (13, 9, 2, 5), RECT_BY_GRID (12, 9, 1, 3)};
+    RECT_BY_GRID (13, 9, 2, 5), RECT_BY_GRID (12, 9, 1, 3)},
+    field_zombie_spawns [] = {RECT_BY_GRID (10, 1, 1, 1)};
 
   struct server_area room = {0};
   SDL_Rect room_walkable = RECT_BY_GRID (0, 0, 12, 12),
@@ -688,7 +738,7 @@ main (int argc, char *argv[])
   SDL_Event event;
 
   uint32_t frame_counter = 1, id;
-  int char_hit, quit = 0, i;
+  int char_hit, quit = 0, i, spawn_counter = 0;
   Uint32 t1, t2;
   double delay;
 
@@ -736,6 +786,9 @@ main (int argc, char *argv[])
   field.interactibles = NULL;
   field.zombies = NULL;
   field.zombies_num = 0;
+  field.zombie_spawns = field_zombie_spawns;
+  field.zombie_spawns_num = 1;
+  field.next = &room;
 
   room.id = 1;
   room.walkable = room_walkable;
@@ -747,6 +800,9 @@ main (int argc, char *argv[])
      "There might be zombies around." "Better take a look            ", NULL);
   room.zombies = NULL;
   room.zombies_num = 0;
+  room.zombie_spawns = NULL;
+  room.zombie_spawns_num = 0;
+  room.next = NULL;
 
   while (!quit)
     {
@@ -874,6 +930,44 @@ main (int argc, char *argv[])
 	    }
 	}
 
+
+      area = &field;
+
+      while (area)
+	{
+	  z = area->zombies;
+
+	  while (z)
+	    {
+	      z->speed_x = z->speed_y = 0;
+	      z = z->next;
+	    }
+
+	  area = area->next;
+	}
+
+      if (spawn_counter == SPAWN_INTERVAL)
+	{
+	  spawn_counter = 0;
+
+	  area = &field;
+
+	  while (area)
+	    {
+	      if (area->zombie_spawns_num && area->zombies_num < MAX_ZOMBIES)
+		{
+		  area->zombies = make_zombie (area->zombie_spawns->x,
+					       area->zombie_spawns->y,
+					       FACING_DOWN, area, area->zombies,
+					       &agents);
+		  area->zombies_num++;
+		}
+
+	      area = area->next;
+	    }
+	}
+
+
       for (i = 0; i < MAX_PLAYERS; i++)
 	{
 	  if (players [i].id == -1)
@@ -982,7 +1076,8 @@ main (int argc, char *argv[])
 	    }
 	  else if (players [i].id != -1)
 	    {
-	      send_server_state (sockfd, frame_counter, i, players, shots);
+	      send_server_state (sockfd, frame_counter, i, players, agents,
+				 shots);
 
 	      players [i].textbox = NULL;
 	      players [i].textbox_lines_num = 0;
@@ -1010,6 +1105,8 @@ main (int argc, char *argv[])
 		}
 	    }
 	}
+
+      spawn_counter++;
 
       frame_counter++;
 
