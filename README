@@ -5,6 +5,13 @@ survival of humans against zombies.
 
 
 
+__Where can I find the latest version of Zombieland?__
+
+There are no released versions yet.  Just build from the latest commit, since
+new features and bugfixes happen daily.
+
+
+
 __Who made the assets?__
 
 I made the maps using a tileset taken by https://opengameart.org:
@@ -12,7 +19,8 @@ I made the maps using a tileset taken by https://opengameart.org:
 "Zelda-like tilesets and sprites" by ArMM1998 licensed CC0 1.0 Universal:
 https://opengameart.org/content/zelda-like-tilesets-and-sprites
 
-The player sprite comes from the same set.
+The player sprite (character.png) and zombie sprite (NPC_test.png) come from the
+same set.
 
 The spark effect in effects.png comes from:
 
