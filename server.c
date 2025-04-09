@@ -50,6 +50,9 @@
 				&&(i).y>=(j).y&&(i).y+(i).h<=(j).y+(j).h)
 
 
+#define CHAR_SPEED 2
+
+
 #define SHOOT_REST 10
 
 
@@ -909,8 +912,14 @@ main (int argc, char *argv[])
 	      else if (players [id].last_update
 		       < msg->args.client_char_state.frame_counter)
 		{
-		  players [id].speed_x = msg->args.client_char_state.char_speed_x;
-		  players [id].speed_y = msg->args.client_char_state.char_speed_y;
+		  players [id].speed_x =
+		    msg->args.client_char_state.char_speed_x > 0 ? CHAR_SPEED
+		    : msg->args.client_char_state.char_speed_x < 0 ? -CHAR_SPEED
+		    : 0;
+		  players [id].speed_y =
+		    msg->args.client_char_state.char_speed_y > 0 ? CHAR_SPEED
+		    : msg->args.client_char_state.char_speed_y < 0 ? -CHAR_SPEED
+		    : 0;
 		  players [id].facing = msg->args.client_char_state.char_facing;
 
 		  players [id].interact = msg->args.client_char_state.do_interact;
