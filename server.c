@@ -23,7 +23,9 @@
 
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <errno.h>
 #include <strings.h>
 #include <unistd.h>
@@ -51,6 +53,8 @@
 
 
 #define CHAR_SPEED 2
+
+#define ZOMBIE_SPEED 1
 
 
 #define SHOOT_REST 10
@@ -86,7 +90,7 @@ struct zombie
   struct agent *agent;
 
   enum facing facing;
-  int speed_x, speed_y;
+  int32_t speed_x, speed_y;
   int life;
 
   struct zombie *next;
@@ -417,6 +421,22 @@ move_character (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable,
 
       z = z->next;
       }*/
+
+  return check_boundary (charbox, speed_x, speed_y, walkable);
+}
+
+
+SDL_Rect
+move_zombie (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable,
+	     SDL_Rect unwalkables [], int unwalkables_num)
+{
+  int collided;
+
+  charbox.x += speed_x;
+  charbox.y += speed_y;
+
+  charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y, unwalkables,
+					  unwalkables_num, &collided);
 
   return check_boundary (charbox, speed_x, speed_y, walkable);
 }
@@ -807,6 +827,8 @@ main (int argc, char *argv[])
   room.zombie_spawns_num = 0;
   room.next = NULL;
 
+  srand (time (NULL));
+
   while (!quit)
     {
       t1 = SDL_GetTicks ();
@@ -948,7 +970,14 @@ main (int argc, char *argv[])
 
 	  while (z)
 	    {
-	      z->speed_x = z->speed_y = 0;
+	      z->speed_x = (rand () % 3 - 1)*ZOMBIE_SPEED;
+	      z->facing = z->speed_x > 0 ? FACING_RIGHT
+		: z->speed_x < 0 ? FACING_LEFT : z->facing;
+
+	      z->speed_y = (rand () % 3 - 1)*ZOMBIE_SPEED;
+	      z->facing = z->speed_y > 0 ? FACING_DOWN
+		: z->speed_y < 0 ? FACING_UP : z->facing;
+
 	      z = z->next;
 	    }
 
@@ -1067,6 +1096,25 @@ main (int argc, char *argv[])
 
 	      w = w->next;
 	    }
+	}
+
+      area = &field;
+
+      while (area)
+	{
+	  z = area->zombies;
+
+	  while (z)
+	    {
+	      z->agent->place = move_zombie (z->agent->place, z->speed_x,
+					     z->speed_y, area->walkable,
+					     area->unwalkables,
+					     area->unwalkables_num);
+
+	      z = z->next;
+	    }
+
+	  area = area->next;
 	}
 
       for (i = 0; i < MAX_PLAYERS; i++)
