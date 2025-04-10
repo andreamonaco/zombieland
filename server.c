@@ -729,7 +729,7 @@ main (int argc, char *argv[])
 {
   struct agent *agents = NULL, *shotag;
   struct player players [MAX_PLAYERS];
-  struct zombie *z;
+  struct zombie *z, *prz;
   struct shot *shots = NULL, *s, *prs;
 
   int sockfd;
@@ -1052,8 +1052,13 @@ main (int argc, char *argv[])
 	      s->next = shots;
 	      shots = s;
 
-	      if (shotag && shotag->type == AGENT_PLAYER)
-		shotag->data_ptr.player->life--;
+	      if (shotag)
+		{
+		  if (shotag->type == AGENT_PLAYER)
+		    shotag->data_ptr.player->life--;
+		  else
+		    shotag->data_ptr.zombie->life--;
+		}
 	    }
 
 	  if (players [i].shoot_rest)
@@ -1102,16 +1107,42 @@ main (int argc, char *argv[])
 
       while (area)
 	{
-	  z = area->zombies;
+	  z = area->zombies, prz = NULL;
 
 	  while (z)
 	    {
-	      z->agent->place = move_zombie (z->agent->place, z->speed_x,
-					     z->speed_y, area->walkable,
-					     area->unwalkables,
-					     area->unwalkables_num);
+	      if (z->life <= 0)
+		{
+		  if (prz)
+		    prz->next = z->next;
+		  else
+		    area->zombies = z->next;
 
-	      z = z->next;
+		  if (z->agent->prev)
+		    z->agent->prev->next = z->agent->next;
+		  else
+		    agents = z->agent->next;
+
+		  if (z->agent->next)
+		    z->agent->next->prev = z->agent->prev;
+
+		  free (z->agent);
+		  free (z);
+
+		  area->zombies_num--;
+
+		  z = prz ? prz->next : area->zombies;
+		}
+	      else
+		{
+		  z->agent->place = move_zombie (z->agent->place, z->speed_x,
+						 z->speed_y, area->walkable,
+						 area->unwalkables,
+						 area->unwalkables_num);
+
+		  prz = z;
+		  z = z->next;
+		}
 	    }
 
 	  area = area->next;
