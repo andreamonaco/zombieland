@@ -1129,6 +1129,9 @@ main (int argc, char *argv[])
 	      else
 		agents = players [i].agent->next;
 
+	      if (players [i].agent->next)
+		players [i].agent->next->prev = players [i].agent->prev;
+
 	      free (players [i].agent);
 	    }
 	  else if (players [i].id != -1)
