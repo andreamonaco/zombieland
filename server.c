@@ -900,7 +900,7 @@ main (int argc, char *argv[])
 			       msg->args.login.logname);
 		      send_message (sockfd, &client_addr,
 				    ntohs (msg->args.login.portoff),
-				    MSG_LOGINFAIL);
+				    MSG_LOGNAME_IN_USE);
 		      goto get_new_message;
 		    }
 		}
@@ -908,6 +908,16 @@ main (int argc, char *argv[])
 	      id = create_player (msg->args.login.logname, &client_addr,
 				  ntohs (msg->args.login.portoff), &field,
 				  players, &agents);
+
+	      if (id == -1)
+		{
+		  fprintf (stderr,
+			   "client tried login but there are too many players\n");
+		  send_message (sockfd, &client_addr,
+				ntohs (msg->args.login.portoff), MSG_SERVER_FULL);
+		  break;
+		}
+
 	      printf ("created player %s with port offset %d\n",
 		      msg->args.login.logname, players [id].portoffset);
 

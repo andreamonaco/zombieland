@@ -55,11 +55,12 @@ facing
 
 #define MSG_LOGIN              0
 #define MSG_LOGINOK            1
-#define MSG_LOGINFAIL          2
-#define MSG_CLIENT_CHAR_STATE  3
-#define MSG_SERVER_STATE       4
-#define MSG_PLAYER_DIED        5
-#define MSG_INTERACT           6
+#define MSG_LOGNAME_IN_USE     2
+#define MSG_SERVER_FULL        3
+#define MSG_CLIENT_CHAR_STATE  4
+#define MSG_SERVER_STATE       5
+#define MSG_PLAYER_DIED        6
+#define MSG_INTERACT           7
 
 
 struct

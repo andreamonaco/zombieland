@@ -231,8 +231,12 @@ main (int argc, char *argv[])
       id = ntohl (msg.args.loginok.id);
       printf ("got id %d\n", id);
       break;
-    case MSG_LOGINFAIL:
+    case MSG_LOGNAME_IN_USE:
       fprintf (stderr, "logname is already taken\n");
+      exit (1);
+      break;
+    case MSG_SERVER_FULL:
+      fprintf (stderr, "server has reached maximum players\n");
       exit (1);
       break;
     default:
