@@ -48,7 +48,7 @@ client_area
 {
   uint32_t id;
   SDL_Texture *texture;
-  SDL_Rect display_src, walkable;
+  SDL_Rect display_src, overlay_src, walkable;
   struct client_area *next;
 };
 
@@ -84,10 +84,11 @@ main (int argc, char *argv[])
   uint32_t id, last_update = 0;
 
   struct client_area field;
-  SDL_Rect field_src = {0, 0, 256, 256}, field_walkable = {0, 0, 256, 256};
+  SDL_Rect field_src = {0, 0, 256, 256}, field_overlay = {256, 0, 256, 256},
+    field_walkable = {0, 0, 256, 256};
 
   struct client_area room;
-  SDL_Rect room_src = {0, 256, 256, 256},
+  SDL_Rect room_src = {0, 256, 256, 256}, room_overlay = {0},
     room_walkable = RECT_BY_GRID (2, 2, 12, 12);
 
   struct client_area *areas = &field, *area = &field, *ar;
@@ -345,12 +346,14 @@ main (int argc, char *argv[])
   field.id = 0;
   field.texture = areatxtr;
   field.display_src = field_src;
+  field.overlay_src = field_overlay;
   field.walkable = field_walkable;
   field.next = &room;
 
   room.id = 1;
   room.texture = areatxtr;
   room.display_src = room_src;
+  room.overlay_src = room_overlay;
   room.walkable = room_walkable;
   room.next = NULL;
 
@@ -657,6 +660,11 @@ main (int argc, char *argv[])
 				       ((loc_char_speed_x || loc_char_speed_y)
 					? 1+(frame_counter%12)/6 : 0)],
 		      &character_dest);
+
+      if (area->overlay_src.w)
+	{
+	  SDL_RenderCopy (rend, area->texture, &area->overlay_src, &screen_dest);
+	}
 
       if (latest_srv_state)
 	{

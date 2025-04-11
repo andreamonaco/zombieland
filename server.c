@@ -748,8 +748,8 @@ main (int argc, char *argv[])
   struct server_area field = {0}, *area;
   SDL_Rect field_walkable = {0, 0, 256, 256},
     field_unwalkables [] = {RECT_BY_GRID (1, 3, 4, 4),
-    RECT_BY_GRID (1, 10, 3, 3), RECT_BY_GRID (10, 9, 2, 5),
-    RECT_BY_GRID (13, 9, 2, 5), RECT_BY_GRID (12, 9, 1, 3)},
+    RECT_BY_GRID (1, 10, 3, 3), RECT_BY_GRID (10, 10, 2, 4),
+    RECT_BY_GRID (13, 10, 2, 4), RECT_BY_GRID (12, 10, 1, 2)},
     field_zombie_spawns [] = {RECT_BY_GRID (10, 1, 1, 1)};
 
   struct server_area room = {0};
