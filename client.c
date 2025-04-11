@@ -606,27 +606,6 @@ main (int argc, char *argv[])
 	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
 					+i*sizeof (vis));
 
-	      if (vis.type != VISIBLE_PLAYER)
-		continue;
-
-	      pers.x = screen_dest.x - screen_src.x + area->display_src.x
-		+ area->walkable.x + vis.x + character_origin.x;
-	      pers.y = screen_dest.y - screen_src.y + area->display_src.y
-		+ area->walkable.y + vis.y + character_origin.y;
-	      pers.w = character_dest.w;
-	      pers.h = character_dest.h;
-	      SDL_RenderCopy (rend, charactertxtr,
-			      &character_srcs [vis.facing*3+
-					       ((vis.speed_x || vis.speed_y)
-						? 1+(frame_counter%12)/6 : 0)],
-			      &pers);
-	    }
-
-	  for (i = 0; i < state->args.server_state.num_visibles; i++)
-	    {
-	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
-					+i*sizeof (vis));
-
 	      if (vis.type != VISIBLE_ZOMBIE)
 		continue;
 
@@ -640,6 +619,27 @@ main (int argc, char *argv[])
 			      &zombie_srcs [vis.facing*3+
 					    ((vis.speed_x || vis.speed_y)
 					     ? 1+(frame_counter%12)/6 : 0)],
+			      &pers);
+	    }
+
+	  for (i = 0; i < state->args.server_state.num_visibles; i++)
+	    {
+	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
+					+i*sizeof (vis));
+
+	      if (vis.type != VISIBLE_PLAYER)
+		continue;
+
+	      pers.x = screen_dest.x - screen_src.x + area->display_src.x
+		+ area->walkable.x + vis.x + character_origin.x;
+	      pers.y = screen_dest.y - screen_src.y + area->display_src.y
+		+ area->walkable.y + vis.y + character_origin.y;
+	      pers.w = character_dest.w;
+	      pers.h = character_dest.h;
+	      SDL_RenderCopy (rend, charactertxtr,
+			      &character_srcs [vis.facing*3+
+					       ((vis.speed_x || vis.speed_y)
+						? 1+(frame_counter%12)/6 : 0)],
 			      &pers);
 	    }
 	}
