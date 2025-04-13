@@ -608,18 +608,17 @@ is_closer (enum facing facing, SDL_Rect rect1, SDL_Rect rect2)
 
 
 SDL_Rect
-get_shot_rect (SDL_Rect charbox, enum facing facing, SDL_Rect walkable,
-	       SDL_Rect unwalkables[], int unwalkables_num, struct agent *as,
-	       struct agent **shotag)
+get_shot_rect (SDL_Rect charbox, enum facing facing, struct server_area *area,
+	       struct agent *as, struct agent **shotag)
 {
   int i, found = 0;
   SDL_Rect ret, hitpart;
 
   *shotag = NULL;
 
-  for (i = 0; i < unwalkables_num; i++)
+  for (i = 0; i < area->unwalkables_num; i++)
     {
-      if (is_target_hit (charbox, facing, unwalkables [i], &hitpart))
+      if (is_target_hit (charbox, facing, area->unwalkables [i], &hitpart))
 	{
 	  if (!found || is_closer (facing, hitpart, ret))
 	    {
@@ -631,7 +630,8 @@ get_shot_rect (SDL_Rect charbox, enum facing facing, SDL_Rect walkable,
 
   while (as)
     {
-      if (is_target_hit (charbox, facing, as->place, &hitpart))
+      if (area == as->area
+	  && is_target_hit (charbox, facing, as->place, &hitpart))
 	{
 	  if (!found || is_closer (facing, hitpart, ret))
 	    {
@@ -655,14 +655,14 @@ get_shot_rect (SDL_Rect charbox, enum facing facing, SDL_Rect walkable,
     {
     case FACING_DOWN:
       ret.x = charbox.x;
-      ret.y = walkable.h;
+      ret.y = area->walkable.h;
       break;
     case FACING_UP:
       ret.x = charbox.x;
       ret.y = -GRID_CELL_H;
       break;
     case FACING_RIGHT:
-      ret.x = walkable.w;
+      ret.x = area->walkable.w;
       ret.y = charbox.y;
       break;
     case FACING_LEFT:
@@ -1148,10 +1148,8 @@ main (int argc, char *argv[])
 	      s->areaid = players [i].agent->area->id;
 	      s->target = get_shot_rect (players [i].agent->place,
 					 players [i].facing,
-					 players [i].agent->area->walkable,
-					 players [i].agent->area->unwalkables,
-					 players [i].agent->area->unwalkables_num,
-					 agents, &shotag);
+					 players [i].agent->area, agents,
+					 &shotag);
 	      s->duration = 10;
 	      s->next = shots;
 	      shots = s;
