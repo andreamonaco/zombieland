@@ -543,7 +543,7 @@ is_target_hit (SDL_Rect charbox, enum facing facing, SDL_Rect target,
   switch (facing)
     {
     case FACING_DOWN:
-      if (charbox.y+charbox.h<=target.y
+      if (charbox.y<target.y
 	  && target.x<=charbox.x+charbox.w/2
 	  && charbox.x+charbox.w/2 <= target.x+target.w)
 	{
@@ -553,7 +553,7 @@ is_target_hit (SDL_Rect charbox, enum facing facing, SDL_Rect target,
 	}
       break;
     case FACING_UP:
-      if (charbox.y>=target.y+target.h
+      if (charbox.y>target.y
 	  && target.x<=charbox.x+charbox.w/2
 	  && charbox.x+charbox.w/2 <= target.x+target.w)
 	{
@@ -563,7 +563,7 @@ is_target_hit (SDL_Rect charbox, enum facing facing, SDL_Rect target,
 	}
       break;
     case FACING_RIGHT:
-      if (charbox.x+charbox.w<=target.x
+      if (charbox.x<target.x
 	  && target.y<=charbox.y+charbox.h/2
 	  && charbox.y+charbox.h/2 <= target.y+target.h)
 	{
@@ -573,7 +573,7 @@ is_target_hit (SDL_Rect charbox, enum facing facing, SDL_Rect target,
 	}
       break;
     case FACING_LEFT:
-      if (charbox.x>=target.x+target.w
+      if (charbox.x>target.x
 	  && target.y<=charbox.y+charbox.h/2
 	  && charbox.y+charbox.h/2 <= target.y+target.h)
 	{
