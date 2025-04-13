@@ -304,11 +304,31 @@ make_zombie (int placex, int placey, enum facing facing,
 }
 
 
+int
+is_rect_free (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect unwalkables [],
+	      int unwalkables_num)
+{
+  int i;
+
+  charbox.x += speed_x;
+  charbox.y += speed_y;
+
+  for (i = 0; i < unwalkables_num; i++)
+    {
+      if (RECT_INTERSECT (charbox, unwalkables [i]))
+	return 0;
+    }
+
+  return 1;
+}
+
+
 SDL_Rect
 check_and_resolve_collision (SDL_Rect charbox, int *speed_x, int *speed_y,
-			     SDL_Rect unwalkable, int *did_collide)
+			     SDL_Rect unwalkable, SDL_Rect unwalkables [],
+			     int unwalkables_num, int *did_collide)
 {
-  int new;
+  int new, can_move_x, can_move_y;
 
   *did_collide = 0;
 
@@ -350,6 +370,72 @@ check_and_resolve_collision (SDL_Rect charbox, int *speed_x, int *speed_y,
 	  *speed_x = new-charbox.x;
 	  charbox.x = new;
 	}
+      else
+	{
+	  can_move_x = is_rect_free (charbox, *speed_x > 0 ? 1 : -1, 0,
+				     unwalkables, unwalkables_num);
+	  can_move_y = is_rect_free (charbox, 0, *speed_y > 0 ? 1 : -1,
+				     unwalkables, unwalkables_num);
+
+	  if (can_move_x && !can_move_y)
+	    {
+	      charbox.x += *speed_x;
+
+	      if (*speed_y > 0)
+		{
+		  new = unwalkable.y-charbox.h;
+		}
+	      else
+		{
+		  new = unwalkable.y+unwalkable.h;
+		}
+
+	      *speed_y = new-charbox.y;
+	      charbox.y = new;
+	    }
+	  else if (!can_move_x && can_move_y)
+	    {
+	      charbox.y += *speed_y;
+
+	      if (*speed_x > 0)
+		{
+		  new = unwalkable.x-charbox.w;
+		}
+	      else
+		{
+		  new = unwalkable.x+unwalkable.w;
+		}
+
+	      *speed_x = new-charbox.x;
+	      charbox.x = new;
+	    }
+	  else
+	    {
+	      if (*speed_y > 0)
+		{
+		  new = unwalkable.y-charbox.h;
+		}
+	      else
+		{
+		  new = unwalkable.y+unwalkable.h;
+		}
+
+	      *speed_y = new-charbox.y;
+	      charbox.y = new;
+
+	      if (*speed_x > 0)
+		{
+		  new = unwalkable.x-charbox.w;
+		}
+	      else
+		{
+		  new = unwalkable.x+unwalkable.w;
+		}
+
+	      *speed_x = new-charbox.x;
+	      charbox.x = new;
+	    }
+	}
     }
 
   return charbox;
@@ -368,10 +454,14 @@ check_and_resolve_collisions (SDL_Rect charbox, int *speed_x, int *speed_y,
   for (i = 0; i < unwalkables_num; i++)
     {
       charbox = check_and_resolve_collision (charbox, speed_x, speed_y,
-					     unwalkables [i], &collided);
+					     unwalkables [i], unwalkables,
+					     unwalkables_num, &collided);
 
       if (collided)
-	*did_collide = 1;
+	{
+	  *did_collide = 1;
+	  return charbox;
+	}
     }
 
   return charbox;
@@ -408,8 +498,12 @@ move_character (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable,
   charbox.x += speed_x;
   charbox.y += speed_y;
 
+ restart:
   charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y, unwalkables,
 					  unwalkables_num, &collided);
+
+  if (collided)
+    goto restart;
 
   /*while (z)
     {
