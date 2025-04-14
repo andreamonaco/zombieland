@@ -84,11 +84,11 @@ main (int argc, char *argv[])
   uint32_t id, last_update = 0;
 
   struct client_area field;
-  SDL_Rect field_src = {0, 0, 256, 256}, field_overlay = {256, 0, 256, 256},
-    field_walkable = {0, 0, 256, 256};
+  SDL_Rect field_src = {0, 0, 512, 512}, field_overlay = {512, 0, 512, 512},
+    field_walkable = {0, 0, 512, 512};
 
   struct client_area room;
-  SDL_Rect room_src = {0, 256, 256, 256}, room_overlay = {0},
+  SDL_Rect room_src = {0, 512, 256, 256}, room_overlay = {0},
     room_walkable = RECT_BY_GRID (2, 2, 12, 12);
 
   struct client_area *areas = &field, *area = &field, *ar;
@@ -97,7 +97,7 @@ main (int argc, char *argv[])
 				{0, 69, 16, 21}, {16, 69, 16, 21}, {48, 69, 16, 21},
 				{0, 38, 16, 21}, {16, 38, 16, 21}, {48, 38, 16, 21},
 				{0, 102, 16, 21}, {16, 102, 16, 21}, {48, 102, 16, 21}},
-    character_box = RECT_BY_GRID (6, 1, 1, 1), character_origin = {0, -5, 0, 0},
+    character_box = RECT_BY_GRID (6, 0, 1, 1), character_origin = {0, -5, 0, 0},
     character_dest = {0, 0, 16, 21}, pers, shot_src = {40, 18, 16, 16}, sh,
     zombie_srcs [] = {{0, 6, 16, 21}, {16, 6, 16, 21}, {48, 6, 16, 21},
 		      {0, 69, 16, 21}, {16, 69, 16, 21}, {48, 69, 16, 21},
@@ -128,7 +128,8 @@ main (int argc, char *argv[])
   SDL_Color textcol = {0, 0, 0, 255};
   Uint8 colr, colg, colb, cola;
 
-  SDL_Rect screen_src, screen_dest;
+  SDL_Rect screen_src, screen_dest = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
+    screen_overlay = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
 
   int quit = 0, i, got_update;
   uint32_t frame_counter = 1, timeout = SERVER_TIMEOUT;
@@ -561,48 +562,32 @@ main (int argc, char *argv[])
 	  life = state->args.server_state.life;
 	}
 
-      /*screen_src.x = -WINDOW_WIDTH/2 + cave.display_src.x + character_box.w/2
-	+ character_box.x + cave.walkable.x;
-      screen_src.y = -WINDOW_HEIGHT/2 + cave.display_src.y + character_box.h/2
-	+ character_box.y + cave.walkable.y;
-      screen_src.w = WINDOW_WIDTH;
-      screen_src.h = WINDOW_HEIGHT;*/
-
-      screen_src.x = area->display_src.x;
-      screen_src.y = area->display_src.y;
+      screen_src.x = -WINDOW_WIDTH/2 + area->display_src.x + character_box.w/2
+	+ character_box.x + area->walkable.x;
+      screen_src.y = -WINDOW_HEIGHT/2 + area->display_src.y + character_box.h/2
+	+ character_box.y + area->walkable.y;
       screen_src.w = WINDOW_WIDTH;
       screen_src.h = WINDOW_HEIGHT;
 
-      screen_dest.x = 0;
-      screen_dest.y = 0;
-      screen_dest.w = WINDOW_WIDTH;
-      screen_dest.h = WINDOW_HEIGHT;
-
-      /*if (screen_src.x < cave.display_src.x)
+      if (screen_src.x < area->display_src.x)
 	{
-	  screen_dest.w -= cave.display_src.x-screen_src.x;
-	  screen_src.w = screen_dest.w;
-	  screen_dest.x += cave.display_src.x-screen_src.x;
-	  screen_src.x = cave.display_src.x;
+	  screen_src.x = area->display_src.x;
 	}
-      else if (screen_src.x+WINDOW_WIDTH > cave.display_src.w)
+      else if (screen_src.x+WINDOW_WIDTH
+	       > area->display_src.x+area->display_src.w)
 	{
-	  screen_dest.w = cave.display_src.w-screen_src.x+cave.display_src.x;
-	  screen_src.w = screen_dest.w;
+	  screen_src.x = area->display_src.x+area->display_src.w-WINDOW_WIDTH;
 	}
 
-      if (screen_src.y < cave.display_src.y)
+      if (screen_src.y < area->display_src.y)
 	{
-	  screen_dest.h -= cave.display_src.y-screen_src.y;
-	  screen_src.h = screen_dest.h;
-	  screen_dest.y += cave.display_src.y-screen_src.y;
-	  screen_src.y = cave.display_src.y;
+	  screen_src.y = area->display_src.y;
 	}
-      else if (screen_src.y+WINDOW_HEIGHT > cave.display_src.h)
+      else if (screen_src.y+WINDOW_HEIGHT
+	       > area->display_src.y+area->display_src.h)
 	{
-	  screen_dest.h = cave.display_src.h-screen_src.y+cave.display_src.y;
-	  screen_src.h = screen_dest.h;
-	  }*/
+	  screen_src.y = area->display_src.y+area->display_src.h-WINDOW_HEIGHT;
+	}
 
       SDL_RenderClear (rend);
       SDL_RenderCopy (rend, area->texture, &screen_src, &screen_dest);
@@ -664,7 +649,9 @@ main (int argc, char *argv[])
 
       if (area->overlay_src.w)
 	{
-	  SDL_RenderCopy (rend, area->texture, &area->overlay_src, &screen_dest);
+	  screen_overlay.x = area->overlay_src.x+screen_src.x;
+	  screen_overlay.y = area->overlay_src.y+screen_src.y;
+	  SDL_RenderCopy (rend, area->texture, &screen_overlay, &screen_dest);
 	}
 
       if (latest_srv_state)

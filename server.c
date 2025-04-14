@@ -207,7 +207,7 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   a = malloc_and_check (sizeof (*a));
   a->type = AGENT_PLAYER;
   a->area = area;
-  set_rect (&a->place, 96, 16, 16, 16);
+  set_rect (&a->place, 96, 0, 16, 16);
   a->data_ptr.player = &pls [i];
   a->prev = NULL;
   a->next = *agents;
@@ -840,10 +840,29 @@ main (int argc, char *argv[])
   struct warp *w;
 
   struct server_area field = {0}, *area;
-  SDL_Rect field_walkable = {0, 0, 256, 256},
+  SDL_Rect field_walkable = {0, 0, 512, 512},
     field_unwalkables [] = {RECT_BY_GRID (1, 3, 4, 4),
     RECT_BY_GRID (1, 10, 3, 3), RECT_BY_GRID (10, 10, 2, 4),
-    RECT_BY_GRID (13, 10, 2, 4), RECT_BY_GRID (12, 10, 1, 2)},
+    RECT_BY_GRID (13, 10, 2, 4), RECT_BY_GRID (12, 10, 1, 2),
+    RECT_BY_GRID (2, 0, 2, 2), RECT_BY_GRID (6, 1, 2, 2),
+    RECT_BY_GRID (7, 4, 2, 2), RECT_BY_GRID (10, 0, 3, 1),
+    RECT_BY_GRID (7, 7, 8, 1), RECT_BY_GRID (7, 9, 1, 5),
+    RECT_BY_GRID (27, 1, 2, 2), RECT_BY_GRID (29, 2, 2, 2),
+    RECT_BY_GRID (13, 15, 4, 1), RECT_BY_GRID (18, 10, 1, 2),
+    RECT_BY_GRID (19, 12, 1, 2), RECT_BY_GRID (20, 14, 1, 2),
+    RECT_BY_GRID (21, 8, 1, 2), RECT_BY_GRID (25, 7, 1, 1),
+    RECT_BY_GRID (0, 18, 5, 1), RECT_BY_GRID (7, 19, 1, 1),
+    RECT_BY_GRID (22, 18, 1, 1), RECT_BY_GRID (10, 24, 3, 1),
+    RECT_BY_GRID (20, 22, 1, 2), RECT_BY_GRID (20, 26, 2, 6),
+    RECT_BY_GRID (24, 22, 2, 2), RECT_BY_GRID (24, 25, 2, 2),
+    RECT_BY_GRID (24, 28, 2, 2), RECT_BY_GRID (28, 26, 2, 2),
+    RECT_BY_GRID (27, 25, 3, 1), RECT_BY_GRID (30, 30, 2, 1),
+    RECT_BY_GRID (21, 20, 6, 1), RECT_BY_GRID (1, 20, 2, 2),
+    RECT_BY_GRID (2, 24, 2, 2), RECT_BY_GRID (6, 24, 2, 2),
+    RECT_BY_GRID (6, 28, 2, 2), RECT_BY_GRID (2, 27, 3, 3),
+    RECT_BY_GRID (16, 11, 1, 3), RECT_BY_GRID (26, 14, 3, 1),
+    RECT_BY_GRID (28, 16, 3, 1), RECT_BY_GRID (1, 14, 2, 1),
+    RECT_BY_GRID (2, 15, 1, 2), RECT_BY_GRID (3, 16, 1, 1)},
     field_zombie_spawns [] = {RECT_BY_GRID (10, 1, 1, 1)};
 
   struct server_area room = {0};
@@ -898,7 +917,7 @@ main (int argc, char *argv[])
   field.id = 0;
   field.walkable = field_walkable;
   field.unwalkables = field_unwalkables;
-  field.unwalkables_num = 5;
+  field.unwalkables_num = 43;
   field.warps = make_warp_by_grid (12, 13, 1, 1, &room, 5, 11, NULL);
   field.interactibles = NULL;
   field.zombies = NULL;
