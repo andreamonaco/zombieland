@@ -123,7 +123,7 @@ main (int argc, char *argv[])
 
   SDL_Texture *areatxtr, *charactertxtr, *zombietxtr, *effectstxtr, *texttxtr,
     *charlifetxtr;
-  SDL_Surface *textsurf, *charlifesurf;
+  SDL_Surface *iconsurf, *textsurf, *charlifesurf;
   TTF_Font *hudfont, *textfont;
   char textbox [MAXTEXTSIZE], charlifetext [20];
   int textlines = 0, textcursor;
@@ -335,6 +335,17 @@ main (int argc, char *argv[])
       SDL_Quit ();
       return 1;
     }
+
+  iconsurf = IMG_Load ("icon.png");
+
+  if (!iconsurf)
+    {
+      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
+  SDL_SetWindowIcon (win, iconsurf);
 
   hudfont = TTF_OpenFont ("Boxy-Bold.ttf", 12);
 
