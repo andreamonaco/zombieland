@@ -42,13 +42,16 @@
 #include "zombieland.h"
 
 
+#define AREA_FRAME_DURATION 4
 
 struct
 client_area
 {
   uint32_t id;
   SDL_Texture *texture;
-  SDL_Rect display_src, overlay_src, walkable;
+  SDL_Rect *display_srcs;
+  int area_frames_num;
+  SDL_Rect overlay_src, walkable;
   struct client_area *next;
 };
 
@@ -84,7 +87,10 @@ main (int argc, char *argv[])
   uint32_t id, last_update = 0;
 
   struct client_area field;
-  SDL_Rect field_src = {0, 0, 512, 512}, field_overlay = {512, 0, 512, 512},
+  SDL_Rect field_srcs [] = {RECT_BY_GRID (0, 0, 32, 32),
+    RECT_BY_GRID (32, 0, 32, 32), RECT_BY_GRID (64, 0, 32, 32),
+    RECT_BY_GRID (96, 0, 32, 32), RECT_BY_GRID (128, 0, 32, 32)},
+    field_overlay = RECT_BY_GRID (160, 0, 32, 32),
     field_walkable = {0, 0, 512, 512};
 
   struct client_area room;
@@ -98,7 +104,8 @@ main (int argc, char *argv[])
 				{0, 38, 16, 21}, {16, 38, 16, 21}, {48, 38, 16, 21},
 				{0, 102, 16, 21}, {16, 102, 16, 21}, {48, 102, 16, 21}},
     character_box = RECT_BY_GRID (6, 0, 1, 1), character_origin = {0, -5, 0, 0},
-    character_dest = {0, 0, 16, 21}, pers, shot_src = {40, 18, 16, 16}, sh,
+    character_dest = {0, 0, 16, 21}, pers, shot_src = {40, 18, 16, 16},
+    sh = {0, 0, GRID_CELL_W, GRID_CELL_H},
     zombie_srcs [] = {{0, 6, 16, 21}, {16, 6, 16, 21}, {48, 6, 16, 21},
 		      {0, 69, 16, 21}, {16, 69, 16, 21}, {48, 69, 16, 21},
 		      {0, 38, 16, 21}, {16, 38, 16, 21}, {48, 38, 16, 21},
@@ -128,7 +135,9 @@ main (int argc, char *argv[])
   SDL_Color textcol = {0, 0, 0, 255};
   Uint8 colr, colg, colb, cola;
 
-  SDL_Rect screen_src, screen_dest = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
+  SDL_Rect camera_src = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
+    back_src = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
+    screen_dest = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
     screen_overlay = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
 
   int quit = 0, i, got_update;
@@ -347,14 +356,16 @@ main (int argc, char *argv[])
 
   field.id = 0;
   field.texture = areatxtr;
-  field.display_src = field_src;
+  field.display_srcs = field_srcs;
+  field.area_frames_num = 5;
   field.overlay_src = field_overlay;
   field.walkable = field_walkable;
   field.next = &room;
 
   room.id = 1;
   room.texture = areatxtr;
-  room.display_src = room_src;
+  room.display_srcs = &room_src;
+  room.area_frames_num = 1;
   room.overlay_src = room_overlay;
   room.walkable = room_walkable;
   room.next = NULL;
@@ -562,35 +573,38 @@ main (int argc, char *argv[])
 	  life = state->args.server_state.life;
 	}
 
-      screen_src.x = -WINDOW_WIDTH/2 + area->display_src.x + character_box.w/2
-	+ character_box.x + area->walkable.x;
-      screen_src.y = -WINDOW_HEIGHT/2 + area->display_src.y + character_box.h/2
-	+ character_box.y + area->walkable.y;
-      screen_src.w = WINDOW_WIDTH;
-      screen_src.h = WINDOW_HEIGHT;
+      camera_src.x = -WINDOW_WIDTH/2 + area->walkable.x + character_box.x
+	+ character_box.w/2;
+      camera_src.y = -WINDOW_HEIGHT/2 + area->walkable.y + character_box.y
+	+ character_box.h/2;
 
-      if (screen_src.x < area->display_src.x)
+      if (camera_src.x < 0)
 	{
-	  screen_src.x = area->display_src.x;
+	  camera_src.x = 0;
 	}
-      else if (screen_src.x+WINDOW_WIDTH
-	       > area->display_src.x+area->display_src.w)
+      else if (camera_src.x+WINDOW_WIDTH > area->display_srcs->w)
 	{
-	  screen_src.x = area->display_src.x+area->display_src.w-WINDOW_WIDTH;
+	  camera_src.x = area->display_srcs->w-WINDOW_WIDTH;
 	}
 
-      if (screen_src.y < area->display_src.y)
+      if (camera_src.y < 0)
 	{
-	  screen_src.y = area->display_src.y;
+	  camera_src.y = 0;
 	}
-      else if (screen_src.y+WINDOW_HEIGHT
-	       > area->display_src.y+area->display_src.h)
+      else if (camera_src.y+WINDOW_HEIGHT > area->display_srcs->h)
 	{
-	  screen_src.y = area->display_src.y+area->display_src.h-WINDOW_HEIGHT;
+	  camera_src.y = area->display_srcs->h-WINDOW_HEIGHT;
 	}
+
+      back_src.x = area->display_srcs
+	[frame_counter%(area->area_frames_num*AREA_FRAME_DURATION)
+	 /AREA_FRAME_DURATION].x + camera_src.x;
+      back_src.y = area->display_srcs
+	[frame_counter%(area->area_frames_num*AREA_FRAME_DURATION)
+	 /AREA_FRAME_DURATION].y + camera_src.y;
 
       SDL_RenderClear (rend);
-      SDL_RenderCopy (rend, area->texture, &screen_src, &screen_dest);
+      SDL_RenderCopy (rend, area->texture, &back_src, &screen_dest);
 
       if (latest_srv_state)
 	{
@@ -602,10 +616,8 @@ main (int argc, char *argv[])
 	      if (vis.type != VISIBLE_ZOMBIE)
 		continue;
 
-	      pers.x = screen_dest.x - screen_src.x + area->display_src.x
-		+ area->walkable.x + vis.x + zombie_origin.x;
-	      pers.y = screen_dest.y - screen_src.y + area->display_src.y
-		+ area->walkable.y + vis.y + zombie_origin.y;
+	      pers.x = -camera_src.x + area->walkable.x + vis.x + zombie_origin.x;
+	      pers.y = -camera_src.y + area->walkable.y + vis.y + zombie_origin.y;
 	      pers.w = character_dest.w;
 	      pers.h = character_dest.h;
 	      SDL_RenderCopy (rend, zombietxtr,
@@ -623,10 +635,10 @@ main (int argc, char *argv[])
 	      if (vis.type != VISIBLE_PLAYER)
 		continue;
 
-	      pers.x = screen_dest.x - screen_src.x + area->display_src.x
-		+ area->walkable.x + vis.x + character_origin.x;
-	      pers.y = screen_dest.y - screen_src.y + area->display_src.y
-		+ area->walkable.y + vis.y + character_origin.y;
+	      pers.x = -camera_src.x + area->walkable.x + vis.x
+		+ character_origin.x;
+	      pers.y = -camera_src.y + area->walkable.y + vis.y
+		+ character_origin.y;
 	      pers.w = character_dest.w;
 	      pers.h = character_dest.h;
 	      SDL_RenderCopy (rend, charactertxtr,
@@ -637,10 +649,10 @@ main (int argc, char *argv[])
 	    }
 	}
 
-      character_dest.x = screen_dest.x - screen_src.x + area->display_src.x
-	+ area->walkable.x + character_box.x + character_origin.x;
-      character_dest.y = screen_dest.y - screen_src.y + area->display_src.y
-	+ area->walkable.y + character_box.y + character_origin.y;
+      character_dest.x = -camera_src.x + area->walkable.x + character_box.x
+	+ character_origin.x;
+      character_dest.y = -camera_src.y + area->walkable.y + character_box.y
+	+ character_origin.y;
       SDL_RenderCopy (rend, charactertxtr,
 		      &character_srcs [loc_char_facing*3+
 				       ((loc_char_speed_x || loc_char_speed_y)
@@ -649,8 +661,8 @@ main (int argc, char *argv[])
 
       if (area->overlay_src.w)
 	{
-	  screen_overlay.x = area->overlay_src.x+screen_src.x;
-	  screen_overlay.y = area->overlay_src.y+screen_src.y;
+	  screen_overlay.x = area->overlay_src.x+camera_src.x;
+	  screen_overlay.y = area->overlay_src.y+camera_src.y;
 	  SDL_RenderCopy (rend, area->texture, &screen_overlay, &screen_dest);
 	}
 
@@ -664,12 +676,8 @@ main (int argc, char *argv[])
 	      if (vis.type != VISIBLE_SHOT)
 		continue;
 
-	      sh.x = screen_dest.x - screen_src.x + area->display_src.x
-		+ area->walkable.x + vis.x;
-	      sh.y = screen_dest.y - screen_src.y + area->display_src.y
-		+ area->walkable.y + vis.y;
-	      sh.w = GRID_CELL_W;
-	      sh.h = GRID_CELL_H;
+	      sh.x = -camera_src.x + area->walkable.x + vis.x;
+	      sh.y = -camera_src.y + area->walkable.y + vis.y;
 	      SDL_RenderCopy (rend, effectstxtr, &shot_src, &sh);
 	    }
 	}
