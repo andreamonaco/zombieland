@@ -863,7 +863,9 @@ main (int argc, char *argv[])
     RECT_BY_GRID (16, 11, 1, 3), RECT_BY_GRID (26, 14, 3, 1),
     RECT_BY_GRID (28, 16, 3, 1), RECT_BY_GRID (1, 14, 2, 1),
     RECT_BY_GRID (2, 15, 1, 2), RECT_BY_GRID (3, 16, 1, 1)},
-    field_zombie_spawns [] = {RECT_BY_GRID (10, 1, 1, 1)};
+    field_zombie_spawns [] = {RECT_BY_GRID (13, 31, 1, 1),
+    RECT_BY_GRID (31, 22, 1, 1), RECT_BY_GRID (16, 0, 1, 1),
+    RECT_BY_GRID (0, 23, 1, 1)};
 
   struct server_area room = {0};
   SDL_Rect room_walkable = RECT_BY_GRID (0, 0, 12, 12),
@@ -923,7 +925,7 @@ main (int argc, char *argv[])
   field.zombies = NULL;
   field.zombies_num = 0;
   field.zombie_spawns = field_zombie_spawns;
-  field.zombie_spawns_num = 1;
+  field.zombie_spawns_num = 4;
   field.next = &room;
 
   room.id = 1;
@@ -1117,8 +1119,9 @@ main (int argc, char *argv[])
 	    {
 	      if (area->zombie_spawns_num && area->zombies_num < MAX_ZOMBIES)
 		{
-		  area->zombies = make_zombie (area->zombie_spawns->x,
-					       area->zombie_spawns->y,
+		  i = rand () % area->zombie_spawns_num;
+		  area->zombies = make_zombie (area->zombie_spawns [i].x,
+					       area->zombie_spawns [i].y,
 					       FACING_DOWN, area, area->zombies,
 					       &agents);
 		  area->zombies_num++;
