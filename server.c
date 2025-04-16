@@ -57,6 +57,7 @@
 #define ZOMBIE_SPEED 1
 
 
+#define IMMORTAL_DURATION 10
 #define SHOOT_REST 10
 
 
@@ -79,7 +80,7 @@ player
   char *textbox;
   int textbox_lines_num;
 
-  int32_t life, shoot_rest;
+  int shoot_rest;
 
   int timeout;
 };
@@ -91,7 +92,6 @@ struct zombie
 
   enum facing facing;
   int32_t speed_x, speed_y;
-  int life;
 
   struct zombie *next;
 };
@@ -116,9 +116,13 @@ agent_data_ptr
 struct
 agent
 {
-  enum agent_type type;
   struct server_area *area;
   SDL_Rect place;
+
+  int32_t life;
+  int immortal;
+
+  enum agent_type type;
   union agent_data_ptr data_ptr;
 
   struct agent *prev;
@@ -205,9 +209,11 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
     return -1;
 
   a = malloc_and_check (sizeof (*a));
-  a->type = AGENT_PLAYER;
   a->area = area;
   set_rect (&a->place, 96, 0, 16, 16);
+  a->life = 10;
+  a->immortal = 0;
+  a->type = AGENT_PLAYER;
   a->data_ptr.player = &pls [i];
   a->prev = NULL;
   a->next = *agents;
@@ -228,7 +234,6 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   pls [i].interact = 0;
   pls [i].textbox = NULL;
   pls [i].textbox_lines_num = 0;
-  pls [i].life = 10;
   pls [i].shoot_rest = 0;
   pls [i].timeout = CLIENT_TIMEOUT;
 
@@ -282,9 +287,11 @@ make_zombie (int placex, int placey, enum facing facing,
   struct zombie *ret = malloc_and_check (sizeof (*ret));
   struct agent *a = malloc_and_check (sizeof (*a));
 
-  a->type = AGENT_ZOMBIE;
   a->area = area;
   set_rect (&a->place, placex, placey, GRID_CELL_W, GRID_CELL_H);
+  a->life = 2;
+  a->immortal = 0;
+  a->type = AGENT_ZOMBIE;
   a->data_ptr.zombie = ret;
   a->prev = NULL;
   a->next = *agents;
@@ -297,7 +304,6 @@ make_zombie (int placex, int placey, enum facing facing,
   ret->agent = a;
   ret->facing = facing;
   ret->speed_x = ret->speed_y = 0;
-  ret->life = 2;
   ret->next = next;
 
   return ret;
@@ -489,10 +495,11 @@ check_boundary (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable)
 
 SDL_Rect
 move_character (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable,
-		SDL_Rect unwalkables [], int unwalkables_num, struct zombie *z,
+		SDL_Rect unwalkables [], int unwalkables_num, struct zombie *zs,
 		int *character_hit)
 {
   int collided;
+  struct zombie *z;
 
   *character_hit = 0;
   charbox.x += speed_x;
@@ -505,32 +512,60 @@ move_character (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable,
   if (collided)
     goto restart;
 
-  /*while (z)
+  z = zs;
+
+  while (z)
     {
-      charbox = check_and_resolve_collision (charbox, &speed_x, &speed_y, z->place,
+      charbox = check_and_resolve_collision (charbox, &speed_x, &speed_y,
+					     z->agent->place, NULL, 0,
 					     &collided);
 
       if (collided)
-	*character_hit = 1;
+	{
+	  *character_hit = 1;
+	  goto restart;
+	}
 
       z = z->next;
-      }*/
+    }
 
   return check_boundary (charbox, speed_x, speed_y, walkable);
 }
 
 
 SDL_Rect
-move_zombie (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable,
-	     SDL_Rect unwalkables [], int unwalkables_num)
+move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_y,
+	     SDL_Rect walkable, SDL_Rect unwalkables [], int unwalkables_num,
+	     struct player pls [])
 {
-  int collided;
+  int collided, i;
 
   charbox.x += speed_x;
   charbox.y += speed_y;
 
+ restart:
   charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y, unwalkables,
 					  unwalkables_num, &collided);
+
+  if (collided)
+    goto restart;
+
+  for (i = 0; i < MAX_PLAYERS; i++)
+    {
+      if (pls [i].id == -1 || area != pls [i].agent->area)
+	continue;
+
+      charbox = check_and_resolve_collision (charbox, &speed_x, &speed_y,
+					     pls [i].agent->place, NULL, 0,
+					     &collided);
+
+      if (collided && !pls [i].agent->immortal)
+	{
+	  pls [i].agent->immortal = IMMORTAL_DURATION;
+	  pls [i].agent->life--;
+	  goto restart;
+	}
+    }
 
   return check_boundary (charbox, speed_x, speed_y, walkable);
 }
@@ -723,7 +758,7 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
   msg->args.server_state.w = pls [id].agent->place.w;
   msg->args.server_state.h = pls [id].agent->place.h;
   msg->args.server_state.char_facing = pls [id].facing;
-  msg->args.server_state.life = pls [id].life;
+  msg->args.server_state.life = pls [id].agent->life;
   msg->args.server_state.num_visibles = 0;
   msg->args.server_state.textbox_lines_num = pls [id].textbox_lines_num;
 
@@ -1105,6 +1140,9 @@ main (int argc, char *argv[])
 	      z->facing = z->speed_y > 0 ? FACING_DOWN
 		: z->speed_y < 0 ? FACING_UP : z->facing;
 
+	      if (z->agent->immortal)
+		z->agent->immortal--;
+
 	      z = z->next;
 	    }
 
@@ -1143,8 +1181,14 @@ main (int argc, char *argv[])
 	    move_character (players [i].agent->place, players [i].speed_x,
 			    players [i].speed_y, players [i].agent->area->walkable,
 			    players [i].agent->area->unwalkables,
-			    players [i].agent->area->unwalkables_num, NULL,
-			    &char_hit);
+			    players [i].agent->area->unwalkables_num,
+			    players [i].agent->area->zombies, &char_hit);
+
+	  if (char_hit && !players [i].agent->immortal)
+	    {
+	      players [i].agent->immortal = IMMORTAL_DURATION;
+	      players [i].agent->life--;
+	    }
 
 	  if (players [i].interact)
 	    {
@@ -1178,14 +1222,15 @@ main (int argc, char *argv[])
 	      s->next = shots;
 	      shots = s;
 
-	      if (shotag)
+	      if (shotag && !shotag->immortal)
 		{
-		  if (shotag->type == AGENT_PLAYER)
-		    shotag->data_ptr.player->life--;
-		  else
-		    shotag->data_ptr.zombie->life--;
+		  shotag->immortal = IMMORTAL_DURATION;
+		  shotag->life--;
 		}
 	    }
+
+	  if (players [i].agent->immortal)
+	    players [i].agent->immortal--;
 
 	  if (players [i].shoot_rest)
 	    players [i].shoot_rest--;
@@ -1237,7 +1282,7 @@ main (int argc, char *argv[])
 
 	  while (z)
 	    {
-	      if (z->life <= 0)
+	      if (z->agent->life <= 0)
 		{
 		  if (prz)
 		    prz->next = z->next;
@@ -1261,10 +1306,11 @@ main (int argc, char *argv[])
 		}
 	      else
 		{
-		  z->agent->place = move_zombie (z->agent->place, z->speed_x,
-						 z->speed_y, area->walkable,
+		  z->agent->place = move_zombie (z->agent->place, area,
+						 z->speed_x, z->speed_y,
+						 area->walkable,
 						 area->unwalkables,
-						 area->unwalkables_num);
+						 area->unwalkables_num, players);
 
 		  prz = z;
 		  z = z->next;
@@ -1276,7 +1322,7 @@ main (int argc, char *argv[])
 
       for (i = 0; i < MAX_PLAYERS; i++)
 	{
-	  if (players [i].id != -1 && players [i].life <= 0)
+	  if (players [i].id != -1 && players [i].agent->life <= 0)
 	    {
 	      send_message (sockfd, &players [i].address, -1, MSG_PLAYER_DIED);
 	      players [i].id = -1;
