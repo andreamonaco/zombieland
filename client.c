@@ -51,7 +51,9 @@ client_area
   SDL_Texture *texture;
   SDL_Rect *display_srcs;
   int area_frames_num;
-  SDL_Rect overlay_src, walkable;
+  SDL_Rect *overlay_srcs;
+  int overlay_frames_num;
+  SDL_Rect walkable;
   struct client_area *next;
 };
 
@@ -90,11 +92,13 @@ main (int argc, char *argv[])
   SDL_Rect field_srcs [] = {RECT_BY_GRID (0, 0, 32, 32),
     RECT_BY_GRID (32, 0, 32, 32), RECT_BY_GRID (64, 0, 32, 32),
     RECT_BY_GRID (96, 0, 32, 32), RECT_BY_GRID (128, 0, 32, 32)},
-    field_overlay = RECT_BY_GRID (160, 0, 32, 32),
+    field_overlays [] = {RECT_BY_GRID (0, 32, 32, 32),
+    RECT_BY_GRID (32, 32, 32, 32), RECT_BY_GRID (64, 32, 32, 32),
+    RECT_BY_GRID (96, 32, 32, 32), RECT_BY_GRID (128, 32, 32, 32)},
     field_walkable = {0, 0, 512, 512};
 
   struct client_area room;
-  SDL_Rect room_src = {0, 512, 256, 256}, room_overlay = {0},
+  SDL_Rect room_src = {0, 1024, 256, 256},
     room_walkable = RECT_BY_GRID (2, 2, 12, 12);
 
   struct client_area *areas = &field, *area = &field, *ar;
@@ -369,7 +373,8 @@ main (int argc, char *argv[])
   field.texture = areatxtr;
   field.display_srcs = field_srcs;
   field.area_frames_num = 5;
-  field.overlay_src = field_overlay;
+  field.overlay_srcs = field_overlays;
+  field.overlay_frames_num = 5;
   field.walkable = field_walkable;
   field.next = &room;
 
@@ -377,7 +382,8 @@ main (int argc, char *argv[])
   room.texture = areatxtr;
   room.display_srcs = &room_src;
   room.area_frames_num = 1;
-  room.overlay_src = room_overlay;
+  room.overlay_srcs = NULL;
+  room.overlay_frames_num = 0;
   room.walkable = room_walkable;
   room.next = NULL;
 
@@ -670,10 +676,14 @@ main (int argc, char *argv[])
 					? 1+(frame_counter%12)/6 : 0)],
 		      &character_dest);
 
-      if (area->overlay_src.w)
+      if (area->overlay_frames_num)
 	{
-	  screen_overlay.x = area->overlay_src.x+camera_src.x;
-	  screen_overlay.y = area->overlay_src.y+camera_src.y;
+	  screen_overlay.x = area->overlay_srcs
+	    [frame_counter%(area->overlay_frames_num*AREA_FRAME_DURATION)
+	     /AREA_FRAME_DURATION].x + camera_src.x;
+	  screen_overlay.y = area->overlay_srcs
+	    [frame_counter%(area->overlay_frames_num*AREA_FRAME_DURATION)
+	     /AREA_FRAME_DURATION].y + camera_src.y;
 	  SDL_RenderCopy (rend, area->texture, &screen_overlay, &screen_dest);
 	}
 
