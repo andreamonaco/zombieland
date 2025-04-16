@@ -862,7 +862,9 @@ main (int argc, char *argv[])
     RECT_BY_GRID (6, 29, 1, 1), RECT_BY_GRID (2, 27, 3, 3),
     RECT_BY_GRID (16, 11, 1, 3), RECT_BY_GRID (26, 14, 3, 1),
     RECT_BY_GRID (28, 16, 3, 1), RECT_BY_GRID (1, 14, 2, 1),
-    RECT_BY_GRID (2, 15, 1, 2), RECT_BY_GRID (3, 16, 1, 1)},
+    RECT_BY_GRID (2, 15, 1, 2), RECT_BY_GRID (3, 16, 1, 1),
+    RECT_BY_GRID (5, 14, 0, 4), RECT_BY_GRID (21, 17, 0, 3),
+    RECT_BY_GRID (27, 21, 0, 4), RECT_BY_GRID (30, 26, 0, 4)},
     field_zombie_spawns [] = {RECT_BY_GRID (13, 31, 1, 1),
     RECT_BY_GRID (31, 22, 1, 1), RECT_BY_GRID (16, 0, 1, 1),
     RECT_BY_GRID (0, 23, 1, 1)};
@@ -919,7 +921,7 @@ main (int argc, char *argv[])
   field.id = 0;
   field.walkable = field_walkable;
   field.unwalkables = field_unwalkables;
-  field.unwalkables_num = 43;
+  field.unwalkables_num = 47;
   field.warps = make_warp_by_grid (12, 13, 1, 1, &room, 5, 11, NULL);
   field.interactibles = NULL;
   field.zombies = NULL;
