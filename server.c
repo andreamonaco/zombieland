@@ -573,7 +573,7 @@ move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_
 
 int
 is_target_hit (SDL_Rect charbox, enum facing facing, SDL_Rect target,
-	       SDL_Rect *hitpart)
+	       int is_agent, SDL_Rect *hitpart)
 {
   switch (facing)
     {
@@ -588,7 +588,7 @@ is_target_hit (SDL_Rect charbox, enum facing facing, SDL_Rect target,
 	}
       break;
     case FACING_UP:
-      if (charbox.y>target.y
+      if ((charbox.y>target.y || (!is_agent && charbox.y==target.y))
 	  && target.x<=charbox.x+charbox.w/2
 	  && charbox.x+charbox.w/2 <= target.x+target.w)
 	{
@@ -608,7 +608,7 @@ is_target_hit (SDL_Rect charbox, enum facing facing, SDL_Rect target,
 	}
       break;
     case FACING_LEFT:
-      if (charbox.x>target.x
+      if ((charbox.x>target.x || (!is_agent && charbox.x==target.x))
 	  && target.y<=charbox.y+charbox.h/2
 	  && charbox.y+charbox.h/2 <= target.y+target.h)
 	{
@@ -653,7 +653,7 @@ get_shot_rect (SDL_Rect charbox, enum facing facing, struct server_area *area,
 
   for (i = 0; i < area->unwalkables_num; i++)
     {
-      if (is_target_hit (charbox, facing, area->unwalkables [i], &hitpart))
+      if (is_target_hit (charbox, facing, area->unwalkables [i], 0, &hitpart))
 	{
 	  if (!found || is_closer (facing, hitpart, ret))
 	    {
@@ -666,7 +666,7 @@ get_shot_rect (SDL_Rect charbox, enum facing facing, struct server_area *area,
   while (as)
     {
       if (area == as->area
-	  && is_target_hit (charbox, facing, as->place, &hitpart))
+	  && is_target_hit (charbox, facing, as->place, 1, &hitpart))
 	{
 	  if (!found || is_closer (facing, hitpart, ret))
 	    {
