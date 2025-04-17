@@ -57,7 +57,7 @@
 #define ZOMBIE_SPEED 1
 
 
-#define IMMORTAL_DURATION 10
+#define IMMORTAL_DURATION 20
 #define SHOOT_REST 10
 
 
@@ -79,6 +79,8 @@ player
   int interact;
   char *textbox;
   int textbox_lines_num;
+
+  int freeze;
 
   int shoot_rest;
 
@@ -234,6 +236,7 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   pls [i].interact = 0;
   pls [i].textbox = NULL;
   pls [i].textbox_lines_num = 0;
+  pls [i].freeze = 0;
   pls [i].shoot_rest = 0;
   pls [i].timeout = CLIENT_TIMEOUT;
 
@@ -494,12 +497,12 @@ check_boundary (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable)
 
 
 SDL_Rect
-move_character (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable,
-		SDL_Rect unwalkables [], int unwalkables_num, struct zombie *zs,
-		int *character_hit)
+move_character (struct player *pl, SDL_Rect walkable, SDL_Rect unwalkables [],
+		int unwalkables_num, struct zombie *zs, int *character_hit)
 {
-  int collided;
+  int collided, speed_x = pl->speed_x, speed_y = pl->speed_y;
   struct zombie *z;
+  SDL_Rect charbox = pl->agent->place;
 
   *character_hit = 0;
   charbox.x += speed_x;
@@ -522,6 +525,15 @@ move_character (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable,
 
       if (collided)
 	{
+	  if (!pl->agent->immortal)
+	    {
+	      pl->agent->immortal = IMMORTAL_DURATION;
+	      pl->agent->life--;
+	      pl->freeze = 5;
+	      pl->speed_x = z->speed_x*3;
+	      pl->speed_y = z->speed_y*3;
+	    }
+
 	  *character_hit = 1;
 	  goto restart;
 	}
@@ -538,7 +550,7 @@ move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_
 	     SDL_Rect walkable, SDL_Rect unwalkables [], int unwalkables_num,
 	     struct player pls [])
 {
-  int collided, i;
+  int collided, i, sx = speed_x, sy = speed_y;
 
   charbox.x += speed_x;
   charbox.y += speed_y;
@@ -559,10 +571,17 @@ move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_
 					     pls [i].agent->place, NULL, 0,
 					     &collided);
 
-      if (collided && !pls [i].agent->immortal)
+      if (collided)
 	{
-	  pls [i].agent->immortal = IMMORTAL_DURATION;
-	  pls [i].agent->life--;
+	  if (!pls [i].agent->immortal)
+	    {
+	      pls [i].agent->immortal = IMMORTAL_DURATION;
+	      pls [i].agent->life--;
+	      pls [i].freeze = 5;
+	      pls [i].speed_x = sx*3;
+	      pls [i].speed_y = sy*3;
+	    }
+
 	  goto restart;
 	}
     }
@@ -1110,21 +1129,26 @@ main (int argc, char *argv[])
 	      else if (players [id].last_update
 		       < msg->args.client_char_state.frame_counter)
 		{
-		  players [id].speed_x =
-		    msg->args.client_char_state.char_speed_x > 0 ? CHAR_SPEED
-		    : msg->args.client_char_state.char_speed_x < 0 ? -CHAR_SPEED
-		    : 0;
-		  players [id].speed_y =
-		    msg->args.client_char_state.char_speed_y > 0 ? CHAR_SPEED
-		    : msg->args.client_char_state.char_speed_y < 0 ? -CHAR_SPEED
-		    : 0;
-		  players [id].facing = msg->args.client_char_state.char_facing;
+		  if (!players [id].freeze)
+		    {
+		      players [id].speed_x =
+			msg->args.client_char_state.char_speed_x > 0 ? CHAR_SPEED
+			: msg->args.client_char_state.char_speed_x < 0
+			? -CHAR_SPEED : 0;
+		      players [id].speed_y =
+			msg->args.client_char_state.char_speed_y > 0 ? CHAR_SPEED
+			: msg->args.client_char_state.char_speed_y < 0
+			? -CHAR_SPEED : 0;
+		      players [id].facing
+			= msg->args.client_char_state.char_facing;
 
-		  players [id].interact = msg->args.client_char_state.do_interact;
+		      players [id].interact
+			= msg->args.client_char_state.do_interact;
 
-		  if (!players [id].interact && !players [id].shoot_rest
-		      && msg->args.client_char_state.do_shoot)
-		    players [id].shoot_rest = SHOOT_REST;
+		      if (!players [id].interact && !players [id].shoot_rest
+			  && msg->args.client_char_state.do_shoot)
+			players [id].shoot_rest = SHOOT_REST;
+		    }
 
 		  players [id].last_update
 		    = msg->args.client_char_state.frame_counter;
@@ -1192,17 +1216,10 @@ main (int argc, char *argv[])
 	    continue;
 
 	  players [i].agent->place =
-	    move_character (players [i].agent->place, players [i].speed_x,
-			    players [i].speed_y, players [i].agent->area->walkable,
+	    move_character (&players [i], players [i].agent->area->walkable,
 			    players [i].agent->area->unwalkables,
 			    players [i].agent->area->unwalkables_num,
 			    players [i].agent->area->zombies, &char_hit);
-
-	  if (char_hit && !players [i].agent->immortal)
-	    {
-	      players [i].agent->immortal = IMMORTAL_DURATION;
-	      players [i].agent->life--;
-	    }
 
 	  if (players [i].interact)
 	    {
@@ -1365,6 +1382,9 @@ main (int argc, char *argv[])
 	{
 	  if (players [i].id != -1)
 	    {
+	      if (players [i].freeze)
+		players [i].freeze--;
+
 	      players [i].timeout--;
 
 	      if (!players [i].timeout)
