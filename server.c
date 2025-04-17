@@ -683,10 +683,8 @@ get_shot_rect (SDL_Rect charbox, enum facing facing, struct server_area *area,
     {
       ret.w = GRID_CELL_W;
       ret.h = GRID_CELL_H;
-      return ret;
     }
-
-  switch (facing)
+  else switch (facing)
     {
     case FACING_DOWN:
       ret.x = charbox.x;
@@ -703,6 +701,22 @@ get_shot_rect (SDL_Rect charbox, enum facing facing, struct server_area *area,
     case FACING_LEFT:
       ret.x = -GRID_CELL_W;
       ret.y = charbox.y;
+      break;
+    }
+
+  switch (facing)
+    {
+    case FACING_DOWN:
+      ret.y -= 8;
+      break;
+    case FACING_UP:
+      ret.y += 8;
+      break;
+    case FACING_RIGHT:
+      ret.x -= 8;
+      break;
+    case FACING_LEFT:
+      ret.x += 8;
       break;
     }
 
