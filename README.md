@@ -15,6 +15,60 @@ new features and bugfixes happen daily.
 
 
 
+__On which platforms does Zombieland run?__
+
+Zombieland is written in portable C and uses SDL2, SDL2_image and SDL2_ttf for
+multimedia, so that part is fairly portable.
+Networking code uses the Posix API, so consult the docs of your platform about
+that.
+The configure and build toolchain is autotools, but building is easy enough that
+you can do it yourself.
+
+
+
+__How can I build Zombieland?__
+
+If you have the dependencies installed (including the autotools), just do the
+usual from the directory of the repository:
+
+ $ autoreconf -fi && ./configure && make
+
+
+
+__How can I play Zombieland?__
+
+Start the server (zombielandd) on some computer, then start the client
+(zombieland) with two arguments: the address of the server and any username you
+like.
+
+Move around with the arrows, fire with F, interact with objects (reading signs
+and so on) with Space and close the game with Esc.  Any number of players can
+shoot at each other and at the zombies until they die.
+
+
+
+__Can I test Zombieland locally?__
+
+Yes.  After building, start first the server (zombielandd), then the client
+(zombieland) on another terminal, the latter with 127.0.0.1 and any username as
+arguments.  You can even run multiple clients on the same system.
+
+
+
+__What is Zombieland capable to do?__
+
+I tested Zombieland on a LAN and I confirmed that multiple players can move in
+the same 2D map and fight.
+
+
+
+__Does Zombieland work across architectures?__
+
+Not yet probably: endianness conversions are still not applied consistently.  I
+will fix this soon enough.
+
+
+
 __Who made the assets?__
 
 I made the maps using a tileset taken by https://opengameart.org:
@@ -22,8 +76,8 @@ I made the maps using a tileset taken by https://opengameart.org:
 "Zelda-like tilesets and sprites" by ArMM1998 licensed CC0 1.0 Universal:
 https://opengameart.org/content/zelda-like-tilesets-and-sprites
 
-The player sprite (character.png) and zombie sprite (NPC_test.png) come from the
-same set.
+The player sprite (character.png) and zombie sprite (NPC_test.png) come from
+that same set.
 
 The spark effect in effects.png comes from:
 
@@ -42,56 +96,6 @@ https://opengameart.org/content/digital-jots-5x5-pixel-font-with-katakana
 
 All these assets are not final, I will probably make my own along the way, but
 they show that the engine works.
-
-
-
-__How can I play Zombieland?__
-
-Move around with the arrows, fire with F, interact with objects (reading signs
-and so on) with Space and close the game with Esc.  Any number of players can
-shoot at each other until they die.
-
-
-
-__Can I test Zombieland locally?__
-
-Yes.  After building, start first the server (zombielandd), then the client
-(zombieland) on another terminal, the latter with 127.0.0.1 and any username as
-arguments.  You can even run multiple clients on the same system.
-
-
-
-__What is Zombieland capable to do?__
-
-I tested Zombieland on a LAN and I confirmed that multiple players can move in
-the same 2D map.
-
-
-
-__On which platforms does Zombieland run?__
-
-Zombieland is written in portable C and uses SDL2, SDL2_image and SDL2_ttf for
-multimedia, so that part is fairly portable.
-Networking code uses the Posix API, so consult the docs of your platform about
-that.
-The configure and build toolchain is autotools, but building is easy enough that
-you can do it yourself.
-
-
-
-__Does Zombieland work across architectures?__
-
-Not yet probably: endianness conversions are still not applied consistently.  I
-will fix this soon enough.
-
-
-
-__How can I build Zombieland?__
-
-If you have the dependencies installed (including the autotools), just do the
-usual from the directory of the repository:
-
- $ autoreconf -fi && ./configure && make
 
 
 
