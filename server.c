@@ -76,6 +76,8 @@ player
   int32_t speed_x, speed_y;
   enum facing facing;
 
+  int32_t bullets;
+
   int interact;
   char *textbox;
   int textbox_lines_num;
@@ -233,6 +235,7 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   pls [i].last_update = 0;
   strcpy (pls [i].name, name);
   pls [i].speed_x = pls [i].speed_y = pls [i].facing = 0;
+  pls [i].bullets = 16;
   pls [i].interact = 0;
   pls [i].textbox = NULL;
   pls [i].textbox_lines_num = 0;
@@ -792,6 +795,7 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
   msg->args.server_state.h = pls [id].agent->place.h;
   msg->args.server_state.char_facing = pls [id].facing;
   msg->args.server_state.life = pls [id].agent->life;
+  msg->args.server_state.bullets = pls [id].bullets;
   msg->args.server_state.num_visibles = 0;
   msg->args.server_state.textbox_lines_num = pls [id].textbox_lines_num;
 
@@ -1145,9 +1149,12 @@ main (int argc, char *argv[])
 		      players [id].interact
 			= msg->args.client_char_state.do_interact;
 
-		      if (!players [id].interact && !players [id].shoot_rest
-			  && msg->args.client_char_state.do_shoot)
-			players [id].shoot_rest = SHOOT_REST;
+		      if (msg->args.client_char_state.do_shoot
+			  && !players [id].interact && players [id].bullets
+			  && !players [id].shoot_rest)
+			{
+			  players [id].shoot_rest = SHOOT_REST;
+			}
 		    }
 
 		  players [id].last_update
@@ -1252,6 +1259,8 @@ main (int argc, char *argv[])
 	      s->duration = 10;
 	      s->next = shots;
 	      shots = s;
+
+	      players [id].bullets--;
 
 	      if (shotag && !shotag->immortal)
 		{

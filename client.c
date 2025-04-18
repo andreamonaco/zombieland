@@ -117,7 +117,7 @@ main (int argc, char *argv[])
     zombie_origin = {0, -5, 0, 0};
 
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
-    do_shoot = 0, life = 10;
+    do_shoot = 0, life = 10, bullets = 16;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct visible vis;
 
@@ -126,13 +126,14 @@ main (int argc, char *argv[])
   SDL_Event event;
 
   SDL_Texture *areatxtr, *charactertxtr, *zombietxtr, *effectstxtr, *texttxtr,
-    *charlifetxtr;
-  SDL_Surface *iconsurf, *textsurf, *charlifesurf;
+    *hudtexttxtr;
+  SDL_Surface *iconsurf, *textsurf, *hudtextsurf;
   TTF_Font *hudfont, *textfont;
-  char textbox [MAXTEXTSIZE], charlifetext [20];
+  char textbox [MAXTEXTSIZE], hudtext [20];
   int textlines = 0, textcursor;
   char tmpch;
   SDL_Rect charliferect = {10, 10, 40, 40},
+    bulletsrect = {WINDOW_WIDTH/2+10, 10, 40, 40},
     textbackrect = {0, WINDOW_HEIGHT-50, WINDOW_WIDTH, 50},
     textrect [] = {{10, WINDOW_HEIGHT-40, 0, 0}, {10, WINDOW_HEIGHT-20, 0, 0}};
 
@@ -588,6 +589,7 @@ main (int argc, char *argv[])
 	  character_box.h = state->args.server_state.h;
 	  srv_char_facing = state->args.server_state.char_facing;
 	  life = state->args.server_state.life;
+	  bullets = state->args.server_state.bullets;
 	}
 
       camera_src.x = -WINDOW_WIDTH/2 + area->walkable.x + character_box.x
@@ -755,30 +757,55 @@ main (int argc, char *argv[])
 	    }
 	}
 
-      sprintf (charlifetext, "LIFE %2d/10", life);
-      charlifesurf = TTF_RenderText_Solid (hudfont, charlifetext, textcol);
+      sprintf (hudtext, "LIFE %2d/10", life);
+      hudtextsurf = TTF_RenderText_Solid (hudfont, hudtext, textcol);
 
-      if (!charlifesurf)
+      if (!hudtextsurf)
 	{
 	  fprintf (stderr, "could not print text: %s\n", TTF_GetError ());
 	  return 1;
 	}
 
-      charlifetxtr = SDL_CreateTextureFromSurface (rend, charlifesurf);
+      hudtexttxtr = SDL_CreateTextureFromSurface (rend, hudtextsurf);
 
-      if (!charlifetxtr)
+      if (!hudtexttxtr)
 	{
 	  fprintf (stderr, "could not create texture for text: %s\n",
 		   SDL_GetError ());
 	  return 1;
 	}
 
-      charliferect.w = charlifesurf->w;
-      charliferect.h = charlifesurf->h;
+      charliferect.w = hudtextsurf->w;
+      charliferect.h = hudtextsurf->h;
 
-      SDL_RenderCopy (rend, charlifetxtr, NULL, &charliferect);
-      SDL_DestroyTexture (charlifetxtr);
-      SDL_FreeSurface (charlifesurf);
+      SDL_RenderCopy (rend, hudtexttxtr, NULL, &charliferect);
+      SDL_DestroyTexture (hudtexttxtr);
+      SDL_FreeSurface (hudtextsurf);
+
+      sprintf (hudtext, "AMMO %2d/16", bullets);
+      hudtextsurf = TTF_RenderText_Solid (hudfont, hudtext, textcol);
+
+      if (!hudtextsurf)
+	{
+	  fprintf (stderr, "could not print text: %s\n", TTF_GetError ());
+	  return 1;
+	}
+
+      hudtexttxtr = SDL_CreateTextureFromSurface (rend, hudtextsurf);
+
+      if (!hudtexttxtr)
+	{
+	  fprintf (stderr, "could not create texture for text: %s\n",
+		   SDL_GetError ());
+	  return 1;
+	}
+
+      bulletsrect.w = hudtextsurf->w;
+      bulletsrect.h = hudtextsurf->h;
+
+      SDL_RenderCopy (rend, hudtexttxtr, NULL, &bulletsrect);
+      SDL_DestroyTexture (hudtexttxtr);
+      SDL_FreeSurface (hudtextsurf);
 
       SDL_RenderPresent (rend);
 

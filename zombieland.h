@@ -112,6 +112,7 @@ server_state_args
   uint32_t x, y, w, h;
   enum facing char_facing;
   int32_t life;
+  int32_t bullets;
   uint32_t num_visibles;
   uint32_t textbox_lines_num;
 };
