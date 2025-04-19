@@ -1340,7 +1340,7 @@ main (int argc, char *argv[])
 	      s->next = shots;
 	      shots = s;
 
-	      players [id].bullets--;
+	      players [i].bullets--;
 
 	      if (shotag && !shotag->immortal)
 		{
