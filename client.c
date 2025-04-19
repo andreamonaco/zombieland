@@ -126,7 +126,7 @@ main (int argc, char *argv[])
   SDL_Event event;
 
   SDL_Texture *areatxtr, *charactertxtr, *zombietxtr, *effectstxtr, *texttxtr,
-    *hudtexttxtr;
+    *hudtexttxtr, *objectstxtr;
   SDL_Surface *iconsurf, *textsurf, *hudtextsurf;
   TTF_Font *hudfont, *textfont;
   char textbox [MAXTEXTSIZE], hudtext [20];
@@ -135,7 +135,8 @@ main (int argc, char *argv[])
   SDL_Rect charliferect = {10, 10, 40, 40},
     bulletsrect = {WINDOW_WIDTH/2+10, 10, 40, 40},
     textbackrect = {0, WINDOW_HEIGHT-50, WINDOW_WIDTH, 50},
-    textrect [] = {{10, WINDOW_HEIGHT-40, 0, 0}, {10, WINDOW_HEIGHT-20, 0, 0}};
+    textrect [] = {{10, WINDOW_HEIGHT-40, 0, 0}, {10, WINDOW_HEIGHT-20, 0, 0}},
+    healthobjrect = {0, 0, 16, 16}, bulletobjrect = {16, 0, 16, 16};
 
   SDL_Color textcol = {0, 0, 0, 255};
   Uint8 colr, colg, colb, cola;
@@ -335,6 +336,15 @@ main (int argc, char *argv[])
   effectstxtr = IMG_LoadTexture (rend, "effects.png");
 
   if (!effectstxtr)
+    {
+      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
+  objectstxtr = IMG_LoadTexture (rend, "objects.png");
+
+  if (!objectstxtr)
     {
       fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
       SDL_Quit ();
@@ -627,6 +637,23 @@ main (int argc, char *argv[])
 
       if (latest_srv_state)
 	{
+	  for (i = 0; i < state->args.server_state.num_visibles; i++)
+	    {
+	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
+					+i*sizeof (vis));
+
+	      if (vis.type != VISIBLE_HEALTH && vis.type != VISIBLE_AMMO)
+		continue;
+
+	      pers.x = -camera_src.x + area->walkable.x + vis.x;
+	      pers.y = -camera_src.y + area->walkable.y + vis.y;
+	      pers.w = GRID_CELL_W;
+	      pers.h = GRID_CELL_H;
+	      SDL_RenderCopy (rend, objectstxtr,
+			      vis.type == VISIBLE_HEALTH ? &healthobjrect
+			      : &bulletobjrect, &pers);
+	    }
+
 	  for (i = 0; i < state->args.server_state.num_visibles; i++)
 	    {
 	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)

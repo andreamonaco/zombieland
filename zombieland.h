@@ -35,7 +35,9 @@
 #define MAX_PLAYERS 128
 
 #define MAX_ZOMBIES 10
-#define SPAWN_INTERVAL 300
+#define ZOMBIE_SPAWN_INTERVAL 300
+
+#define OBJECT_SPAWN_INTERVAL 300
 
 #define MAXTEXTSIZE 512
 #define TEXTLINESIZE 30
@@ -93,6 +95,8 @@ client_char_state_args
 #define VISIBLE_PLAYER 0
 #define VISIBLE_ZOMBIE 1
 #define VISIBLE_SHOT   2
+#define VISIBLE_HEALTH 3
+#define VISIBLE_AMMO   4
 
 struct
 visible

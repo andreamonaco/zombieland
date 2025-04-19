@@ -164,6 +164,23 @@ warp
 };
 
 
+enum
+object
+  {
+    OBJECT_NONE,
+    OBJECT_HEALTH,
+    OBJECT_AMMO
+  };
+
+
+struct
+object_spawn
+{
+  SDL_Rect place;
+  enum object content;
+};
+
+
 struct
 server_area
 {
@@ -179,6 +196,9 @@ server_area
   int zombies_num;
   SDL_Rect *zombie_spawns;
   int zombie_spawns_num;
+
+  struct object_spawn *object_spawns;
+  int object_spawns_num, free_object_spawns_num;
 
   struct server_area *next;
 };
@@ -783,8 +803,10 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 		   struct agent *as, struct shot *ss)
 {
   char buf [MAXMSGSIZE];
+  int i;
   struct message *msg = (struct message *) &buf;
   struct visible vis;
+  struct object_spawn *sps = pls [id].agent->area->object_spawns;
 
   msg->type = htonl (MSG_SERVER_STATE);
   msg->args.server_state.frame_counter = frame_counter;
@@ -833,6 +855,34 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	}
 
       as = as->next;
+    }
+
+  for (i = 0; i < pls [id].agent->area->object_spawns_num; i++)
+    {
+      if (sizeof (msg)+msg->args.server_state.num_visibles*sizeof (struct visible)
+	  > MAXMSGSIZE)
+	break;
+
+      switch (sps [i].content)
+	{
+	case OBJECT_HEALTH:
+	  vis.type = VISIBLE_HEALTH;
+	  break;
+	case OBJECT_AMMO:
+	  vis.type = VISIBLE_AMMO;
+	  break;
+	default:
+	  continue;
+	}
+
+      vis.x = sps [i].place.x;
+      vis.y = sps [i].place.y;
+      vis.w = sps [i].place.w;
+      vis.h = sps [i].place.h;
+
+      memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
+		    *sizeof (vis)], &vis, sizeof (vis));
+      msg->args.server_state.num_visibles++;
     }
 
   while (ss)
@@ -946,11 +996,14 @@ main (int argc, char *argv[])
     room_unwalkables [] = {RECT_BY_GRID (1, 6, 1, 3),
     RECT_BY_GRID (7, 2, 3, 3), RECT_BY_GRID (7, 5, 1, 2),
     RECT_BY_GRID (0, 11, 5, 1), RECT_BY_GRID (7, 11, 5, 1)};
+  struct object_spawn room_object_spawns [] = {{RECT_BY_GRID (1, 1, 1, 1), 0},
+					       {RECT_BY_GRID (3, 1, 1, 1), 0}};
 
   SDL_Event event;
 
   uint32_t frame_counter = 1, id;
-  int char_hit, quit = 0, i, spawn_counter = 0;
+  int char_hit, quit = 0, i, j, zombie_spawn_counter = 0,
+    object_spawn_counter = 0;
   Uint32 t1, t2;
   double delay;
 
@@ -1000,6 +1053,8 @@ main (int argc, char *argv[])
   field.zombies_num = 0;
   field.zombie_spawns = field_zombie_spawns;
   field.zombie_spawns_num = 4;
+  field.object_spawns = NULL;
+  field.object_spawns_num = field.free_object_spawns_num = 0;
   field.next = &room;
 
   room.id = 1;
@@ -1014,6 +1069,8 @@ main (int argc, char *argv[])
   room.zombies_num = 0;
   room.zombie_spawns = NULL;
   room.zombie_spawns_num = 0;
+  room.object_spawns = room_object_spawns;
+  room.object_spawns_num = room.free_object_spawns_num = 2;
   room.next = NULL;
 
   srand (time (NULL));
@@ -1194,9 +1251,9 @@ main (int argc, char *argv[])
 	  area = area->next;
 	}
 
-      if (spawn_counter == SPAWN_INTERVAL)
+      if (zombie_spawn_counter == ZOMBIE_SPAWN_INTERVAL)
 	{
-	  spawn_counter = 0;
+	  zombie_spawn_counter = 0;
 
 	  area = &field;
 
@@ -1216,6 +1273,29 @@ main (int argc, char *argv[])
 	    }
 	}
 
+      if (object_spawn_counter == OBJECT_SPAWN_INTERVAL)
+	{
+	  object_spawn_counter = 0;
+
+	  area = &field;
+
+	  while (area)
+	    {
+	      if (area->free_object_spawns_num)
+		{
+		  for (i = 0; i < area->object_spawns_num; i++)
+		    {
+		      if (!area->object_spawns [i].content)
+			{
+			  area->object_spawns [i].content = rand () % 2 + 1;
+			  break;
+			}
+		    }
+		}
+
+	      area = area->next;
+	    }
+	}
 
       for (i = 0; i < MAX_PLAYERS; i++)
 	{
@@ -1311,6 +1391,29 @@ main (int argc, char *argv[])
 		}
 
 	      w = w->next;
+	    }
+
+	  for (j = 0; j < players [i].agent->area->object_spawns_num; j++)
+	    {
+	      if (players [i].agent->area->object_spawns [j].content
+		  && IS_RECT_CONTAINED
+		  (players [i].agent->place,
+		   players [i].agent->area->object_spawns [j].place))
+		{
+		  switch (players [i].agent->area->object_spawns [j].content)
+		    {
+		    case OBJECT_HEALTH:
+		      players [i].agent->life = 10;
+		      break;
+		    case OBJECT_AMMO:
+		      players [i].bullets = 16;
+		      break;
+		    default:
+		      break;
+		    }
+		  players [i].agent->area->object_spawns [j].content = 0;
+		  break;
+		}
 	    }
 	}
 
@@ -1412,7 +1515,9 @@ main (int argc, char *argv[])
 	    }
 	}
 
-      spawn_counter++;
+      zombie_spawn_counter++;
+
+      object_spawn_counter++;
 
       frame_counter++;
 
