@@ -5,6 +5,7 @@ survival of humans against zombies.
 
 ![A screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot1.png)
 ![Another screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot2.png)
+![Another screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot3.png)
 
 
 
