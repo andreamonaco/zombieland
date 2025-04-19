@@ -798,6 +798,16 @@ does_character_face_object (SDL_Rect character, enum facing facing,
 }
 
 
+int
+does_agent_take_object (SDL_Rect charbox, SDL_Rect objbox)
+{
+  SDL_Rect inters;
+
+  return SDL_IntersectRect (&charbox, &objbox, &inters)
+    && inters.w > GRID_CELL_W/2 && inters.h > GRID_CELL_H/2;
+}
+
+
 void
 send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pls,
 		   struct agent *as, struct shot *ss)
@@ -1396,7 +1406,7 @@ main (int argc, char *argv[])
 	  for (j = 0; j < players [i].agent->area->object_spawns_num; j++)
 	    {
 	      if (players [i].agent->area->object_spawns [j].content
-		  && IS_RECT_CONTAINED
+		  && does_agent_take_object
 		  (players [i].agent->place,
 		   players [i].agent->area->object_spawns [j].place))
 		{
