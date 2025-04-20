@@ -217,6 +217,7 @@ main (int argc, char *argv[])
   strcpy (msg.args.login.logname, argv [2]);
 
   printf ("contacting server %s... ", argv [1]);
+  fflush (stdout);
 
   if (sendto (sockfd, (char *)&msg, sizeof (msg), 0,
 	      (struct sockaddr *) &server_addr, sizeof (server_addr)) < 0)
