@@ -79,6 +79,7 @@ player
   int32_t bullets;
 
   int interact;
+  int npcid;
   char *textbox;
   int textbox_lines_num;
 
@@ -191,6 +192,7 @@ server_area
 
   struct warp *warps;
   struct interactible *interactibles;
+  struct interactible *npcs;
 
   struct zombie *zombies;
   int zombies_num;
@@ -829,6 +831,7 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
   msg->args.server_state.life = pls [id].agent->life;
   msg->args.server_state.bullets = pls [id].bullets;
   msg->args.server_state.num_visibles = 0;
+  msg->args.server_state.npcid = pls [id].npcid;
   msg->args.server_state.textbox_lines_num = pls [id].textbox_lines_num;
 
   while (as)
@@ -1004,8 +1007,9 @@ main (int argc, char *argv[])
   struct server_area room = {0};
   SDL_Rect room_walkable = RECT_BY_GRID (0, 0, 12, 12),
     room_unwalkables [] = {RECT_BY_GRID (1, 6, 1, 3),
-    RECT_BY_GRID (7, 2, 3, 3), RECT_BY_GRID (7, 5, 1, 2),
-    RECT_BY_GRID (0, 11, 5, 1), RECT_BY_GRID (7, 11, 5, 1)};
+    RECT_BY_GRID (7, 2, 3, 3), RECT_BY_GRID (7, 5, 1, 1),
+    RECT_BY_GRID (0, 11, 5, 1), RECT_BY_GRID (7, 11, 5, 1),
+    RECT_BY_GRID (9, 8, 1, 1)};
   struct object_spawn room_object_spawns [] = {{RECT_BY_GRID (1, 1, 1, 1), 0},
 					       {RECT_BY_GRID (3, 1, 1, 1), 0}};
 
@@ -1059,6 +1063,7 @@ main (int argc, char *argv[])
   field.unwalkables_num = 47;
   field.warps = make_warp_by_grid (12, 13, 1, 1, &room, 5, 11, NULL);
   field.interactibles = NULL;
+  field.npcs = NULL;
   field.zombies = NULL;
   field.zombies_num = 0;
   field.zombie_spawns = field_zombie_spawns;
@@ -1070,11 +1075,16 @@ main (int argc, char *argv[])
   room.id = 1;
   room.walkable = room_walkable;
   room.unwalkables = room_unwalkables;
-  room.unwalkables_num = 5;
+  room.unwalkables_num = 6;
   room.warps = make_warp_by_grid (5, 11, 2, 1, &field, 12, 14, NULL);
   room.interactibles = make_interactible_by_grid
     (1, 6, 1, 3, "Can't sleep now!              "
      "There might be zombies around." "Better take a look            ", NULL);
+  room.npcs = make_interactible_by_grid (9, 8, 1, 1,
+					 "At that corner you will find  "
+					 "health and ammo.              "
+					 "If you have some patience,    "
+					 "they will respawn.            ", NULL);
   room.zombies = NULL;
   room.zombies_num = 0;
   room.zombie_spawns = NULL;
@@ -1329,10 +1339,27 @@ main (int argc, char *argv[])
 		    {
 		      players [i].textbox = in->text;
 		      players [i].textbox_lines_num = in->text_lines_num;
+		      players [i].npcid = -1;
 		      break;
 		    }
 
 		  in = in->next;
+		}
+
+	      in = players [i].agent->area->npcs, j = 0;
+
+	      while (in)
+		{
+		  if (does_character_face_object (players [i].agent->place,
+						  players [i].facing, in->place))
+		    {
+		      players [i].textbox = in->text;
+		      players [i].textbox_lines_num = in->text_lines_num;
+		      players [i].npcid = j;
+		      break;
+		    }
+
+		  in = in->next, j++;
 		}
 
 	      players [i].interact = 0;

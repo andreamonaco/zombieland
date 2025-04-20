@@ -45,15 +45,33 @@
 #define AREA_FRAME_DURATION 4
 
 struct
+npc
+{
+  SDL_Rect place;
+  SDL_Texture *texture;
+  SDL_Rect *srcs;
+  SDL_Rect origin;
+  enum facing facing;
+};
+
+
+struct
 client_area
 {
   uint32_t id;
+
   SDL_Texture *texture;
   SDL_Rect *display_srcs;
   int area_frames_num;
+
   SDL_Rect *overlay_srcs;
   int overlay_frames_num;
+
   SDL_Rect walkable;
+
+  struct npc *npcs;
+  int npcs_num;
+
   struct client_area *next;
 };
 
@@ -100,6 +118,10 @@ main (int argc, char *argv[])
   struct client_area room;
   SDL_Rect room_src = {0, 1024, 256, 256},
     room_walkable = RECT_BY_GRID (2, 2, 12, 12);
+  SDL_Rect room_npc_srcs [] = {{4, 5, 24, 24}, {4, 37, 24, 24}, {4, 69, 24, 24},
+			       {4, 101, 24, 24}};
+  struct npc room_npcs [] = {{RECT_BY_GRID (9, 8, 1, 1), NULL, room_npc_srcs,
+			      {-4, -4, 0, 0}, FACING_DOWN}};
 
   struct client_area *areas = &field, *area = &field, *ar;
 
@@ -125,8 +147,8 @@ main (int argc, char *argv[])
   SDL_Renderer *rend;
   SDL_Event event;
 
-  SDL_Texture *areatxtr, *charactertxtr, *zombietxtr, *effectstxtr, *texttxtr,
-    *hudtexttxtr, *objectstxtr;
+  SDL_Texture *areatxtr, *charactertxtr, *zombietxtr, *npctxtr, *effectstxtr,
+    *texttxtr, *hudtexttxtr, *objectstxtr;
   SDL_Surface *iconsurf, *textsurf, *hudtextsurf;
   TTF_Font *hudfont, *textfont;
   char textbox [MAXTEXTSIZE], hudtext [20];
@@ -334,6 +356,15 @@ main (int argc, char *argv[])
       return 1;
     }
 
+  npctxtr = IMG_LoadTexture (rend, "log.png");
+
+  if (!npctxtr)
+    {
+      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
   effectstxtr = IMG_LoadTexture (rend, "effects.png");
 
   if (!effectstxtr)
@@ -388,6 +419,8 @@ main (int argc, char *argv[])
   field.overlay_srcs = field_overlays;
   field.overlay_frames_num = 5;
   field.walkable = field_walkable;
+  field.npcs = NULL;
+  field.npcs_num = 0;
   field.next = &room;
 
   room.id = 1;
@@ -397,6 +430,9 @@ main (int argc, char *argv[])
   room.overlay_srcs = NULL;
   room.overlay_frames_num = 0;
   room.walkable = room_walkable;
+  room_npcs [0].texture = npctxtr;
+  room.npcs = room_npcs;
+  room.npcs_num = 1;
   room.next = NULL;
 
   SDL_RenderCopy (rend, field.texture, NULL, NULL);
@@ -636,6 +672,18 @@ main (int argc, char *argv[])
       SDL_RenderClear (rend);
       SDL_RenderCopy (rend, area->texture, &back_src, &screen_dest);
 
+      for (i = 0; i < area->npcs_num; i++)
+	{
+	  pers.x = -camera_src.x + area->walkable.x + area->npcs [i].place.x
+	    + area->npcs [i].origin.x;
+	  pers.y = -camera_src.y + area->walkable.y + area->npcs [i].place.y
+	    + area->npcs [i].origin.y;
+	  pers.w = area->npcs [i].srcs [0].w;
+	  pers.h = area->npcs [i].srcs [0].h;
+	  SDL_RenderCopy (rend, area->npcs [i].texture,
+			  &area->npcs [i].srcs [area->npcs [i].facing], &pers);
+	}
+
       if (latest_srv_state)
 	{
 	  for (i = 0; i < state->args.server_state.num_visibles; i++)
@@ -740,6 +788,15 @@ main (int argc, char *argv[])
 		  *state->args.server_state.num_visibles);
 	  textlines = state->args.server_state.textbox_lines_num;
 	  textcursor = 0;
+
+	  if (state->args.server_state.npcid >= 0)
+	    {
+	      area->npcs [state->args.server_state.npcid].facing
+		= loc_char_facing == FACING_DOWN ? FACING_UP
+		: loc_char_facing == FACING_UP ? FACING_DOWN
+		: loc_char_facing == FACING_RIGHT ? FACING_LEFT
+		: FACING_RIGHT;
+	    }
 	}
 
       if (textlines)

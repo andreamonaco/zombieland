@@ -118,6 +118,7 @@ server_state_args
   int32_t life;
   int32_t bullets;
   uint32_t num_visibles;
+  int32_t npcid;
   uint32_t textbox_lines_num;
 };
 
