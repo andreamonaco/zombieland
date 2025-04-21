@@ -32,6 +32,15 @@ usual from the directory of the repository:
 
 
 
+__I don't have the autotools...__
+
+You are truly the lazy type!  Then these commands will probably suffice:
+
+ $ cc -o zombieland client.c zombieland.c -lSDL2 -lSDL2_image -lSDL2_ttf
+ $ cc -o zombielandd server.c zombieland.c malloc.c -lSDL2 -lSDL2_image -lSDL2_ttf
+
+
+
 __How can I play Zombieland?__
 
 Start the server (zombielandd) on some computer, then start the client
