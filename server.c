@@ -1392,29 +1392,6 @@ main (int argc, char *argv[])
 	  if (players [i].shoot_rest)
 	    players [i].shoot_rest--;
 
-	  s = shots, prs = NULL;
-
-	  while (s)
-	    {
-	      s->duration--;
-
-	      if (!s->duration)
-		{
-		  if (prs)
-		    prs->next = s->next;
-		  else
-		    shots = s->next;
-
-		  free (s);
-		  s = prs ? prs->next : shots;
-		}
-	      else
-		{
-		  prs = s;
-		  s = s->next;
-		}
-	    }
-
 	  w = players [i].agent->area->warps;
 
 	  while (w)
@@ -1451,6 +1428,29 @@ main (int argc, char *argv[])
 		  players [i].agent->area->object_spawns [j].content = 0;
 		  break;
 		}
+	    }
+	}
+
+      s = shots, prs = NULL;
+
+      while (s)
+	{
+	  s->duration--;
+
+	  if (!s->duration)
+	    {
+	      if (prs)
+		prs->next = s->next;
+	      else
+		shots = s->next;
+
+	      free (s);
+	      s = prs ? prs->next : shots;
+	    }
+	  else
+	    {
+	      prs = s;
+	      s = s->next;
 	    }
 	}
 
