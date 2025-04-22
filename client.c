@@ -139,7 +139,7 @@ main (int argc, char *argv[])
     zombie_origin = {0, -5, 0, 0};
 
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
-    do_shoot = 0, life = 10, bullets = 16;
+    do_shoot = 0, do_stab = 0, life = 10, bullets = 16;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct visible vis;
 
@@ -490,6 +490,9 @@ main (int argc, char *argv[])
 		case SDLK_f:
 		  do_shoot = 1;
 		  break;
+		case SDLK_r:
+		  do_stab = 1;
+		  break;
 		}
 	      break;
 	    case SDL_KEYUP:
@@ -533,10 +536,11 @@ main (int argc, char *argv[])
 
       send_message (sockfd, &server_addr, -1, MSG_CLIENT_CHAR_STATE, id,
 		    frame_counter, loc_char_speed_x, loc_char_speed_y,
-		    loc_char_facing, do_interact, do_shoot);
+		    loc_char_facing, do_interact, do_shoot, do_stab);
 
       do_interact = 0;
       do_shoot = 0;
+      do_stab = 0;
 
       got_update = 0;
 

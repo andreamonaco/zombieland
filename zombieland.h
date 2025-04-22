@@ -89,6 +89,7 @@ client_char_state_args
   enum facing char_facing;
   uint32_t do_interact;
   uint32_t do_shoot;
+  uint32_t do_stab;
 };
 
 

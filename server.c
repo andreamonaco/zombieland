@@ -59,6 +59,7 @@
 
 #define IMMORTAL_DURATION 20
 #define SHOOT_REST 10
+#define STAB_REST 5
 
 
 
@@ -86,6 +87,7 @@ player
   int freeze;
 
   int shoot_rest;
+  int stab_rest;
 
   int timeout;
 };
@@ -96,7 +98,9 @@ struct zombie
   struct agent *agent;
 
   enum facing facing;
+
   int32_t speed_x, speed_y;
+  int freeze;
 
   struct zombie *next;
 };
@@ -263,6 +267,7 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   pls [i].textbox_lines_num = 0;
   pls [i].freeze = 0;
   pls [i].shoot_rest = 0;
+  pls [i].stab_rest = 0;
   pls [i].timeout = CLIENT_TIMEOUT;
 
   return i;
@@ -332,6 +337,7 @@ make_zombie (int placex, int placey, enum facing facing,
   ret->agent = a;
   ret->facing = facing;
   ret->speed_x = ret->speed_y = 0;
+  ret->freeze = 0;
   ret->next = next;
 
   return ret;
@@ -768,6 +774,67 @@ get_shot_rect (SDL_Rect charbox, enum facing facing, struct server_area *area,
 }
 
 
+struct agent *
+get_stabbed_agent (SDL_Rect charbox, enum facing facing,
+		   struct server_area *area, struct agent *as, int *speed_x,
+		   int *speed_y)
+{
+  struct agent *ret = NULL;
+  int dist, shift, retdist, retshift;
+
+  while (as)
+    {
+      if (as->area == area)
+	{
+	  switch (facing)
+	    {
+	    case FACING_DOWN:
+	    case FACING_UP:
+	      dist = abs (charbox.y-as->place.y);
+	      shift = as->place.x-charbox.x;
+	      break;
+	    case FACING_RIGHT:
+	    case FACING_LEFT:
+	      dist = abs (charbox.x-as->place.x);
+	      shift = as->place.y-charbox.y;
+	      break;
+	    }
+
+	  if (0 < dist && dist < 20 && abs (shift) < 8)
+	    {
+	      if (!ret || (dist < retdist && abs (shift) < abs (retshift)))
+		{
+		  ret = as;
+		  retdist = dist;
+		  retshift = shift;
+		}
+	    }
+	}
+
+      as = as->next;
+    }
+
+  if (ret)
+    {
+      switch (facing)
+	{
+	case FACING_DOWN:
+	case FACING_UP:
+	  *speed_y = 3 * (facing == FACING_UP ? -1 : 1);
+	  *speed_x = retshift / 2;
+	  break;
+	case FACING_RIGHT:
+	case FACING_LEFT:
+	  *speed_x = 3 * (facing == FACING_LEFT ? -1 : 1);
+	  *speed_y = retshift / 2;
+	  break;
+	}
+    }
+
+  return ret;
+}
+
+
 int
 does_character_face_object (SDL_Rect character, enum facing facing,
 			    SDL_Rect square)
@@ -956,7 +1023,7 @@ print_welcome_message (void)
 int
 main (int argc, char *argv[])
 {
-  struct agent *agents = NULL, *shotag;
+  struct agent *agents = NULL, *shotag, *stabbed;
   struct player players [MAX_PLAYERS];
   struct zombie *z, *prz;
   struct shot *shots = NULL, *s, *prs;
@@ -1016,7 +1083,7 @@ main (int argc, char *argv[])
   SDL_Event event;
 
   uint32_t frame_counter = 1, id;
-  int char_hit, quit = 0, i, j, zombie_spawn_counter = 0,
+  int char_hit, quit = 0, i, j, speedx, speedy, zombie_spawn_counter = 0,
     object_spawn_counter = 0;
   Uint32 t1, t2;
   double delay;
@@ -1232,6 +1299,12 @@ main (int argc, char *argv[])
 			{
 			  players [id].shoot_rest = SHOOT_REST;
 			}
+
+		      if (msg->args.client_char_state.do_stab
+			  && !players [id].interact && !players [id].stab_rest)
+			{
+			  players [id].stab_rest = STAB_REST;
+			}
 		    }
 
 		  players [id].last_update
@@ -1386,11 +1459,41 @@ main (int argc, char *argv[])
 		}
 	    }
 
+	  if (players [i].stab_rest == STAB_REST)
+	    {
+	      stabbed = get_stabbed_agent (players [i].agent->place,
+					   players [i].facing,
+					   players [i].agent->area, agents,
+					   &speedx, &speedy);
+
+	      if (stabbed && !stabbed->immortal)
+		{
+		  stabbed->immortal = IMMORTAL_DURATION;
+		  stabbed->life--;
+
+		  if (stabbed->type == AGENT_PLAYER)
+		    {
+		      stabbed->data_ptr.player->freeze = 5;
+		      stabbed->data_ptr.player->speed_x = speedx;
+		      stabbed->data_ptr.player->speed_y = speedy;
+		    }
+		  else
+		    {
+		      stabbed->data_ptr.zombie->freeze = 5;
+		      stabbed->data_ptr.zombie->speed_x = speedx;
+		      stabbed->data_ptr.zombie->speed_y = speedy;
+		    }
+		}
+	    }
+
 	  if (players [i].agent->immortal)
 	    players [i].agent->immortal--;
 
 	  if (players [i].shoot_rest)
 	    players [i].shoot_rest--;
+
+	  if (players [i].stab_rest)
+	    players [i].stab_rest--;
 
 	  w = players [i].agent->area->warps;
 
