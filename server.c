@@ -1076,9 +1076,18 @@ main (int argc, char *argv[])
     room_unwalkables [] = {RECT_BY_GRID (1, 6, 1, 3),
     RECT_BY_GRID (7, 2, 3, 3), RECT_BY_GRID (7, 5, 1, 1),
     RECT_BY_GRID (0, 11, 5, 1), RECT_BY_GRID (7, 11, 5, 1),
-    RECT_BY_GRID (9, 8, 1, 1)};
+    RECT_BY_GRID (7, 7, 1, 1), RECT_BY_GRID (3, 9, 1, 2),
+    RECT_BY_GRID (8, 9, 1, 2), RECT_BY_GRID (10, 8, 0, 2),
+    RECT_BY_GRID (10, 10, 2, 0)};
   struct object_spawn room_object_spawns [] = {{RECT_BY_GRID (1, 1, 1, 1), 0},
 					       {RECT_BY_GRID (3, 1, 1, 1), 0}};
+
+  struct server_area basement = {0};
+  SDL_Rect basement_walkable = RECT_BY_GRID (0, 0, 12, 11),
+    basement_unwalkables [] = {RECT_BY_GRID (1, 0, 7, 2),
+    RECT_BY_GRID (1, 4, 7, 2), RECT_BY_GRID (1, 8, 7, 2),
+    RECT_BY_GRID (9, 0, 3, 3), RECT_BY_GRID (10, 7, 2, 0),
+    RECT_BY_GRID (10, 7, 0, 3)};
 
   SDL_Event event;
 
@@ -1142,12 +1151,14 @@ main (int argc, char *argv[])
   room.id = 1;
   room.walkable = room_walkable;
   room.unwalkables = room_unwalkables;
-  room.unwalkables_num = 6;
-  room.warps = make_warp_by_grid (5, 11, 2, 1, &field, 12, 14, NULL);
+  room.unwalkables_num = 10;
+  room.warps = make_warp_by_grid (5, 11, 2, 1, &field, 12, 14,
+				  make_warp_by_grid (10, 8, 2, 2, &basement, 10,
+						     10, NULL));
   room.interactibles = make_interactible_by_grid
     (1, 6, 1, 3, "Can't sleep now!              "
      "There might be zombies around." "Better take a look            ", NULL);
-  room.npcs = make_interactible_by_grid (9, 8, 1, 1,
+  room.npcs = make_interactible_by_grid (7, 7, 1, 1,
 					 "At that corner you will find  "
 					 "health and ammo.              "
 					 "If you have some patience,    "
@@ -1158,7 +1169,13 @@ main (int argc, char *argv[])
   room.zombie_spawns_num = 0;
   room.object_spawns = room_object_spawns;
   room.object_spawns_num = room.free_object_spawns_num = 2;
-  room.next = NULL;
+  room.next = &basement;
+
+  basement.id = 2;
+  basement.walkable = basement_walkable;
+  basement.unwalkables = basement_unwalkables;
+  basement.unwalkables_num = 6;
+  basement.warps = make_warp_by_grid (10, 7, 2, 3, &room, 10, 7, NULL);
 
   srand (time (NULL));
 

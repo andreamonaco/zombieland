@@ -120,8 +120,12 @@ main (int argc, char *argv[])
     room_walkable = RECT_BY_GRID (2, 2, 12, 12);
   SDL_Rect room_npc_srcs [] = {{4, 5, 24, 24}, {4, 37, 24, 24}, {4, 69, 24, 24},
 			       {4, 101, 24, 24}};
-  struct npc room_npcs [] = {{RECT_BY_GRID (9, 8, 1, 1), NULL, room_npc_srcs,
+  struct npc room_npcs [] = {{RECT_BY_GRID (7, 7, 1, 1), NULL, room_npc_srcs,
 			      {-4, -4, 0, 0}, FACING_DOWN}};
+
+  struct client_area basement = {0};
+  SDL_Rect basement_src = {0, 1280, 256, 256},
+    basement_walkable = RECT_BY_GRID (2, 2, 12, 11);
 
   struct client_area *areas = &field, *area = &field, *ar;
 
@@ -433,7 +437,13 @@ main (int argc, char *argv[])
   room_npcs [0].texture = npctxtr;
   room.npcs = room_npcs;
   room.npcs_num = 1;
-  room.next = NULL;
+  room.next = &basement;
+
+  basement.id = 2;
+  basement.texture = areatxtr;
+  basement.display_srcs = &basement_src;
+  basement.area_frames_num = 1;
+  basement.walkable = basement_walkable;
 
   SDL_RenderCopy (rend, field.texture, NULL, NULL);
   character_dest.x = character_box.x + character_origin.x;
