@@ -56,7 +56,6 @@
 #define ZOMBIE_SPEED 1
 
 
-#define MAX_PLAYER_HEALTH 30
 #define MAX_ZOMBIE_HEALTH 12
 
 #define TOUCH_DAMAGE 1
@@ -67,6 +66,12 @@
 
 #define SHOOT_REST 10
 #define STAB_REST 5
+
+
+#define MAX_HUNGER 20
+#define HUNGER_UP 1800
+#define MAX_THIRST 20
+#define THIRST_UP 1800
 
 
 struct
@@ -84,6 +89,8 @@ player
   enum facing facing;
 
   int32_t bullets;
+
+  uint32_t hunger, hunger_up, thirst, thirst_up;
 
   int interact;
   int npcid;
@@ -180,7 +187,9 @@ object
   {
     OBJECT_NONE,
     OBJECT_HEALTH,
-    OBJECT_AMMO
+    OBJECT_AMMO,
+    OBJECT_FOOD,
+    OBJECT_WATER
   };
 
 
@@ -268,6 +277,10 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   strcpy (pls [i].name, name);
   pls [i].speed_x = pls [i].speed_y = pls [i].facing = 0;
   pls [i].bullets = 16;
+  pls [i].hunger = 0;
+  pls [i].hunger_up = HUNGER_UP;
+  pls [i].thirst = 0;
+  pls [i].thirst_up = THIRST_UP;
   pls [i].interact = 0;
   pls [i].textbox = NULL;
   pls [i].textbox_lines_num = 0;
@@ -903,6 +916,8 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
   msg->args.server_state.char_facing = pls [id].facing;
   msg->args.server_state.life = pls [id].agent->life;
   msg->args.server_state.bullets = pls [id].bullets;
+  msg->args.server_state.hunger = pls [id].hunger;
+  msg->args.server_state.thirst = pls [id].thirst;
   msg->args.server_state.num_visibles = 0;
   msg->args.server_state.npcid = pls [id].npcid;
   msg->args.server_state.textbox_lines_num = pls [id].textbox_lines_num;
@@ -956,6 +971,12 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	  break;
 	case OBJECT_AMMO:
 	  vis.type = VISIBLE_AMMO;
+	  break;
+	case OBJECT_FOOD:
+	  vis.type = VISIBLE_FOOD;
+	  break;
+	case OBJECT_WATER:
+	  vis.type = VISIBLE_WATER;
 	  break;
 	default:
 	  continue;
@@ -1408,7 +1429,7 @@ main (int argc, char *argv[])
 		    {
 		      if (!area->object_spawns [i].content)
 			{
-			  area->object_spawns [i].content = rand () % 2 + 1;
+			  area->object_spawns [i].content = rand () % 4 + 1;
 			  break;
 			}
 		    }
@@ -1523,6 +1544,30 @@ main (int argc, char *argv[])
 	  if (players [i].stab_rest)
 	    players [i].stab_rest--;
 
+	  if (players [i].hunger_up)
+	    players [i].hunger_up--;
+	  else
+	    {
+	      if (players [i].hunger < MAX_HUNGER)
+		players [i].hunger++;
+	      else
+		players [i].agent->life--;
+
+	      players [i].hunger_up = HUNGER_UP;
+	    }
+
+	  if (players [i].thirst_up)
+	    players [i].thirst_up--;
+	  else
+	    {
+	      if (players [i].thirst < MAX_THIRST)
+		players [i].thirst++;
+	      else
+		players [i].agent->life--;
+
+	      players [i].thirst_up = THIRST_UP;
+	    }
+
 	  w = players [i].agent->area->warps;
 
 	  while (w)
@@ -1552,6 +1597,14 @@ main (int argc, char *argv[])
 		      break;
 		    case OBJECT_AMMO:
 		      players [i].bullets = 16;
+		      break;
+		    case OBJECT_FOOD:
+		      players [i].hunger = 0;
+		      players [i].hunger_up = HUNGER_UP;
+		      break;
+		    case OBJECT_WATER:
+		      players [i].thirst = 0;
+		      players [i].thirst_up = THIRST_UP;
 		      break;
 		    default:
 		      break;

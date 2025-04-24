@@ -99,6 +99,8 @@ client_char_state_args
 #define VISIBLE_SHOT   2
 #define VISIBLE_HEALTH 3
 #define VISIBLE_AMMO   4
+#define VISIBLE_FOOD   5
+#define VISIBLE_WATER  6
 
 struct
 visible
@@ -119,6 +121,8 @@ server_state_args
   enum facing char_facing;
   int32_t life;
   int32_t bullets;
+  uint32_t hunger;
+  uint32_t thirst;
   uint32_t num_visibles;
   int32_t npcid;
   uint32_t textbox_lines_num;

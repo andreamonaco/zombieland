@@ -78,6 +78,39 @@ client_area
 
 
 void
+render_string (const char *string, SDL_Rect rect, TTF_Font *font, SDL_Color col,
+	       SDL_Renderer *rend)
+{
+  SDL_Surface *surf;
+  SDL_Texture *txtr;
+
+  surf = TTF_RenderText_Solid (font, string, col);
+
+  if (!surf)
+    {
+      fprintf (stderr, "could not print text: %s\n", TTF_GetError ());
+      exit (1);
+    }
+
+  txtr = SDL_CreateTextureFromSurface (rend, surf);
+
+  if (!txtr)
+    {
+      fprintf (stderr, "could not create texture for text: %s\n",
+	       SDL_GetError ());
+      exit (1);
+    }
+
+  rect.w = surf->w;
+  rect.h = surf->h;
+
+  SDL_RenderCopy (rend, txtr, NULL, &rect);
+  SDL_DestroyTexture (txtr);
+  SDL_FreeSurface (surf);
+}
+
+
+void
 print_welcome_message (void)
 {
   puts ("zombieland client " PACKAGE_VERSION "\n"
@@ -143,7 +176,8 @@ main (int argc, char *argv[])
     zombie_origin = {0, -5, 0, 0};
 
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
-    do_shoot = 0, do_stab = 0, life = MAX_PLAYER_HEALTH, bullets = 16;
+    do_shoot = 0, do_stab = 0, life = MAX_PLAYER_HEALTH, bullets = 16,
+    hunger = 0, thirst = 0;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct visible vis;
 
@@ -152,17 +186,19 @@ main (int argc, char *argv[])
   SDL_Event event;
 
   SDL_Texture *areatxtr, *charactertxtr, *zombietxtr, *npctxtr, *effectstxtr,
-    *texttxtr, *hudtexttxtr, *objectstxtr;
-  SDL_Surface *iconsurf, *textsurf, *hudtextsurf;
+    *texttxtr, *objectstxtr;
+  SDL_Surface *iconsurf, *textsurf;
   TTF_Font *hudfont, *textfont;
   char textbox [MAXTEXTSIZE], hudtext [20];
   int textlines = 0, textcursor;
   char tmpch;
-  SDL_Rect charliferect = {10, 10, 40, 40},
-    bulletsrect = {WINDOW_WIDTH/2+10, 10, 40, 40},
+  SDL_Rect charliferect = {10, 10, 40, 40}, bulletsrect = {10, 25, 40, 40},
+    hungerrect = {WINDOW_WIDTH/2+10, 10, 40, 40},
+    thirstrect = {WINDOW_WIDTH/2+10, 25, 40, 40},
     textbackrect = {0, WINDOW_HEIGHT-50, WINDOW_WIDTH, 50},
     textrect [] = {{10, WINDOW_HEIGHT-40, 0, 0}, {10, WINDOW_HEIGHT-20, 0, 0}},
-    healthobjrect = {0, 0, 16, 16}, bulletobjrect = {16, 0, 16, 16};
+    healthobjrect = {0, 0, 16, 16}, bulletobjrect = {16, 0, 16, 16},
+    foodobjrect = {32, 0, 16, 16}, waterobjrect = {48, 0, 16, 16};
 
   SDL_Color textcol = {0, 0, 0, 255};
   Uint8 colr, colg, colb, cola;
@@ -651,6 +687,8 @@ main (int argc, char *argv[])
 	  srv_char_facing = state->args.server_state.char_facing;
 	  life = state->args.server_state.life;
 	  bullets = state->args.server_state.bullets;
+	  hunger = state->args.server_state.hunger;
+	  thirst = state->args.server_state.thirst;
 	}
 
       camera_src.x = -WINDOW_WIDTH/2 + area->walkable.x + character_box.x
@@ -705,7 +743,8 @@ main (int argc, char *argv[])
 	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
 					+i*sizeof (vis));
 
-	      if (vis.type != VISIBLE_HEALTH && vis.type != VISIBLE_AMMO)
+	      if (vis.type != VISIBLE_HEALTH && vis.type != VISIBLE_AMMO
+		  && vis.type != VISIBLE_FOOD && vis.type != VISIBLE_WATER)
 		continue;
 
 	      pers.x = -camera_src.x + area->walkable.x + vis.x;
@@ -714,7 +753,9 @@ main (int argc, char *argv[])
 	      pers.h = GRID_CELL_H;
 	      SDL_RenderCopy (rend, objectstxtr,
 			      vis.type == VISIBLE_HEALTH ? &healthobjrect
-			      : &bulletobjrect, &pers);
+			      : vis.type == VISIBLE_AMMO ? &bulletobjrect
+			      : vis.type == VISIBLE_FOOD ? &foodobjrect
+			      : &waterobjrect, &pers);
 	    }
 
 	  for (i = 0; i < state->args.server_state.num_visibles; i++)
@@ -857,54 +898,16 @@ main (int argc, char *argv[])
 	}
 
       sprintf (hudtext, "LIFE %2d/%2d", life, MAX_PLAYER_HEALTH);
-      hudtextsurf = TTF_RenderText_Solid (hudfont, hudtext, textcol);
-
-      if (!hudtextsurf)
-	{
-	  fprintf (stderr, "could not print text: %s\n", TTF_GetError ());
-	  return 1;
-	}
-
-      hudtexttxtr = SDL_CreateTextureFromSurface (rend, hudtextsurf);
-
-      if (!hudtexttxtr)
-	{
-	  fprintf (stderr, "could not create texture for text: %s\n",
-		   SDL_GetError ());
-	  return 1;
-	}
-
-      charliferect.w = hudtextsurf->w;
-      charliferect.h = hudtextsurf->h;
-
-      SDL_RenderCopy (rend, hudtexttxtr, NULL, &charliferect);
-      SDL_DestroyTexture (hudtexttxtr);
-      SDL_FreeSurface (hudtextsurf);
+      render_string (hudtext, charliferect, hudfont, textcol, rend);
 
       sprintf (hudtext, "AMMO %2d/16", bullets);
-      hudtextsurf = TTF_RenderText_Solid (hudfont, hudtext, textcol);
+      render_string (hudtext, bulletsrect, hudfont, textcol, rend);
 
-      if (!hudtextsurf)
-	{
-	  fprintf (stderr, "could not print text: %s\n", TTF_GetError ());
-	  return 1;
-	}
+      sprintf (hudtext, "HUNGER %2d/20", hunger);
+      render_string (hudtext, hungerrect, hudfont, textcol, rend);
 
-      hudtexttxtr = SDL_CreateTextureFromSurface (rend, hudtextsurf);
-
-      if (!hudtexttxtr)
-	{
-	  fprintf (stderr, "could not create texture for text: %s\n",
-		   SDL_GetError ());
-	  return 1;
-	}
-
-      bulletsrect.w = hudtextsurf->w;
-      bulletsrect.h = hudtextsurf->h;
-
-      SDL_RenderCopy (rend, hudtexttxtr, NULL, &bulletsrect);
-      SDL_DestroyTexture (hudtexttxtr);
-      SDL_FreeSurface (hudtextsurf);
+      sprintf (hudtext, "THIRST %2d/20", thirst);
+      render_string (hudtext, thirstrect, hudfont, textcol, rend);
 
       SDL_RenderPresent (rend);
 
