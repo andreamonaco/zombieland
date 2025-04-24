@@ -53,14 +53,20 @@
 
 
 #define CHAR_SPEED 2
-
 #define ZOMBIE_SPEED 1
 
 
+#define MAX_PLAYER_HEALTH 30
+#define MAX_ZOMBIE_HEALTH 12
+
+#define TOUCH_DAMAGE 1
+#define STAB_DAMAGE  2
+#define SHOOT_DAMAGE 6
+
 #define IMMORTAL_DURATION 20
+
 #define SHOOT_REST 10
 #define STAB_REST 5
-
 
 
 struct
@@ -241,7 +247,7 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   a = malloc_and_check (sizeof (*a));
   a->area = area;
   set_rect (&a->place, 96, 0, 16, 16);
-  a->life = 10;
+  a->life = MAX_PLAYER_HEALTH;
   a->immortal = 0;
   a->type = AGENT_PLAYER;
   a->data_ptr.player = &pls [i];
@@ -322,7 +328,7 @@ make_zombie (int placex, int placey, enum facing facing,
 
   a->area = area;
   set_rect (&a->place, placex, placey, GRID_CELL_W, GRID_CELL_H);
-  a->life = 2;
+  a->life = MAX_ZOMBIE_HEALTH;
   a->immortal = 0;
   a->type = AGENT_ZOMBIE;
   a->data_ptr.zombie = ret;
@@ -559,7 +565,7 @@ move_character (struct player *pl, SDL_Rect walkable, SDL_Rect unwalkables [],
 	  if (!pl->agent->immortal)
 	    {
 	      pl->agent->immortal = IMMORTAL_DURATION;
-	      pl->agent->life--;
+	      pl->agent->life -= TOUCH_DAMAGE;
 	      pl->freeze = 5;
 	      pl->speed_x = z->speed_x*3;
 	      pl->speed_y = z->speed_y*3;
@@ -607,7 +613,7 @@ move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_
 	  if (!pls [i].agent->immortal)
 	    {
 	      pls [i].agent->immortal = IMMORTAL_DURATION;
-	      pls [i].agent->life--;
+	      pls [i].agent->life -= TOUCH_DAMAGE;
 	      pls [i].freeze = 5;
 	      pls [i].speed_x = sx*3;
 	      pls [i].speed_y = sy*3;
@@ -1477,7 +1483,7 @@ main (int argc, char *argv[])
 	      if (shotag && !shotag->immortal)
 		{
 		  shotag->immortal = IMMORTAL_DURATION;
-		  shotag->life--;
+		  shotag->life -= SHOOT_DAMAGE;
 		}
 	    }
 
@@ -1491,7 +1497,7 @@ main (int argc, char *argv[])
 	      if (stabbed && !stabbed->immortal)
 		{
 		  stabbed->immortal = IMMORTAL_DURATION;
-		  stabbed->life--;
+		  stabbed->life -= STAB_DAMAGE;
 
 		  if (stabbed->type == AGENT_PLAYER)
 		    {
@@ -1542,7 +1548,7 @@ main (int argc, char *argv[])
 		  switch (players [i].agent->area->object_spawns [j].content)
 		    {
 		    case OBJECT_HEALTH:
-		      players [i].agent->life = 10;
+		      players [i].agent->life = MAX_PLAYER_HEALTH;
 		      break;
 		    case OBJECT_AMMO:
 		      players [i].bullets = 16;
@@ -1550,6 +1556,7 @@ main (int argc, char *argv[])
 		    default:
 		      break;
 		    }
+
 		  players [i].agent->area->object_spawns [j].content = 0;
 		  break;
 		}

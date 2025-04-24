@@ -42,6 +42,7 @@
 #define MAXTEXTSIZE 512
 #define TEXTLINESIZE 30
 
+#define MAX_PLAYER_HEALTH 30
 
 
 enum

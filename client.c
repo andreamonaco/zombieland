@@ -143,7 +143,7 @@ main (int argc, char *argv[])
     zombie_origin = {0, -5, 0, 0};
 
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
-    do_shoot = 0, do_stab = 0, life = 10, bullets = 16;
+    do_shoot = 0, do_stab = 0, life = MAX_PLAYER_HEALTH, bullets = 16;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct visible vis;
 
@@ -856,7 +856,7 @@ main (int argc, char *argv[])
 	    }
 	}
 
-      sprintf (hudtext, "LIFE %2d/10", life);
+      sprintf (hudtext, "LIFE %2d/%2d", life, MAX_PLAYER_HEALTH);
       hudtextsurf = TTF_RenderText_Solid (hudfont, hudtext, textcol);
 
       if (!hudtextsurf)
