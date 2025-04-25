@@ -52,6 +52,9 @@
 				&&(i).y>=(j).y&&(i).y+(i).h<=(j).y+(j).h)
 
 
+#define SIGN(x) ((x) > 0 ? 1 : -1)
+
+
 #define CHAR_SPEED 2
 #define ZOMBIE_SPEED 1
 
@@ -579,9 +582,9 @@ move_character (struct player *pl, SDL_Rect walkable, SDL_Rect unwalkables [],
 	    {
 	      pl->agent->immortal = IMMORTAL_DURATION;
 	      pl->agent->life -= TOUCH_DAMAGE;
-	      pl->freeze = 5;
-	      pl->speed_x = z->speed_x*3;
-	      pl->speed_y = z->speed_y*3;
+	      pl->freeze = 6;
+	      pl->speed_x = z->speed_x*4;
+	      pl->speed_y = z->speed_y*4;
 	    }
 
 	  *character_hit = 1;
@@ -627,9 +630,9 @@ move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_
 	    {
 	      pls [i].agent->immortal = IMMORTAL_DURATION;
 	      pls [i].agent->life -= TOUCH_DAMAGE;
-	      pls [i].freeze = 5;
-	      pls [i].speed_x = sx*3;
-	      pls [i].speed_y = sy*3;
+	      pls [i].freeze = 6;
+	      pls [i].speed_x = sx*4;
+	      pls [i].speed_y = sy*4;
 	    }
 
 	  goto restart;
@@ -839,13 +842,17 @@ get_stabbed_agent (SDL_Rect charbox, enum facing facing,
 	{
 	case FACING_DOWN:
 	case FACING_UP:
-	  *speed_y = 3 * (facing == FACING_UP ? -1 : 1);
-	  *speed_x = retshift / 2;
+	  *speed_y = 4 * (facing == FACING_UP ? -1 : 1);
+	  *speed_x = abs (retshift) < 2 ? 0
+	    : abs (retshift) < 4 ? SIGN (retshift)
+	    : abs (retshift) < 6 ? 2 * SIGN (retshift) : 3 * SIGN (retshift);
 	  break;
 	case FACING_RIGHT:
 	case FACING_LEFT:
-	  *speed_x = 3 * (facing == FACING_LEFT ? -1 : 1);
-	  *speed_y = retshift / 2;
+	  *speed_x = 4 * (facing == FACING_LEFT ? -1 : 1);
+	  *speed_y = abs (retshift) < 2 ? 0
+	    : abs (retshift) < 4 ? SIGN (retshift)
+	    : abs (retshift) < 6 ? 2 * SIGN (retshift) : 3 * SIGN (retshift);
 	  break;
 	}
     }
@@ -1522,13 +1529,14 @@ main (int argc, char *argv[])
 
 		  if (stabbed->type == AGENT_PLAYER)
 		    {
-		      stabbed->data_ptr.player->freeze = 5;
+		      stabbed->data_ptr.player->freeze =
+			stabbed->data_ptr.player->id > i ? 4 : 5;
 		      stabbed->data_ptr.player->speed_x = speedx;
 		      stabbed->data_ptr.player->speed_y = speedy;
 		    }
 		  else
 		    {
-		      stabbed->data_ptr.zombie->freeze = 5;
+		      stabbed->data_ptr.zombie->freeze = 4;
 		      stabbed->data_ptr.zombie->speed_x = speedx;
 		      stabbed->data_ptr.zombie->speed_y = speedy;
 		    }
@@ -1717,7 +1725,14 @@ main (int argc, char *argv[])
 	  if (players [i].id != -1)
 	    {
 	      if (players [i].freeze)
-		players [i].freeze--;
+		{
+		  players [i].freeze--;
+
+		  if (!players [i].freeze)
+		    {
+		      players [i].speed_x = players [i].speed_y = 0;
+		    }
+		}
 
 	      players [i].timeout--;
 
