@@ -583,8 +583,8 @@ move_character (struct player *pl, SDL_Rect walkable, SDL_Rect unwalkables [],
 	      pl->agent->immortal = IMMORTAL_DURATION;
 	      pl->agent->life -= TOUCH_DAMAGE;
 	      pl->freeze = 6;
-	      pl->speed_x = z->speed_x*4;
-	      pl->speed_y = z->speed_y*4;
+	      pl->speed_x = -pl->speed_x*2;
+	      pl->speed_y = -pl->speed_y*2;
 	    }
 
 	  *character_hit = 1;
