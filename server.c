@@ -186,7 +186,7 @@ warp
 
 
 enum
-object
+object_type
   {
     OBJECT_NONE,
     OBJECT_HEALTH,
@@ -197,10 +197,21 @@ object
 
 
 struct
+object
+{
+  struct server_area *area;
+  SDL_Rect place;
+  enum object_type type;
+  struct object_spawn *spawn;
+  struct object *next;
+};
+
+
+struct
 object_spawn
 {
   SDL_Rect place;
-  enum object content;
+  struct object *content;
 };
 
 
@@ -905,13 +916,11 @@ does_agent_take_object (SDL_Rect charbox, SDL_Rect objbox)
 
 void
 send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pls,
-		   struct agent *as, struct shot *ss)
+		   struct agent *as, struct shot *ss, struct object *objs)
 {
   char buf [MAXMSGSIZE];
-  int i;
   struct message *msg = (struct message *) &buf;
   struct visible vis;
-  struct object_spawn *sps = pls [id].agent->area->object_spawns;
 
   msg->type = htonl (MSG_SERVER_STATE);
   msg->args.server_state.frame_counter = frame_counter;
@@ -965,38 +974,43 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
       as = as->next;
     }
 
-  for (i = 0; i < pls [id].agent->area->object_spawns_num; i++)
+  while (objs)
     {
       if (sizeof (msg)+msg->args.server_state.num_visibles*sizeof (struct visible)
 	  > MAXMSGSIZE)
 	break;
 
-      switch (sps [i].content)
+      if (objs->area == pls [id].agent->area)
 	{
-	case OBJECT_HEALTH:
-	  vis.type = VISIBLE_HEALTH;
-	  break;
-	case OBJECT_AMMO:
-	  vis.type = VISIBLE_AMMO;
-	  break;
-	case OBJECT_FOOD:
-	  vis.type = VISIBLE_FOOD;
-	  break;
-	case OBJECT_WATER:
-	  vis.type = VISIBLE_WATER;
-	  break;
-	default:
-	  continue;
+	  switch (objs->type)
+	    {
+	    case OBJECT_HEALTH:
+	      vis.type = VISIBLE_HEALTH;
+	      break;
+	    case OBJECT_AMMO:
+	      vis.type = VISIBLE_AMMO;
+	      break;
+	    case OBJECT_FOOD:
+	      vis.type = VISIBLE_FOOD;
+	      break;
+	    case OBJECT_WATER:
+	      vis.type = VISIBLE_WATER;
+	      break;
+	    default:
+	      continue;
+	    }
+
+	  vis.x = objs->place.x;
+	  vis.y = objs->place.y;
+	  vis.w = objs->place.w;
+	  vis.h = objs->place.h;
+
+	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
+			*sizeof (vis)], &vis, sizeof (vis));
+	  msg->args.server_state.num_visibles++;
 	}
 
-      vis.x = sps [i].place.x;
-      vis.y = sps [i].place.y;
-      vis.w = sps [i].place.w;
-      vis.h = sps [i].place.h;
-
-      memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
-		    *sizeof (vis)], &vis, sizeof (vis));
-      msg->args.server_state.num_visibles++;
+      objs = objs->next;
     }
 
   while (ss)
@@ -1061,6 +1075,7 @@ main (int argc, char *argv[])
   struct player players [MAX_PLAYERS];
   struct zombie *z, *prz;
   struct shot *shots = NULL, *s, *prs;
+  struct object *objects = NULL, *obj, *probj;
 
   int sockfd;
   fd_set fdset;
@@ -1113,8 +1128,8 @@ main (int argc, char *argv[])
     RECT_BY_GRID (7, 7, 1, 1), RECT_BY_GRID (3, 9, 1, 2),
     RECT_BY_GRID (8, 9, 1, 2), RECT_BY_GRID (10, 8, 0, 2),
     RECT_BY_GRID (10, 10, 2, 0)};
-  struct object_spawn room_object_spawns [] = {{RECT_BY_GRID (1, 1, 1, 1), 0},
-					       {RECT_BY_GRID (3, 1, 1, 1), 0}};
+  struct object_spawn room_object_spawns [] = {{RECT_BY_GRID (1, 1, 1, 1), NULL},
+					       {RECT_BY_GRID (3, 1, 1, 1), NULL}};
 
   struct server_area basement = {0};
   SDL_Rect basement_walkable = RECT_BY_GRID (0, 0, 12, 11),
@@ -1436,7 +1451,14 @@ main (int argc, char *argv[])
 		    {
 		      if (!area->object_spawns [i].content)
 			{
-			  area->object_spawns [i].content = rand () % 4 + 1;
+			  obj = malloc_and_check (sizeof (*obj));
+			  obj->area = area;
+			  obj->place = area->object_spawns [i].place;
+			  obj->type = rand () % 4 + 1;
+			  obj->spawn = &area->object_spawns [i];
+			  obj->next = objects;
+			  area->object_spawns [i].content = obj;
+			  objects = obj;
 			  break;
 			}
 		    }
@@ -1591,14 +1613,13 @@ main (int argc, char *argv[])
 	      w = w->next;
 	    }
 
-	  for (j = 0; j < players [i].agent->area->object_spawns_num; j++)
+	  obj = objects, probj = NULL;
+
+	  while (obj)
 	    {
-	      if (players [i].agent->area->object_spawns [j].content
-		  && does_agent_take_object
-		  (players [i].agent->place,
-		   players [i].agent->area->object_spawns [j].place))
+	      if (does_agent_take_object (players [i].agent->place, obj->place))
 		{
-		  switch (players [i].agent->area->object_spawns [j].content)
+		  switch (obj->type)
 		    {
 		    case OBJECT_HEALTH:
 		      players [i].agent->life = MAX_PLAYER_HEALTH;
@@ -1618,8 +1639,22 @@ main (int argc, char *argv[])
 		      break;
 		    }
 
-		  players [i].agent->area->object_spawns [j].content = 0;
-		  break;
+		  if (probj)
+		    probj->next = obj->next;
+		  else
+		    objects = obj->next;
+
+		  if (obj->spawn)
+		    obj->spawn->content = NULL;
+
+		  free (obj);
+
+		  obj = probj ? probj->next : objects;
+		}
+	      else
+		{
+		  probj = obj;
+		  obj = obj->next;
 		}
 	    }
 	}
@@ -1657,6 +1692,19 @@ main (int argc, char *argv[])
 	    {
 	      if (z->agent->life <= 0)
 		{
+		  i = rand () % 12;
+
+		  if (i && i <= 4)
+		    {
+		      obj = malloc_and_check (sizeof (*obj));
+		      obj->area = area;
+		      obj->place = z->agent->place;
+		      obj->type = i;
+		      obj->spawn = NULL;
+		      obj->next = objects;
+		      objects = obj;
+		    }
+
 		  if (prz)
 		    prz->next = z->next;
 		  else
@@ -1713,7 +1761,7 @@ main (int argc, char *argv[])
 	  else if (players [i].id != -1)
 	    {
 	      send_server_state (sockfd, frame_counter, i, players, agents,
-				 shots);
+				 shots, objects);
 
 	      players [i].textbox = NULL;
 	      players [i].textbox_lines_num = 0;
