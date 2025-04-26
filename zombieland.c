@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <strings.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -34,8 +35,10 @@ void
 send_message (int sockfd, struct sockaddr_in *addr, uint16_t portoff,
 	      uint32_t type, ...)
 {
-  struct message msg = {0};
+  struct message msg;
   va_list valist;
+
+  bzero (&msg, sizeof (msg));
 
   if (portoff != (uint16_t)-1)
     addr->sin_port = htons (ZOMBIELAND_PORT+portoff);

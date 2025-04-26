@@ -273,6 +273,7 @@ main (int argc, char *argv[])
 	 server->h_length);
   server_addr.sin_port = htons (ZOMBIELAND_PORT);
 
+  bzero ((char *) &msg, sizeof (msg));
   msg.type = htonl (MSG_LOGIN);
   tmp = htons (portoff);
   memcpy (&msg.args.login.portoff, &tmp, sizeof (tmp));

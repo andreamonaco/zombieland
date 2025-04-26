@@ -918,7 +918,7 @@ void
 send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pls,
 		   struct agent *as, struct shot *ss, struct object *objs)
 {
-  char buf [MAXMSGSIZE];
+  char buf [MAXMSGSIZE] = {0};
   struct message *msg = (struct message *) &buf;
   struct visible vis;
 
