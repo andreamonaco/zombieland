@@ -1617,7 +1617,8 @@ main (int argc, char *argv[])
 
 	  while (obj)
 	    {
-	      if (does_agent_take_object (players [i].agent->place, obj->place))
+	      if (players [i].agent->area == obj->area
+		  && does_agent_take_object (players [i].agent->place, obj->place))
 		{
 		  switch (obj->type)
 		    {
