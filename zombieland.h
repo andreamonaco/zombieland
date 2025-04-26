@@ -91,6 +91,7 @@ client_char_state_args
   uint32_t do_interact;
   uint32_t do_shoot;
   uint32_t do_stab;
+  uint32_t do_search;
 };
 
 
@@ -112,6 +113,19 @@ visible
 };
 
 
+#define BAG_SIZE 8
+
+enum
+object_type
+  {
+    OBJECT_NONE,
+    OBJECT_HEALTH,
+    OBJECT_AMMO,
+    OBJECT_FOOD,
+    OBJECT_WATER
+  };
+
+
 struct
 server_state_args
 {
@@ -123,6 +137,8 @@ server_state_args
   int32_t bullets;
   uint32_t hunger;
   uint32_t thirst;
+  uint32_t is_searching;
+  enum object_type bag [BAG_SIZE];
   uint32_t num_visibles;
   int32_t npcid;
   uint32_t textbox_lines_num;

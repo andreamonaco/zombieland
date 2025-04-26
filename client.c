@@ -176,8 +176,8 @@ main (int argc, char *argv[])
     zombie_origin = {0, -5, 0, 0};
 
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
-    do_shoot = 0, do_stab = 0, life = MAX_PLAYER_HEALTH, bullets = 16,
-    hunger = 0, thirst = 0;
+    do_shoot = 0, do_stab = 0, do_search = 0, life = MAX_PLAYER_HEALTH,
+    bullets = 16, hunger = 0, thirst = 0;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct visible vis;
 
@@ -186,11 +186,11 @@ main (int argc, char *argv[])
   SDL_Event event;
 
   SDL_Texture *areatxtr, *charactertxtr, *zombietxtr, *npctxtr, *effectstxtr,
-    *texttxtr, *objectstxtr;
+    *texttxtr, *bagtxtr, *objectstxtr;
   SDL_Surface *iconsurf, *textsurf;
   TTF_Font *hudfont, *textfont;
   char textbox [MAXTEXTSIZE], hudtext [20];
-  int textlines = 0, textcursor;
+  int textlines = 0, textcursor, bagcursor = -1;
   char tmpch;
   SDL_Rect charliferect = {10, 10, 40, 40}, bulletsrect = {10, 25, 40, 40},
     hungerrect = {WINDOW_WIDTH/2+10, 10, 40, 40},
@@ -198,7 +198,11 @@ main (int argc, char *argv[])
     textbackrect = {0, WINDOW_HEIGHT-50, WINDOW_WIDTH, 50},
     textrect [] = {{10, WINDOW_HEIGHT-40, 0, 0}, {10, WINDOW_HEIGHT-20, 0, 0}},
     healthobjrect = {0, 0, 16, 16}, bulletobjrect = {16, 0, 16, 16},
-    foodobjrect = {32, 0, 16, 16}, waterobjrect = {48, 0, 16, 16};
+    foodobjrect = {32, 0, 16, 16}, waterobjrect = {48, 0, 16, 16},
+    bagslotsrects [] = {{30, 48, 16, 16}, {82, 48, 16, 16}, {30, 96, 16, 16},
+			{82, 96, 16, 16}, {30, 144, 16, 16}, {82, 144, 16, 16},
+			{30, 192, 16, 16}, {82, 192, 16, 16}},
+    bagcursorsrc = {256, 0, 22, 22}, bagcursordest = {0, 0, 22, 22};
 
   SDL_Color textcol = {0, 0, 0, 255};
   Uint8 colr, colg, colb, cola;
@@ -206,7 +210,8 @@ main (int argc, char *argv[])
   SDL_Rect camera_src = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
     back_src = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
     screen_dest = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
-    screen_overlay = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
+    screen_overlay = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
+    halfscreen = {0, 0, WINDOW_WIDTH/2, WINDOW_HEIGHT};
 
   int quit = 0, i, got_update;
   uint32_t frame_counter = 1, timeout = SERVER_TIMEOUT;
@@ -415,6 +420,15 @@ main (int argc, char *argv[])
       return 1;
     }
 
+  bagtxtr = IMG_LoadTexture (rend, "bag.png");
+
+  if (!bagtxtr)
+    {
+      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
   objectstxtr = IMG_LoadTexture (rend, "objects.png");
 
   if (!objectstxtr)
@@ -504,24 +518,52 @@ main (int argc, char *argv[])
 		  quit = 1;
 		  break;
 		case SDLK_LEFT:
-		  loc_char_speed_x = -2;
-		  if (!loc_char_speed_y || loc_char_facing == FACING_RIGHT)
-		    loc_char_facing = FACING_LEFT;
+		  if (bagcursor < 0)
+		    {
+		      loc_char_speed_x = -2;
+		      if (!loc_char_speed_y || loc_char_facing == FACING_RIGHT)
+			loc_char_facing = FACING_LEFT;
+		    }
+		  else
+		    {
+		      bagcursor = bagcursor % 2 ? bagcursor-1 : bagcursor;
+		    }
 		  break;
 		case SDLK_RIGHT:
-		  loc_char_speed_x = 2;
-		  if (!loc_char_speed_y || loc_char_facing == FACING_LEFT)
-		    loc_char_facing = FACING_RIGHT;
+		  if (bagcursor < 0)
+		    {
+		      loc_char_speed_x = 2;
+		      if (!loc_char_speed_y || loc_char_facing == FACING_LEFT)
+			loc_char_facing = FACING_RIGHT;
+		    }
+		  else
+		    {
+		      bagcursor = !(bagcursor % 2) ? bagcursor+1 : bagcursor;
+		    }
 		  break;
 		case SDLK_UP:
-		  loc_char_speed_y = -2;
-		  if (!loc_char_speed_x || loc_char_facing == FACING_DOWN)
-		    loc_char_facing = FACING_UP;
+		  if (bagcursor < 0)
+		    {
+		      loc_char_speed_y = -2;
+		      if (!loc_char_speed_x || loc_char_facing == FACING_DOWN)
+			loc_char_facing = FACING_UP;
+		    }
+		  else
+		    {
+		      bagcursor = bagcursor > 1 ? bagcursor-2 : bagcursor;
+		    }
 		  break;
 		case SDLK_DOWN:
-		  loc_char_speed_y = 2;
-		  if (!loc_char_speed_x || loc_char_facing == FACING_UP)
-		    loc_char_facing = FACING_DOWN;
+		  if (bagcursor < 0)
+		    {
+		      loc_char_speed_y = 2;
+		      if (!loc_char_speed_x || loc_char_facing == FACING_UP)
+			loc_char_facing = FACING_DOWN;
+		    }
+		  else
+		    {
+		      bagcursor = bagcursor < 6 ? bagcursor+2 : bagcursor;
+		    }
 		  break;
 		case SDLK_SPACE:
 		  if (!textlines)
@@ -539,6 +581,9 @@ main (int argc, char *argv[])
 		  break;
 		case SDLK_r:
 		  do_stab = 1;
+		  break;
+		case SDLK_q:
+		  do_search = 1;
 		  break;
 		}
 	      break;
@@ -583,11 +628,12 @@ main (int argc, char *argv[])
 
       send_message (sockfd, &server_addr, -1, MSG_CLIENT_CHAR_STATE, id,
 		    frame_counter, loc_char_speed_x, loc_char_speed_y,
-		    loc_char_facing, do_interact, do_shoot, do_stab);
+		    loc_char_facing, do_interact, do_shoot, do_stab, do_search);
 
       do_interact = 0;
       do_shoot = 0;
       do_stab = 0;
+      do_search = 0;
 
       got_update = 0;
 
@@ -909,6 +955,47 @@ main (int argc, char *argv[])
 
       sprintf (hudtext, "THIRST %2d/20", thirst);
       render_string (hudtext, thirstrect, hudfont, textcol, rend);
+
+      if (latest_srv_state && state->args.server_state.is_searching)
+	{
+	  loc_char_speed_x = loc_char_speed_y = 0;
+
+	  if (bagcursor < 0)
+	    bagcursor = 0;
+
+	  SDL_RenderCopy (rend, bagtxtr, &halfscreen, &halfscreen);
+
+	  for (i = 0; i < BAG_SIZE; i++)
+	    {
+	      switch (state->args.server_state.bag [i])
+		{
+		case OBJECT_HEALTH:
+		  SDL_RenderCopy (rend, objectstxtr, &healthobjrect,
+				  &bagslotsrects [i]);
+		  break;
+		case OBJECT_AMMO:
+		  SDL_RenderCopy (rend, objectstxtr, &bulletobjrect,
+				  &bagslotsrects [i]);
+		  break;
+		case OBJECT_FOOD:
+		  SDL_RenderCopy (rend, objectstxtr, &foodobjrect,
+				  &bagslotsrects [i]);
+		  break;
+		case OBJECT_WATER:
+		  SDL_RenderCopy (rend, objectstxtr, &waterobjrect,
+				  &bagslotsrects [i]);
+		  break;
+		default:
+		  break;
+		}
+	    }
+
+	  bagcursordest.x = bagslotsrects [bagcursor].x-3;
+	  bagcursordest.y = bagslotsrects [bagcursor].y-3;
+	  SDL_RenderCopy (rend, bagtxtr, &bagcursorsrc, &bagcursordest);
+	}
+      else
+	bagcursor = -1;
 
       SDL_RenderPresent (rend);
 

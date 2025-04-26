@@ -78,6 +78,17 @@
 
 
 struct
+object
+{
+  struct server_area *area;
+  SDL_Rect place;
+  enum object_type type;
+  struct object_spawn *spawn;
+  struct object *next;
+};
+
+
+struct
 player
 {
   uint32_t id;
@@ -92,6 +103,9 @@ player
   enum facing facing;
 
   int32_t bullets;
+
+  uint32_t is_searching;
+  struct object bag [BAG_SIZE];
 
   uint32_t hunger, hunger_up, thirst, thirst_up;
 
@@ -185,28 +199,6 @@ warp
 };
 
 
-enum
-object_type
-  {
-    OBJECT_NONE,
-    OBJECT_HEALTH,
-    OBJECT_AMMO,
-    OBJECT_FOOD,
-    OBJECT_WATER
-  };
-
-
-struct
-object
-{
-  struct server_area *area;
-  SDL_Rect place;
-  enum object_type type;
-  struct object_spawn *spawn;
-  struct object *next;
-};
-
-
 struct
 object_spawn
 {
@@ -255,7 +247,7 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
 	       struct server_area *area, struct player pls [],
 	       struct agent **agents)
 {
-  int i;
+  int i, j;
   struct agent *a;
 
   for (i = 0; i < MAX_PLAYERS; i++)
@@ -291,6 +283,11 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   strcpy (pls [i].name, name);
   pls [i].speed_x = pls [i].speed_y = pls [i].facing = 0;
   pls [i].bullets = 16;
+  pls [i].is_searching = 0;
+
+  for (j = 0; j < BAG_SIZE; j++)
+    pls [i].bag [j].type = OBJECT_NONE;
+
   pls [i].hunger = 0;
   pls [i].hunger_up = HUNGER_UP;
   pls [i].thirst = 0;
@@ -921,6 +918,7 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
   char buf [MAXMSGSIZE] = {0};
   struct message *msg = (struct message *) &buf;
   struct visible vis;
+  int i;
 
   msg->type = htonl (MSG_SERVER_STATE);
   msg->args.server_state.frame_counter = frame_counter;
@@ -934,6 +932,16 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
   msg->args.server_state.bullets = pls [id].bullets;
   msg->args.server_state.hunger = pls [id].hunger;
   msg->args.server_state.thirst = pls [id].thirst;
+  msg->args.server_state.is_searching = pls [id].is_searching;
+
+  if (pls [id].is_searching)
+    {
+      for (i = 0; i < BAG_SIZE; i++)
+	{
+	  msg->args.server_state.bag [i] = pls [id].bag [i].type;
+	}
+    }
+
   msg->args.server_state.num_visibles = 0;
   msg->args.server_state.npcid = pls [id].npcid;
   msg->args.server_state.textbox_lines_num = pls [id].textbox_lines_num;
@@ -1370,6 +1378,12 @@ main (int argc, char *argv[])
 			  && !players [id].interact && !players [id].stab_rest)
 			{
 			  players [id].stab_rest = STAB_REST;
+			}
+
+		      if (msg->args.client_char_state.do_search
+			  && !players [id].interact)
+			{
+			  players [id].is_searching = !players [id].is_searching;
 			}
 		    }
 

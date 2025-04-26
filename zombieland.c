@@ -57,6 +57,7 @@ send_message (int sockfd, struct sockaddr_in *addr, uint16_t portoff,
       msg.args.client_char_state.do_interact = va_arg (valist, uint32_t);
       msg.args.client_char_state.do_shoot = va_arg (valist, uint32_t);
       msg.args.client_char_state.do_stab = va_arg (valist, uint32_t);
+      msg.args.client_char_state.do_search = va_arg (valist, uint32_t);
       va_end (valist);
       break;
     case MSG_SERVER_STATE:
