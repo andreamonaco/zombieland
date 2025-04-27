@@ -102,6 +102,7 @@ client_char_state_args
 #define VISIBLE_AMMO   4
 #define VISIBLE_FOOD   5
 #define VISIBLE_WATER  6
+#define VISIBLE_FLESH  7
 
 struct
 visible
@@ -122,7 +123,8 @@ object_type
     OBJECT_HEALTH,
     OBJECT_AMMO,
     OBJECT_FOOD,
-    OBJECT_WATER
+    OBJECT_WATER,
+    OBJECT_FLESH
   };
 
 

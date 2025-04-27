@@ -199,6 +199,7 @@ main (int argc, char *argv[])
     textrect [] = {{10, WINDOW_HEIGHT-40, 0, 0}, {10, WINDOW_HEIGHT-20, 0, 0}},
     healthobjrect = {0, 0, 16, 16}, bulletobjrect = {16, 0, 16, 16},
     foodobjrect = {32, 0, 16, 16}, waterobjrect = {48, 0, 16, 16},
+    fleshobjrect = {0, 16, 16, 16},
     bagslotsrects [] = {{30, 48, 16, 16}, {82, 48, 16, 16}, {30, 96, 16, 16},
 			{82, 96, 16, 16}, {30, 144, 16, 16}, {82, 144, 16, 16},
 			{30, 192, 16, 16}, {82, 192, 16, 16}},
@@ -790,8 +791,7 @@ main (int argc, char *argv[])
 	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
 					+i*sizeof (vis));
 
-	      if (vis.type != VISIBLE_HEALTH && vis.type != VISIBLE_AMMO
-		  && vis.type != VISIBLE_FOOD && vis.type != VISIBLE_WATER)
+	      if (vis.type < VISIBLE_HEALTH || vis.type > VISIBLE_FLESH)
 		continue;
 
 	      pers.x = -camera_src.x + area->walkable.x + vis.x;
@@ -802,7 +802,8 @@ main (int argc, char *argv[])
 			      vis.type == VISIBLE_HEALTH ? &healthobjrect
 			      : vis.type == VISIBLE_AMMO ? &bulletobjrect
 			      : vis.type == VISIBLE_FOOD ? &foodobjrect
-			      : &waterobjrect, &pers);
+			      : vis.type == VISIBLE_WATER ? &waterobjrect
+			      : &fleshobjrect, &pers);
 	    }
 
 	  for (i = 0; i < state->args.server_state.num_visibles; i++)
@@ -983,6 +984,10 @@ main (int argc, char *argv[])
 		  break;
 		case OBJECT_WATER:
 		  SDL_RenderCopy (rend, objectstxtr, &waterobjrect,
+				  &bagslotsrects [i]);
+		  break;
+		case OBJECT_FLESH:
+		  SDL_RenderCopy (rend, objectstxtr, &fleshobjrect,
 				  &bagslotsrects [i]);
 		  break;
 		default:

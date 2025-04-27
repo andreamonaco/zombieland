@@ -1004,6 +1004,9 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	    case OBJECT_WATER:
 	      vis.type = VISIBLE_WATER;
 	      break;
+	    case OBJECT_FLESH:
+	      vis.type = VISIBLE_FLESH;
+	      break;
 	    default:
 	      continue;
 	    }
@@ -1650,6 +1653,16 @@ main (int argc, char *argv[])
 		      players [i].thirst = 0;
 		      players [i].thirst_up = THIRST_UP;
 		      break;
+		    case OBJECT_FLESH:
+		      for (j = 0; j < BAG_SIZE; j++)
+			{
+			  if (players [i].bag [j].type == OBJECT_NONE)
+			    break;
+			}
+		      if (j == BAG_SIZE)
+			goto dont_take;
+		      else
+			players [i].bag [j].type = OBJECT_FLESH;
 		    default:
 		      break;
 		    }
@@ -1668,6 +1681,7 @@ main (int argc, char *argv[])
 		}
 	      else
 		{
+		dont_take:
 		  probj = obj;
 		  obj = obj->next;
 		}
@@ -1707,9 +1721,9 @@ main (int argc, char *argv[])
 	    {
 	      if (z->agent->life <= 0)
 		{
-		  i = rand () % 12;
+		  i = rand () % 20;
 
-		  if (i && i <= 4)
+		  if (i && i <= 5)
 		    {
 		      obj = malloc_and_check (sizeof (*obj));
 		      obj->area = area;
