@@ -197,6 +197,7 @@ main (int argc, char *argv[])
     thirstrect = {WINDOW_WIDTH/2+10, 25, 40, 40},
     textbackrect = {0, WINDOW_HEIGHT-50, WINDOW_WIDTH, 50},
     textrect [] = {{10, WINDOW_HEIGHT-40, 0, 0}, {10, WINDOW_HEIGHT-20, 0, 0}},
+    objcaptionrect = {10, WINDOW_HEIGHT-35, 0, 0},
     healthobjrect = {0, 0, 16, 16}, bulletobjrect = {16, 0, 16, 16},
     foodobjrect = {32, 0, 16, 16}, waterobjrect = {48, 0, 16, 16},
     fleshobjrect = {0, 16, 16, 16},
@@ -204,6 +205,8 @@ main (int argc, char *argv[])
 			{82, 96, 16, 16}, {30, 144, 16, 16}, {82, 144, 16, 16},
 			{30, 192, 16, 16}, {82, 192, 16, 16}},
     bagcursorsrc = {256, 0, 22, 22}, bagcursordest = {0, 0, 22, 22};
+
+  char *objcaptions [] = {" ", "", "", "", "", "Rotten meat"};
 
   SDL_Color textcol = {0, 0, 0, 255};
   Uint8 colr, colg, colb, cola;
@@ -998,6 +1001,9 @@ main (int argc, char *argv[])
 	  bagcursordest.x = bagslotsrects [bagcursor].x-3;
 	  bagcursordest.y = bagslotsrects [bagcursor].y-3;
 	  SDL_RenderCopy (rend, bagtxtr, &bagcursorsrc, &bagcursordest);
+
+	  render_string (objcaptions [state->args.server_state.bag [bagcursor]],
+			 objcaptionrect, hudfont, textcol, rend);
 	}
       else
 	bagcursor = -1;
