@@ -59,6 +59,9 @@
 #define ZOMBIE_SPEED 1
 
 
+#define GUN_RANGE 120
+
+
 #define MAX_ZOMBIE_HEALTH 12
 
 #define TOUCH_DAMAGE 1
@@ -653,7 +656,7 @@ move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_
 
 int
 is_target_hit (SDL_Rect charbox, enum facing facing, SDL_Rect target,
-	       int is_agent, SDL_Rect *hitpart)
+	       int is_agent, int *distance, SDL_Rect *hitpart)
 {
   switch (facing)
     {
@@ -664,6 +667,7 @@ is_target_hit (SDL_Rect charbox, enum facing facing, SDL_Rect target,
 	{
 	  hitpart->x = charbox.x;
 	  hitpart->y = target.y;
+	  *distance = target.y-charbox.h-charbox.y;
 	  return 1;
 	}
       break;
@@ -674,6 +678,7 @@ is_target_hit (SDL_Rect charbox, enum facing facing, SDL_Rect target,
 	{
 	  hitpart->x = charbox.x;
 	  hitpart->y = target.y+target.h-GRID_CELL_H;
+	  *distance = charbox.y-target.h-target.y;
 	  return 1;
 	}
       break;
@@ -684,6 +689,7 @@ is_target_hit (SDL_Rect charbox, enum facing facing, SDL_Rect target,
 	{
 	  hitpart->x = target.x;
 	  hitpart->y = charbox.y;
+	  *distance = target.x-charbox.w-charbox.x;
 	  return 1;
 	}
       break;
@@ -694,6 +700,7 @@ is_target_hit (SDL_Rect charbox, enum facing facing, SDL_Rect target,
 	{
 	  hitpart->x = target.x+target.w-GRID_CELL_W;
 	  hitpart->y = charbox.y;
+	  *distance = charbox.x-target.w-target.x;
 	  return 1;
 	}
       break;
@@ -724,20 +731,21 @@ is_closer (enum facing facing, SDL_Rect rect1, SDL_Rect rect2)
 
 SDL_Rect
 get_shot_rect (SDL_Rect charbox, enum facing facing, struct server_area *area,
-	       struct agent *as, struct agent **shotag)
+	       struct agent *as, int *hit, struct agent **shotag)
 {
-  int i, found = 0;
+  int i, dist;
   SDL_Rect ret, hitpart;
 
-  *shotag = NULL;
+  *hit = 0, *shotag = NULL;
 
   for (i = 0; i < area->unwalkables_num; i++)
     {
-      if (is_target_hit (charbox, facing, area->unwalkables [i], 0, &hitpart))
+      if (is_target_hit (charbox, facing, area->unwalkables [i], 0, &dist,
+			 &hitpart) && dist <= GUN_RANGE)
 	{
-	  if (!found || is_closer (facing, hitpart, ret))
+	  if (!*hit || is_closer (facing, hitpart, ret))
 	    {
-	      found = 1;
+	      *hit = 1;
 	      ret = hitpart;
 	    }
 	}
@@ -746,11 +754,12 @@ get_shot_rect (SDL_Rect charbox, enum facing facing, struct server_area *area,
   while (as)
     {
       if (area == as->area
-	  && is_target_hit (charbox, facing, as->place, 1, &hitpart))
+	  && is_target_hit (charbox, facing, as->place, 1, &dist, &hitpart)
+	  && dist <= GUN_RANGE)
 	{
-	  if (!found || is_closer (facing, hitpart, ret))
+	  if (!*hit || is_closer (facing, hitpart, ret))
 	    {
-	      found = 1;
+	      *hit = 1;
 	      *shotag = as;
 	      ret = hitpart;
 	    }
@@ -759,7 +768,7 @@ get_shot_rect (SDL_Rect charbox, enum facing facing, struct server_area *area,
       as = as->next;
     }
 
-  if (found)
+  if (*hit)
     {
       ret.w = GRID_CELL_W;
       ret.h = GRID_CELL_H;
@@ -767,24 +776,40 @@ get_shot_rect (SDL_Rect charbox, enum facing facing, struct server_area *area,
   else switch (facing)
     {
     case FACING_DOWN:
-      ret.x = charbox.x;
-      ret.y = area->walkable.h;
+      if (area->walkable.h-charbox.h-charbox.y <= GUN_RANGE)
+	{
+	  *hit = 1;
+	  ret.x = charbox.x;
+	  ret.y = area->walkable.h;
+	}
       break;
     case FACING_UP:
-      ret.x = charbox.x;
-      ret.y = -GRID_CELL_H;
+      if (charbox.y <= GUN_RANGE)
+	{
+	  *hit = 1;
+	  ret.x = charbox.x;
+	  ret.y = -GRID_CELL_H;
+	}
       break;
     case FACING_RIGHT:
-      ret.x = area->walkable.w;
-      ret.y = charbox.y;
+      if (area->walkable.w-charbox.w-charbox.x <= GUN_RANGE)
+	{
+	  *hit = 1;
+	  ret.x = area->walkable.w;
+	  ret.y = charbox.y;
+	}
       break;
     case FACING_LEFT:
-      ret.x = -GRID_CELL_W;
-      ret.y = charbox.y;
+      if (charbox.x <= GUN_RANGE)
+	{
+	  *hit = 1;
+	  ret.x = -GRID_CELL_W;
+	  ret.y = charbox.y;
+	}
       break;
     }
 
-  switch (facing)
+  if (*hit) switch (facing)
     {
     case FACING_DOWN:
       ret.y -= 8;
@@ -1150,9 +1175,10 @@ main (int argc, char *argv[])
     RECT_BY_GRID (10, 7, 0, 3)};
 
   SDL_Event event;
+  SDL_Rect hitrect;
 
   uint32_t frame_counter = 1, id;
-  int char_hit, quit = 0, i, j, speedx, speedy, zombie_spawn_counter = 0,
+  int char_hit, hit, quit = 0, i, j, speedx, speedy, zombie_spawn_counter = 0,
     object_spawn_counter = 0;
   Uint32 t1, t2;
   double delay;
@@ -1535,15 +1561,19 @@ main (int argc, char *argv[])
 
 	  if (players [i].shoot_rest == SHOOT_REST)
 	    {
-	      s = malloc_and_check (sizeof (*s));
-	      s->areaid = players [i].agent->area->id;
-	      s->target = get_shot_rect (players [i].agent->place,
-					 players [i].facing,
-					 players [i].agent->area, agents,
-					 &shotag);
-	      s->duration = 10;
-	      s->next = shots;
-	      shots = s;
+	      hitrect = get_shot_rect (players [i].agent->place, players [i].facing,
+				       players [i].agent->area, agents, &hit,
+				       &shotag);
+
+	      if (hit)
+		{
+		  s = malloc_and_check (sizeof (*s));
+		  s->areaid = players [i].agent->area->id;
+		  s->target = hitrect;
+		  s->duration = 10;
+		  s->next = shots;
+		  shots = s;
+		}
 
 	      players [i].bullets--;
 
