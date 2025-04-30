@@ -227,6 +227,8 @@ server_area
   SDL_Rect *zombie_spawns;
   int zombie_spawns_num;
 
+  int is_peaceful;
+
   struct object_spawn *object_spawns;
   int object_spawns_num, free_object_spawns_num;
 
@@ -1253,6 +1255,7 @@ main (int argc, char *argv[])
   room.zombies_num = 0;
   room.zombie_spawns = NULL;
   room.zombie_spawns_num = 0;
+  room.is_peaceful = 1;
   room.object_spawns = room_object_spawns;
   room.object_spawns_num = room.free_object_spawns_num = 2;
   room.next = &basement;
@@ -1262,6 +1265,7 @@ main (int argc, char *argv[])
   basement.unwalkables = basement_unwalkables;
   basement.unwalkables_num = 6;
   basement.warps = make_warp_by_grid (10, 7, 2, 3, &room, 10, 7, NULL);
+  basement.is_peaceful = 1;
 
   srand (time (NULL));
 
@@ -1397,6 +1401,7 @@ main (int argc, char *argv[])
 			= msg->args.client_char_state.do_interact;
 
 		      if (msg->args.client_char_state.do_shoot
+			  && !players [id].agent->area->is_peaceful
 			  && !players [id].interact && players [id].bullets
 			  && !players [id].shoot_rest)
 			{
@@ -1404,6 +1409,7 @@ main (int argc, char *argv[])
 			}
 
 		      if (msg->args.client_char_state.do_stab
+			  && !players [id].agent->area->is_peaceful
 			  && !players [id].interact && !players [id].stab_rest)
 			{
 			  players [id].stab_rest = STAB_REST;
