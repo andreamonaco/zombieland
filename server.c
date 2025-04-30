@@ -56,7 +56,7 @@
 
 
 #define CHAR_SPEED 2
-#define ZOMBIE_SPEED 1
+#define ZOMBIE_SPEED 2
 
 
 #define GUN_RANGE 120
