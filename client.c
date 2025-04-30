@@ -519,6 +519,8 @@ main (int argc, char *argv[])
 	      switch (event.key.keysym.sym)
 		{
 		case SDLK_ESCAPE:
+		  printf ("you quit the game.  Make sure that no client is "
+			  "started from this system in the next 60 seconds\n");
 		  quit = 1;
 		  break;
 		case SDLK_LEFT:
@@ -625,6 +627,8 @@ main (int argc, char *argv[])
 		}
 	      break;
 	    case SDL_QUIT:
+	      printf ("you quit the game.  Make sure that no client is "
+		      "started from this system in the next 60 seconds\n");
 	      quit = 1;
 	      break;
 	    }
