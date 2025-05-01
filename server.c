@@ -62,6 +62,8 @@
 #define GUN_RANGE 120
 
 
+#define ZOMBIE_SIGHT 110
+
 #define MAX_ZOMBIE_HEALTH 12
 
 #define TOUCH_DAMAGE 1
@@ -134,6 +136,8 @@ struct zombie
 
   int32_t speed_x, speed_y;
   int freeze;
+
+  int next_thinking;
 
   struct zombie *next;
 };
@@ -373,6 +377,7 @@ make_zombie (int placex, int placey, enum facing facing,
   ret->facing = facing;
   ret->speed_x = ret->speed_y = 0;
   ret->freeze = 0;
+  ret->next_thinking = 0;
   ret->next = next;
 
   return ret;
@@ -653,6 +658,30 @@ move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_
     }
 
   return check_boundary (charbox, speed_x, speed_y, walkable);
+}
+
+
+uint32_t
+compute_nearest_player (struct zombie *z, struct player pls [], int *distance)
+{
+  uint32_t i, nearest = -1, dist;
+
+  for (i = 0; i < MAX_PLAYERS; i++)
+    {
+      if (pls [i].id != -1 && z->agent->area == pls [i].agent->area)
+	{
+	  dist = abs (z->agent->place.x-pls[i].agent->place.x)
+	    + abs (z->agent->place.y-pls[i].agent->place.y);
+
+	  if (nearest == -1 || dist < *distance)
+	    {
+	      nearest = i;
+	      *distance = dist;
+	    }
+	}
+    }
+
+  return nearest;
 }
 
 
@@ -1180,8 +1209,8 @@ main (int argc, char *argv[])
   SDL_Rect hitrect;
 
   uint32_t frame_counter = 1, id;
-  int char_hit, hit, quit = 0, i, j, speedx, speedy, zombie_spawn_counter = 0,
-    object_spawn_counter = 0;
+  int char_hit, hit, quit = 0, i, j, speedx, speedy, dist,
+    zombie_spawn_counter = 0, object_spawn_counter = 0;
   Uint32 t1, t2;
   double delay;
 
@@ -1444,13 +1473,47 @@ main (int argc, char *argv[])
 	    {
 	      if (!z->freeze)
 		{
-		  z->speed_x = (rand () % 3 - 1)*ZOMBIE_SPEED;
-		  z->facing = z->speed_x > 0 ? FACING_RIGHT
-		    : z->speed_x < 0 ? FACING_LEFT : z->facing;
+		  if (!z->next_thinking)
+		    {
+		      id = compute_nearest_player (z, players, &dist);
 
-		  z->speed_y = (rand () % 3 - 1)*ZOMBIE_SPEED;
-		  z->facing = z->speed_y > 0 ? FACING_DOWN
-		    : z->speed_y < 0 ? FACING_UP : z->facing;
+		      if (id != -1 && dist < ZOMBIE_SIGHT)
+			{
+			  if (z->agent->place.x != players [id].agent->place.x)
+			    {
+			      z->speed_x = ZOMBIE_SPEED
+				* (z->agent->place.x > players [id].agent->place.x
+				   ? -1 : 1);
+			      z->facing = z->speed_x > 0 ? FACING_RIGHT : FACING_LEFT;
+			    }
+			  else
+			    z->speed_x = 0;
+
+			  if (z->agent->place.y != players [id].agent->place.y)
+			    {
+			      z->speed_y = ZOMBIE_SPEED
+				* (z->agent->place.y > players [id].agent->place.y
+				   ? -1 : 1);
+			      z->facing = z->speed_y > 0 ? FACING_DOWN : FACING_UP;
+			    }
+			  else
+			    z->speed_y = 0;
+			}
+		      else
+			{
+			  z->speed_x = (rand () % 3 - 1)*ZOMBIE_SPEED;
+			  z->facing = z->speed_x > 0 ? FACING_DOWN
+			    : z->speed_x < 0 ? FACING_UP : z->facing;
+
+			  z->speed_y = (rand () % 3 - 1)*ZOMBIE_SPEED;
+			  z->facing = z->speed_y > 0 ? FACING_DOWN
+			    : z->speed_y < 0 ? FACING_UP : z->facing;
+			}
+
+		      z->next_thinking = 25;
+		    }
+		  else
+		    z->next_thinking--;
 		}
 	      else
 		z->freeze--;
