@@ -217,7 +217,7 @@ main (int argc, char *argv[])
   SDL_Surface *iconsurf, *textsurf;
   TTF_Font *hudfont, *textfont;
   char textbox [MAXTEXTSIZE], hudtext [20];
-  int textlines = 0, textcursor, is_searching = 0, bagcursor;
+  int textlines = 0, textcursor, is_searching = 0, bagcursor, bagswap1, bagswap2;
   char tmpch;
   SDL_Rect charliferect = {10, 10, 40, 40}, bulletsrect = {10, 25, 40, 40},
     hungerrect = {WINDOW_WIDTH/2+10, 10, 40, 40},
@@ -234,7 +234,8 @@ main (int argc, char *argv[])
 			{158, 48, 16, 16}, {210, 48, 16, 16}, {158, 96, 16, 16},
 			{210, 96, 16, 16}, {158, 144, 16, 16}, {210, 144, 16, 16},
 			{158, 192, 16, 16}, {210, 192, 16, 16}},
-    bagcursorsrc = {256, 0, 22, 22}, bagcursordest = {0, 0, 22, 22};
+    bagcursorsrc = {256, 0, 22, 22}, bagswapsrc = {256, 22, 22, 22},
+    bagcursordest = {0, 0, 22, 22};
 
   char *objcaptions [] = {" ", "", "", "", "", "Rotten meat"};
 
@@ -606,7 +607,19 @@ main (int argc, char *argv[])
 		    }
 		  break;
 		case SDLK_SPACE:
-		  if (!textlines)
+		  if (is_searching)
+		    {
+		      if (bagswap1 >= 0)
+			{
+			  if (bagcursor == bagswap1)
+			    bagswap1 = -1;
+			  else
+			    bagswap2 = bagcursor;
+			}
+		      else
+			bagswap1 = bagcursor;
+		    }
+		  else if (!textlines)
 		    do_interact = 1;
 		  else
 		    {
@@ -670,12 +683,16 @@ main (int argc, char *argv[])
 
       send_message (sockfd, &server_addr, -1, MSG_CLIENT_CHAR_STATE, id,
 		    frame_counter, loc_char_speed_x, loc_char_speed_y,
-		    loc_char_facing, do_interact, do_shoot, do_stab, do_search);
+		    loc_char_facing, do_interact, do_shoot, do_stab, do_search,
+		    bagswap1, bagswap2);
 
       do_interact = 0;
       do_shoot = 0;
       do_stab = 0;
       do_search = 0;
+
+      if (bagswap1 >= 0 && bagswap2 >= 0)
+	bagswap1 = bagswap2 = -1;
 
       got_update = 0;
 
@@ -1006,7 +1023,7 @@ main (int argc, char *argv[])
 
 	  if (!is_searching)
 	    {
-	      bagcursor = 0;
+	      bagcursor = 0, bagswap1 = -1, bagswap2 = -1;
 	      is_searching = state->args.server_state.is_searching;
 	    }
 
@@ -1046,6 +1063,13 @@ main (int argc, char *argv[])
 	  bagcursordest.x = bagslotsrects [bagcursor].x-3;
 	  bagcursordest.y = bagslotsrects [bagcursor].y-3;
 	  SDL_RenderCopy (rend, bagtxtr, &bagcursorsrc, &bagcursordest);
+
+	  if (bagswap1 >= 0)
+	    {
+	      bagcursordest.x = bagslotsrects [bagswap1].x-3;
+	      bagcursordest.y = bagslotsrects [bagswap1].y-3;
+	      SDL_RenderCopy (rend, bagtxtr, &bagswapsrc, &bagcursordest);
+	    }
 
 	  render_string (objcaptions [state->args.server_state.bag [bagcursor]],
 			 objcaptionrect, hudfont, textcol, rend);

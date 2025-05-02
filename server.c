@@ -111,6 +111,7 @@ player
 
   uint32_t is_searching;
   struct bag *might_search_at;
+  int32_t swap1, swap2;
 
   struct object bag [BAG_SIZE];
 
@@ -986,6 +987,15 @@ does_agent_take_object (SDL_Rect charbox, SDL_Rect objbox)
 
 
 void
+swap_objects (enum object_type *t1, enum object_type *t2)
+{
+  enum object_type tmp = *t1;
+  *t1 = *t2;
+  *t2 = tmp;
+}
+
+
+void
 send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pls,
 		   struct agent *as, struct shot *ss, struct object *objs)
 {
@@ -1021,7 +1031,7 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 
 	  for (i = 0; i < BAG_SIZE; i++)
 	    {
-	      msg->args.server_state.bag [BAG_SIZE]
+	      msg->args.server_state.bag [BAG_SIZE+i]
 		= pls [id].might_search_at->content [i].type;
 	    }
 	}
@@ -1502,8 +1512,12 @@ main (int argc, char *argv[])
 			  if (players [id].is_searching)
 			    {
 			      players [id].speed_x = players [id].speed_y = 0;
+			      players [id].swap1 = players [id].swap2 = -1;
 			    }
 			}
+
+		      players [id].swap1 = msg->args.client_char_state.swap [0];
+		      players [id].swap2 = msg->args.client_char_state.swap [1];
 		    }
 
 		  players [id].last_update
@@ -1849,6 +1863,26 @@ main (int argc, char *argv[])
 		players [i].might_search_at = b;
 
 	      b = b->next;
+	    }
+
+	  if (players [i].is_searching && players [i].swap1 >= 0
+	      && (players [i].swap1 < BAG_SIZE
+		  || (players [i].might_search_at
+		      && players [i].swap1 < BAG_SIZE*2))
+	      && players [i].swap2 >= 0
+	      && (players [i].swap2 < BAG_SIZE
+		  || (players [i].might_search_at
+		      && players [i].swap2 < BAG_SIZE*2)))
+	    {
+	      swap_objects (players [i].swap1 < BAG_SIZE
+			    ? &players [i].bag [players [i].swap1].type
+			    : &players [i].might_search_at->content
+			    [players [i].swap1-BAG_SIZE].type,
+			    players [i].swap2 < BAG_SIZE
+			    ? &players [i].bag [players [i].swap2].type
+			    : &players [i].might_search_at->content
+			    [players [i].swap2-BAG_SIZE].type);
+	      players [i].swap1 = players [i].swap2 = -1;
 	    }
 	}
 

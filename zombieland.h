@@ -92,6 +92,7 @@ client_char_state_args
   uint32_t do_shoot;
   uint32_t do_stab;
   uint32_t do_search;
+  int32_t swap [2];
 };
 
 
