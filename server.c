@@ -110,6 +110,8 @@ player
   int32_t bullets;
 
   uint32_t is_searching;
+  struct bag *might_search_at;
+
   struct object bag [BAG_SIZE];
 
   uint32_t hunger, hunger_up, thirst, thirst_up;
@@ -215,6 +217,19 @@ object_spawn
 
 
 struct
+bag
+{
+  SDL_Rect place;
+  SDL_Rect icon;
+  struct object content [BAG_SIZE];
+
+  struct player *searched_by;
+
+  struct bag *next;
+};
+
+
+struct
 server_area
 {
   uint32_t id;
@@ -235,6 +250,8 @@ server_area
 
   struct object_spawn *object_spawns;
   int object_spawns_num, free_object_spawns_num;
+
+  struct bag *bags;
 
   struct server_area *next;
 };
@@ -293,6 +310,7 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   pls [i].speed_x = pls [i].speed_y = pls [i].facing = 0;
   pls [i].bullets = 16;
   pls [i].is_searching = 0;
+  pls [i].might_search_at = NULL;
 
   for (j = 0; j < BAG_SIZE; j++)
     pls [i].bag [j].type = OBJECT_NONE;
@@ -996,6 +1014,17 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	{
 	  msg->args.server_state.bag [i] = pls [id].bag [i].type;
 	}
+
+      if (pls [id].might_search_at)
+	{
+	  msg->args.server_state.is_searching++;
+
+	  for (i = 0; i < BAG_SIZE; i++)
+	    {
+	      msg->args.server_state.bag [BAG_SIZE]
+		= pls [id].might_search_at->content [i].type;
+	    }
+	}
     }
 
   msg->args.server_state.num_visibles = 0;
@@ -1101,6 +1130,18 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
       ss = ss->next;
     }
 
+  if (!pls [id].is_searching && pls [id].might_search_at)
+    {
+      vis.type = VISIBLE_SEARCHABLE;
+      vis.x = pls [id].might_search_at->icon.x;
+      vis.y = pls [id].might_search_at->icon.y;
+      vis.w = pls [id].might_search_at->icon.w;
+      vis.h = pls [id].might_search_at->icon.h;
+      memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
+		    *sizeof (vis)], &vis, sizeof (vis));
+      msg->args.server_state.num_visibles++;
+    }
+
   if (pls [id].textbox
       && sizeof (msg)+msg->args.server_state.num_visibles*sizeof (struct visible)
       +msg->args.server_state.textbox_lines_num*TEXTLINESIZE+1 <= MAXMSGSIZE)
@@ -1156,6 +1197,7 @@ main (int argc, char *argv[])
 
   struct interactible *in;
   struct warp *w;
+  struct bag *b;
 
   struct server_area field = {0}, *area;
   SDL_Rect field_walkable = {0, 0, 512, 512},
@@ -1204,6 +1246,8 @@ main (int argc, char *argv[])
     RECT_BY_GRID (1, 4, 7, 2), RECT_BY_GRID (1, 8, 7, 2),
     RECT_BY_GRID (9, 0, 3, 3), RECT_BY_GRID (10, 7, 2, 0),
     RECT_BY_GRID (10, 7, 0, 3)};
+  struct bag basement_bag = {RECT_BY_GRID (9, 3, 3, 1),
+			     RECT_BY_GRID (10, 1, 1, 1)};
 
   SDL_Event event;
   SDL_Rect hitrect;
@@ -1295,6 +1339,7 @@ main (int argc, char *argv[])
   basement.unwalkables_num = 6;
   basement.warps = make_warp_by_grid (10, 7, 2, 3, &room, 10, 7, NULL);
   basement.is_peaceful = 1;
+  basement.bags = &basement_bag;
 
   srand (time (NULL));
 
@@ -1415,16 +1460,21 @@ main (int argc, char *argv[])
 		{
 		  if (!players [id].freeze)
 		    {
-		      players [id].speed_x =
-			msg->args.client_char_state.char_speed_x > 0 ? CHAR_SPEED
-			: msg->args.client_char_state.char_speed_x < 0
-			? -CHAR_SPEED : 0;
-		      players [id].speed_y =
-			msg->args.client_char_state.char_speed_y > 0 ? CHAR_SPEED
-			: msg->args.client_char_state.char_speed_y < 0
-			? -CHAR_SPEED : 0;
-		      players [id].facing
-			= msg->args.client_char_state.char_facing;
+		      if (!players [id].is_searching)
+			{
+			  players [id].speed_x =
+			    msg->args.client_char_state.char_speed_x > 0
+			    ? CHAR_SPEED
+			    : msg->args.client_char_state.char_speed_x < 0
+			    ? -CHAR_SPEED : 0;
+			  players [id].speed_y =
+			    msg->args.client_char_state.char_speed_y > 0
+			    ? CHAR_SPEED
+			    : msg->args.client_char_state.char_speed_y < 0
+			    ? -CHAR_SPEED : 0;
+			  players [id].facing
+			    = msg->args.client_char_state.char_facing;
+			}
 
 		      players [id].interact
 			= msg->args.client_char_state.do_interact;
@@ -1448,6 +1498,11 @@ main (int argc, char *argv[])
 			  && !players [id].interact)
 			{
 			  players [id].is_searching = !players [id].is_searching;
+
+			  if (players [id].is_searching)
+			    {
+			      players [id].speed_x = players [id].speed_y = 0;
+			    }
 			}
 		    }
 
@@ -1784,6 +1839,16 @@ main (int argc, char *argv[])
 		  probj = obj;
 		  obj = obj->next;
 		}
+	    }
+
+	  players [i].might_search_at = NULL, b = players [i].agent->area->bags;
+
+	  while (b)
+	    {
+	      if (IS_RECT_CONTAINED (players [i].agent->place, b->place))
+		players [i].might_search_at = b;
+
+	      b = b->next;
 	    }
 	}
 

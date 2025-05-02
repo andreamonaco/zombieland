@@ -103,6 +103,7 @@ client_char_state_args
 #define VISIBLE_FOOD   5
 #define VISIBLE_WATER  6
 #define VISIBLE_FLESH  7
+#define VISIBLE_SEARCHABLE 8
 
 struct
 visible
@@ -140,7 +141,7 @@ server_state_args
   uint32_t hunger;
   uint32_t thirst;
   uint32_t is_searching;
-  enum object_type bag [BAG_SIZE];
+  enum object_type bag [BAG_SIZE*2];
   uint32_t num_visibles;
   int32_t npcid;
   uint32_t textbox_lines_num;

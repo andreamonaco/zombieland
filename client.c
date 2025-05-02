@@ -110,6 +110,33 @@ render_string (const char *string, SDL_Rect rect, TTF_Font *font, SDL_Color col,
 }
 
 
+int
+move_bag_cursor (int command, int pos, int is_double)
+{
+  switch (command)
+    {
+    case SDLK_LEFT:
+      if (pos % 2)
+	return pos-1;
+      else if (pos >= BAG_SIZE)
+	return pos-BAG_SIZE+1;
+      else
+	return pos;
+    case SDLK_RIGHT:
+      if (!(pos % 2))
+	return pos+1;
+      else if (pos < BAG_SIZE && is_double)
+	return pos+BAG_SIZE-1;
+      else
+	return pos;
+    case SDLK_UP:
+      return (pos >= 2 && pos < 8) || pos > 9 ? pos-2 : pos;
+    case SDLK_DOWN:
+      return pos < 6 || (pos >= 8 && pos < 14) ? pos+2 : pos;
+    }
+}
+
+
 void
 print_welcome_message (void)
 {
@@ -190,7 +217,7 @@ main (int argc, char *argv[])
   SDL_Surface *iconsurf, *textsurf;
   TTF_Font *hudfont, *textfont;
   char textbox [MAXTEXTSIZE], hudtext [20];
-  int textlines = 0, textcursor, bagcursor = -1;
+  int textlines = 0, textcursor, is_searching = 0, bagcursor;
   char tmpch;
   SDL_Rect charliferect = {10, 10, 40, 40}, bulletsrect = {10, 25, 40, 40},
     hungerrect = {WINDOW_WIDTH/2+10, 10, 40, 40},
@@ -200,10 +227,13 @@ main (int argc, char *argv[])
     objcaptionrect = {10, WINDOW_HEIGHT-35, 0, 0},
     healthobjrect = {0, 0, 16, 16}, bulletobjrect = {16, 0, 16, 16},
     foodobjrect = {32, 0, 16, 16}, waterobjrect = {48, 0, 16, 16},
-    fleshobjrect = {0, 16, 16, 16},
+    fleshobjrect = {0, 16, 16, 16}, searchableiconrect = {16, 16, 16, 16},
     bagslotsrects [] = {{30, 48, 16, 16}, {82, 48, 16, 16}, {30, 96, 16, 16},
 			{82, 96, 16, 16}, {30, 144, 16, 16}, {82, 144, 16, 16},
-			{30, 192, 16, 16}, {82, 192, 16, 16}},
+			{30, 192, 16, 16}, {82, 192, 16, 16},
+			{158, 48, 16, 16}, {210, 48, 16, 16}, {158, 96, 16, 16},
+			{210, 96, 16, 16}, {158, 144, 16, 16}, {210, 144, 16, 16},
+			{158, 192, 16, 16}, {210, 192, 16, 16}},
     bagcursorsrc = {256, 0, 22, 22}, bagcursordest = {0, 0, 22, 22};
 
   char *objcaptions [] = {" ", "", "", "", "", "Rotten meat"};
@@ -524,7 +554,7 @@ main (int argc, char *argv[])
 		  quit = 1;
 		  break;
 		case SDLK_LEFT:
-		  if (bagcursor < 0)
+		  if (!is_searching)
 		    {
 		      loc_char_speed_x = -2;
 		      if (!loc_char_speed_y || loc_char_facing == FACING_RIGHT)
@@ -532,11 +562,12 @@ main (int argc, char *argv[])
 		    }
 		  else
 		    {
-		      bagcursor = bagcursor % 2 ? bagcursor-1 : bagcursor;
+		      bagcursor = move_bag_cursor (SDLK_LEFT, bagcursor,
+						   is_searching == 2);
 		    }
 		  break;
 		case SDLK_RIGHT:
-		  if (bagcursor < 0)
+		  if (!is_searching)
 		    {
 		      loc_char_speed_x = 2;
 		      if (!loc_char_speed_y || loc_char_facing == FACING_LEFT)
@@ -544,11 +575,12 @@ main (int argc, char *argv[])
 		    }
 		  else
 		    {
-		      bagcursor = !(bagcursor % 2) ? bagcursor+1 : bagcursor;
+		      bagcursor = move_bag_cursor (SDLK_RIGHT, bagcursor,
+						   is_searching == 2);
 		    }
 		  break;
 		case SDLK_UP:
-		  if (bagcursor < 0)
+		  if (!is_searching)
 		    {
 		      loc_char_speed_y = -2;
 		      if (!loc_char_speed_x || loc_char_facing == FACING_DOWN)
@@ -556,11 +588,12 @@ main (int argc, char *argv[])
 		    }
 		  else
 		    {
-		      bagcursor = bagcursor > 1 ? bagcursor-2 : bagcursor;
+		      bagcursor = move_bag_cursor (SDLK_UP, bagcursor,
+						   is_searching == 2);
 		    }
 		  break;
 		case SDLK_DOWN:
-		  if (bagcursor < 0)
+		  if (!is_searching)
 		    {
 		      loc_char_speed_y = 2;
 		      if (!loc_char_speed_x || loc_char_facing == FACING_UP)
@@ -568,7 +601,8 @@ main (int argc, char *argv[])
 		    }
 		  else
 		    {
-		      bagcursor = bagcursor < 6 ? bagcursor+2 : bagcursor;
+		      bagcursor = move_bag_cursor (SDLK_DOWN, bagcursor,
+						   is_searching == 2);
 		    }
 		  break;
 		case SDLK_SPACE:
@@ -798,7 +832,8 @@ main (int argc, char *argv[])
 	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
 					+i*sizeof (vis));
 
-	      if (vis.type < VISIBLE_HEALTH || vis.type > VISIBLE_FLESH)
+	      if ((vis.type < VISIBLE_HEALTH || vis.type > VISIBLE_FLESH)
+		  && vis.type != VISIBLE_SEARCHABLE)
 		continue;
 
 	      pers.x = -camera_src.x + area->walkable.x + vis.x;
@@ -810,7 +845,8 @@ main (int argc, char *argv[])
 			      : vis.type == VISIBLE_AMMO ? &bulletobjrect
 			      : vis.type == VISIBLE_FOOD ? &foodobjrect
 			      : vis.type == VISIBLE_WATER ? &waterobjrect
-			      : &fleshobjrect, &pers);
+			      : vis.type == VISIBLE_FLESH ? &fleshobjrect
+			      : &searchableiconrect, &pers);
 	    }
 
 	  for (i = 0; i < state->args.server_state.num_visibles; i++)
@@ -968,12 +1004,17 @@ main (int argc, char *argv[])
 	{
 	  loc_char_speed_x = loc_char_speed_y = 0;
 
-	  if (bagcursor < 0)
-	    bagcursor = 0;
+	  if (!is_searching)
+	    {
+	      bagcursor = 0;
+	      is_searching = state->args.server_state.is_searching;
+	    }
 
-	  SDL_RenderCopy (rend, bagtxtr, &halfscreen, &halfscreen);
+	  SDL_RenderCopy (rend, bagtxtr,
+			  is_searching == 1 ? &halfscreen : &screen_dest,
+			  is_searching == 1 ? &halfscreen : &screen_dest);
 
-	  for (i = 0; i < BAG_SIZE; i++)
+	  for (i = 0; i < BAG_SIZE*is_searching; i++)
 	    {
 	      switch (state->args.server_state.bag [i])
 		{
@@ -1010,7 +1051,7 @@ main (int argc, char *argv[])
 			 objcaptionrect, hudfont, textcol, rend);
 	}
       else
-	bagcursor = -1;
+	is_searching = 0;
 
       SDL_RenderPresent (rend);
 
