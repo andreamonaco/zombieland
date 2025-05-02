@@ -52,7 +52,10 @@ the knife, interact with objects (reading signs and so on) with Space and close
 the game with Esc.  Any number of players can shoot at each other and at the
 zombies until they die.
 You can also open and close the inventory with Q; you can collect rotten meat
-dropped by zombies in your bag.
+dropped by zombies in your bag.  If you find a searchable object in the
+environment, a symbol with a bag will appear on that object; pressing Q will
+then open both your inventory and that bag; with Space you can select an object
+and move it between the two inventories.
 
 
 
