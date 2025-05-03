@@ -636,7 +636,7 @@ main (int argc, char *argv[])
 		  do_stab = 4;
 		  break;
 		case SDLK_q:
-		  do_search = 1;
+		  do_search = !do_search;
 		  break;
 		}
 	      break;
@@ -697,8 +697,6 @@ main (int argc, char *argv[])
 
       if (do_stab)
 	do_stab--;
-
-      do_search = 0;
 
       if (bagswap1 >= 0 && bagswap2 >= 0)
 	bagswap1 = bagswap2 = -1;

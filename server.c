@@ -1507,14 +1507,16 @@ main (int argc, char *argv[])
 		      if (msg->args.client_char_state.do_search
 			  && !players [id].interact)
 			{
-			  players [id].is_searching = !players [id].is_searching;
-
-			  if (players [id].is_searching)
+			  if (!players [id].is_searching)
 			    {
 			      players [id].speed_x = players [id].speed_y = 0;
 			      players [id].swap1 = players [id].swap2 = -1;
 			    }
+
+			  players [id].is_searching = 1;
 			}
+		      else
+			players [id].is_searching = 0;
 
 		      players [id].swap1 = msg->args.client_char_state.swap [0];
 		      players [id].swap2 = msg->args.client_char_state.swap [1];
