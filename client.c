@@ -620,7 +620,7 @@ main (int argc, char *argv[])
 			bagswap1 = bagcursor;
 		    }
 		  else if (!textlines)
-		    do_interact = 1;
+		    do_interact = 10;
 		  else
 		    {
 		      textcursor += 2;
@@ -681,12 +681,17 @@ main (int argc, char *argv[])
 	    }
 	}
 
+      if (loc_char_speed_x || loc_char_speed_y)
+	do_interact = 0;
+
       send_message (sockfd, &server_addr, -1, MSG_CLIENT_CHAR_STATE, id,
 		    frame_counter, loc_char_speed_x, loc_char_speed_y,
 		    loc_char_facing, do_interact, do_shoot, do_stab, do_search,
 		    bagswap1, bagswap2);
 
-      do_interact = 0;
+      if (do_interact)
+	do_interact--;
+
       do_shoot = 0;
       do_stab = 0;
       do_search = 0;
@@ -946,6 +951,8 @@ main (int argc, char *argv[])
 
       if (latest_srv_state && state->args.server_state.textbox_lines_num)
 	{
+	  do_interact = 0;
+
 	  strcpy (textbox, latest_srv_state+sizeof (struct message)
 		  +sizeof (struct visible)
 		  *state->args.server_state.num_visibles);
