@@ -112,6 +112,7 @@ player
   uint32_t is_searching;
   struct bag *might_search_at;
   int32_t swap1, swap2;
+  int swap_rest;
 
   struct object bag [BAG_SIZE];
 
@@ -312,6 +313,7 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   pls [i].bullets = 16;
   pls [i].is_searching = 0;
   pls [i].might_search_at = NULL;
+  pls [i].swap_rest = 0;
 
   for (j = 0; j < BAG_SIZE; j++)
     pls [i].bag [j].type = OBJECT_NONE;
@@ -1761,6 +1763,9 @@ main (int argc, char *argv[])
 	  if (players [i].stab_rest)
 	    players [i].stab_rest--;
 
+	  if (players [i].swap_rest)
+	    players [i].swap_rest--;
+
 	  if (players [i].hunger_up)
 	    players [i].hunger_up--;
 	  else
@@ -1874,7 +1879,8 @@ main (int argc, char *argv[])
 	      && players [i].swap2 >= 0
 	      && (players [i].swap2 < BAG_SIZE
 		  || (players [i].might_search_at
-		      && players [i].swap2 < BAG_SIZE*2)))
+		      && players [i].swap2 < BAG_SIZE*2))
+	      && !players [i].swap_rest)
 	    {
 	      swap_objects (players [i].swap1 < BAG_SIZE
 			    ? &players [i].bag [players [i].swap1].type
@@ -1885,6 +1891,7 @@ main (int argc, char *argv[])
 			    : &players [i].might_search_at->content
 			    [players [i].swap2-BAG_SIZE].type);
 	      players [i].swap1 = players [i].swap2 = -1;
+	      players [i].swap_rest = 4;
 	    }
 	}
 

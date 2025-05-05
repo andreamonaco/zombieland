@@ -217,7 +217,8 @@ main (int argc, char *argv[])
   SDL_Surface *iconsurf, *textsurf;
   TTF_Font *hudfont, *textfont;
   char textbox [MAXTEXTSIZE], hudtext [20];
-  int textlines = 0, textcursor, is_searching = 0, bagcursor, bagswap1, bagswap2;
+  int textlines = 0, textcursor, is_searching = 0, bagcursor, bagswap1, bagswap2,
+    swaprest = 0;
   char tmpch;
   SDL_Rect charliferect = {10, 10, 40, 40}, bulletsrect = {10, 25, 40, 40},
     hungerrect = {WINDOW_WIDTH/2+10, 10, 40, 40},
@@ -614,7 +615,10 @@ main (int argc, char *argv[])
 			  if (bagcursor == bagswap1)
 			    bagswap1 = -1;
 			  else
-			    bagswap2 = bagcursor;
+			    {
+			      bagswap2 = bagcursor;
+			      swaprest = 3;
+			    }
 			}
 		      else
 			bagswap1 = bagcursor;
@@ -698,8 +702,13 @@ main (int argc, char *argv[])
       if (do_stab)
 	do_stab--;
 
-      if (bagswap1 >= 0 && bagswap2 >= 0)
-	bagswap1 = bagswap2 = -1;
+      if (swaprest)
+	{
+	  swaprest--;
+
+	  if (!swaprest)
+	    bagswap1 = bagswap2 = -1;
+	}
 
       got_update = 0;
 
