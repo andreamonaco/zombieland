@@ -1215,7 +1215,7 @@ main (int argc, char *argv[])
   SDL_Rect field_walkable = {0, 0, 512, 512},
     field_unwalkables [] = {RECT_BY_GRID (1, 3, 4, 4),
     RECT_BY_GRID (1, 10, 3, 3), RECT_BY_GRID (10, 10, 2, 4),
-    RECT_BY_GRID (13, 10, 2, 4), RECT_BY_GRID (12, 10, 1, 2),
+    RECT_BY_GRID (13, 10, 2, 4), RECT_BY_GRID (12, 10, 1, 3),
     RECT_BY_GRID (2, 0, 2, 2), RECT_BY_GRID (6, 1, 2, 2),
     RECT_BY_GRID (7, 4, 2, 2), RECT_BY_GRID (10, 0, 3, 1),
     RECT_BY_GRID (7, 7, 8, 1), RECT_BY_GRID (7, 9, 1, 5),
