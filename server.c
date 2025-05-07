@@ -1019,6 +1019,8 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
   msg->args.server_state.bullets = pls [id].bullets;
   msg->args.server_state.hunger = pls [id].hunger;
   msg->args.server_state.thirst = pls [id].thirst;
+  msg->args.server_state.just_shot = pls [id].shoot_rest > 6;
+  msg->args.server_state.just_stabbed = pls [id].stab_rest > 2;
   msg->args.server_state.is_searching = pls [id].is_searching;
 
   if (pls [id].is_searching)

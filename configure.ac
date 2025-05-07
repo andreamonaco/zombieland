@@ -41,6 +41,8 @@ AC_CHECK_LIB([SDL2_image], [IMG_Init], [true], [AC_MSG_ERROR([SDL2_image not fou
 
 AC_CHECK_LIB([SDL2_ttf], [TTF_Init], [true], [AC_MSG_ERROR([SDL2_ttf not found])])
 
+AC_CHECK_LIB([SDL2_mixer], [Mix_OpenAudio], [true], [AC_MSG_ERROR([SDL2_mixer not found])])
+
 
 
 AC_OUTPUT

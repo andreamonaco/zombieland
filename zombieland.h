@@ -142,6 +142,8 @@ server_state_args
   int32_t bullets;
   uint32_t hunger;
   uint32_t thirst;
+  uint32_t just_shot;
+  uint32_t just_stabbed;
   uint32_t is_searching;
   enum object_type bag [BAG_SIZE*2];
   uint32_t num_visibles;

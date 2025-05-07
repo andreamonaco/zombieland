@@ -38,6 +38,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_mixer.h>
 
 #include "zombieland.h"
 
@@ -204,7 +205,8 @@ main (int argc, char *argv[])
 
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
     do_shoot = 0, do_stab = 0, do_search = 0, life = MAX_PLAYER_HEALTH,
-    is_immortal = 0, bullets = 16, hunger = 0, thirst = 0;
+    is_immortal = 0, bullets = 16, hunger = 0, thirst = 0, just_shot = 0,
+    just_stabbed = 0;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct visible vis;
 
@@ -248,6 +250,8 @@ main (int argc, char *argv[])
     screen_dest = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
     screen_overlay = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
     halfscreen = {0, 0, WINDOW_WIDTH/2, WINDOW_HEIGHT};
+
+  Mix_Chunk *shootsfx, *stabsfx;
 
   int quit = 0, i, got_update;
   uint32_t frame_counter = 1, timeout = SERVER_TIMEOUT;
@@ -367,7 +371,7 @@ main (int argc, char *argv[])
     }
 
 
-  if (SDL_Init (SDL_INIT_VIDEO) < 0)
+  if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
     {
       fprintf (stderr, "could not initialise SDL: %s\n", SDL_GetError ());
       return 1;
@@ -393,7 +397,14 @@ main (int argc, char *argv[])
 
   if (TTF_Init() < 0)
     {
-      fprintf (stderr, "could not initialize SDL_ttf: %s\n", TTF_GetError());
+      fprintf (stderr, "could not initialize SDL_ttf: %s\n", TTF_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
+  if (Mix_OpenAudio (44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
+    {
+      fprintf (stderr,  "could not initialize SDL_mixer: %s\n", Mix_GetError ());
       SDL_Quit ();
       return 1;
     }
@@ -499,6 +510,24 @@ main (int argc, char *argv[])
   if (!textfont)
     {
       fprintf (stderr, "could not load font: %s\n", TTF_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
+  shootsfx = Mix_LoadWAV ("bang_01.ogg");
+
+  if (!shootsfx)
+    {
+      fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
+  stabsfx = Mix_LoadWAV ("knifesharpener1.flac");
+
+  if (!stabsfx)
+    {
+      fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
       SDL_Quit ();
       return 1;
     }
@@ -812,6 +841,16 @@ main (int argc, char *argv[])
 	  bullets = state->args.server_state.bullets;
 	  hunger = state->args.server_state.hunger;
 	  thirst = state->args.server_state.thirst;
+
+	  if (state->args.server_state.just_shot && !just_shot)
+	    {
+	      just_shot = 3;
+	    }
+
+	  if (state->args.server_state.just_stabbed && !just_stabbed)
+	    {
+	      just_stabbed = 2;
+	    }
 	}
 
       camera_src.x = -WINDOW_WIDTH/2 + area->walkable.x + character_box.x
@@ -1100,6 +1139,22 @@ main (int argc, char *argv[])
 	is_searching = 0;
 
       SDL_RenderPresent (rend);
+
+      if (just_shot)
+	{
+	  if (just_shot == 3)
+	    Mix_PlayChannel (-1, shootsfx, 0);
+
+	  just_shot--;
+	}
+
+      if (just_stabbed)
+	{
+	  if (just_stabbed == 2)
+	    Mix_PlayChannel (-1, stabsfx, 0);
+
+	  just_stabbed--;
+	}
 
       frame_counter++;
 

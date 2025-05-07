@@ -21,7 +21,7 @@
 bin_PROGRAMS = zombieland zombielandd
 
 zombieland_SOURCES = client.c zombieland.c
-zombieland_LDADD = -lSDL2 -lSDL2_image -lSDL2_ttf
+zombieland_LDADD = -lSDL2 -lSDL2_image -lSDL2_ttf -lSDL2_mixer
 
 zombielandd_SOURCES = server.c malloc.c zombieland.c
 zombielandd_LDADD = -lSDL2
