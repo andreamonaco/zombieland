@@ -204,7 +204,7 @@ main (int argc, char *argv[])
 
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
     do_shoot = 0, do_stab = 0, do_search = 0, life = MAX_PLAYER_HEALTH,
-    bullets = 16, hunger = 0, thirst = 0;
+    is_immortal = 0, bullets = 16, hunger = 0, thirst = 0;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct visible vis;
 
@@ -808,6 +808,7 @@ main (int argc, char *argv[])
 	  character_box.h = state->args.server_state.h;
 	  srv_char_facing = state->args.server_state.char_facing;
 	  life = state->args.server_state.life;
+	  is_immortal = state->args.server_state.is_immortal;
 	  bullets = state->args.server_state.bullets;
 	  hunger = state->args.server_state.hunger;
 	  thirst = state->args.server_state.thirst;
@@ -923,15 +924,18 @@ main (int argc, char *argv[])
 	    }
 	}
 
-      character_dest.x = -camera_src.x + area->walkable.x + character_box.x
-	+ character_origin.x;
-      character_dest.y = -camera_src.y + area->walkable.y + character_box.y
-	+ character_origin.y;
-      SDL_RenderCopy (rend, charactertxtr,
-		      &character_srcs [loc_char_facing*3+
-				       ((loc_char_speed_x || loc_char_speed_y)
-					? 1+(frame_counter%12)/6 : 0)],
-		      &character_dest);
+      if (!is_immortal || frame_counter%4 < 2)
+	{
+	  character_dest.x = -camera_src.x + area->walkable.x + character_box.x
+	    + character_origin.x;
+	  character_dest.y = -camera_src.y + area->walkable.y + character_box.y
+	    + character_origin.y;
+	  SDL_RenderCopy (rend, charactertxtr,
+			  &character_srcs [loc_char_facing*3+
+					   ((loc_char_speed_x || loc_char_speed_y)
+					    ? 1+(frame_counter%12)/6 : 0)],
+			  &character_dest);
+	}
 
       if (area->overlay_frames_num)
 	{

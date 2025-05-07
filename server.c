@@ -1015,6 +1015,7 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
   msg->args.server_state.h = pls [id].agent->place.h;
   msg->args.server_state.char_facing = pls [id].facing;
   msg->args.server_state.life = pls [id].agent->life;
+  msg->args.server_state.is_immortal = !!pls [id].agent->immortal;
   msg->args.server_state.bullets = pls [id].bullets;
   msg->args.server_state.hunger = pls [id].hunger;
   msg->args.server_state.thirst = pls [id].thirst;
