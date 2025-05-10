@@ -601,6 +601,9 @@ move_character (struct player *pl, SDL_Rect walkable, SDL_Rect unwalkables [],
   charbox.y += speed_y;
 
  restart:
+  if (!speed_x && !speed_y)
+    return charbox;
+
   charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y, unwalkables,
 					  unwalkables_num, &collided);
 
@@ -648,6 +651,9 @@ move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_
   charbox.y += speed_y;
 
  restart:
+  if (!speed_x && !speed_y)
+    return charbox;
+
   charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y, unwalkables,
 					  unwalkables_num, &collided);
 
