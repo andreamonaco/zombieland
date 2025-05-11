@@ -1641,7 +1641,14 @@ main (int argc, char *argv[])
 		    z->next_thinking--;
 		}
 	      else
-		z->freeze--;
+		{
+		  z->freeze--;
+
+		  if (!z->freeze)
+		    {
+		      z->speed_x = z->speed_y = 0;
+		    }
+		}
 
 	      if (z->agent->immortal)
 		z->agent->immortal--;
@@ -1799,7 +1806,7 @@ main (int argc, char *argv[])
 		    }
 		  else
 		    {
-		      stabbed->data_ptr.zombie->freeze = 4;
+		      stabbed->data_ptr.zombie->freeze = 6;
 		      stabbed->data_ptr.zombie->speed_x = speedx;
 		      stabbed->data_ptr.zombie->speed_y = speedy;
 		    }
