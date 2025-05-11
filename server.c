@@ -1783,6 +1783,10 @@ main (int argc, char *argv[])
 		{
 		  shotag->immortal = IMMORTAL_DURATION;
 		  shotag->life -= SHOOT_DAMAGE;
+
+		  if (shotag->type == AGENT_ZOMBIE
+		      && !shotag->data_ptr.zombie->freeze)
+		    shotag->data_ptr.zombie->freeze = 2;
 		}
 	    }
 
