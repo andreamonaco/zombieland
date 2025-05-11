@@ -117,6 +117,7 @@ visible
   uint32_t x, y, w, h;
   enum facing facing;
   int32_t speed_x, speed_y;
+  uint32_t is_immortal;
 };
 
 

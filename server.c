@@ -1087,6 +1087,7 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	      vis.facing = as->data_ptr.zombie->facing;
 	      vis.speed_x = as->data_ptr.zombie->speed_x;
 	      vis.speed_y = as->data_ptr.zombie->speed_y;
+	      vis.is_immortal = !!as->immortal;
 	    }
 
 	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles

@@ -925,6 +925,15 @@ main (int argc, char *argv[])
 		continue;
 
 	      pers.x = -camera_src.x + area->walkable.x + vis.x + zombie_origin.x;
+
+	      if (vis.is_immortal)
+		{
+		  if (frame_counter % 6 < 3)
+		    pers.x += (frame_counter%3-1)*5;
+		  else
+		    pers.y += (frame_counter%3-1)*5;
+		}
+
 	      pers.y = -camera_src.y + area->walkable.y + vis.y + zombie_origin.y;
 	      pers.w = character_dest.w;
 	      pers.h = character_dest.h;
