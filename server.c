@@ -1232,34 +1232,66 @@ main (int argc, char *argv[])
   struct bag *b;
 
   struct server_area field = {0}, *area;
-  SDL_Rect field_walkable = {0, 0, 512, 512},
-    field_unwalkables [] = {RECT_BY_GRID (1, 3, 4, 4),
-    RECT_BY_GRID (1, 10, 3, 3), RECT_BY_GRID (10, 10, 2, 4),
-    RECT_BY_GRID (13, 10, 2, 4), RECT_BY_GRID (12, 10, 1, 3),
-    RECT_BY_GRID (2, 0, 2, 2), RECT_BY_GRID (6, 1, 2, 2),
-    RECT_BY_GRID (7, 4, 2, 2), RECT_BY_GRID (10, 0, 3, 1),
-    RECT_BY_GRID (7, 7, 8, 1), RECT_BY_GRID (7, 9, 1, 5),
-    RECT_BY_GRID (27, 1, 2, 2), RECT_BY_GRID (29, 2, 2, 2),
-    RECT_BY_GRID (13, 15, 4, 1), RECT_BY_GRID (18, 10, 1, 2),
-    RECT_BY_GRID (19, 12, 1, 2), RECT_BY_GRID (20, 14, 1, 2),
-    RECT_BY_GRID (21, 8, 1, 2), RECT_BY_GRID (25, 7, 1, 1),
-    RECT_BY_GRID (0, 18, 5, 1), RECT_BY_GRID (7, 19, 1, 1),
-    RECT_BY_GRID (22, 18, 1, 1), RECT_BY_GRID (10, 24, 3, 1),
-    RECT_BY_GRID (20, 22, 1, 2), RECT_BY_GRID (20, 26, 2, 6),
-    RECT_BY_GRID (24, 22, 2, 2), RECT_BY_GRID (24, 25, 2, 2),
-    RECT_BY_GRID (24, 28, 2, 2), RECT_BY_GRID (28, 26, 2, 2),
-    RECT_BY_GRID (27, 25, 3, 1), RECT_BY_GRID (30, 30, 2, 1),
-    RECT_BY_GRID (21, 20, 6, 1), RECT_BY_GRID (1, 21, 1, 1),
-    RECT_BY_GRID (2, 25, 1, 1), RECT_BY_GRID (6, 25, 1, 1),
-    RECT_BY_GRID (6, 29, 1, 1), RECT_BY_GRID (2, 27, 3, 3),
-    RECT_BY_GRID (16, 11, 1, 3), RECT_BY_GRID (26, 14, 3, 1),
-    RECT_BY_GRID (28, 16, 3, 1), RECT_BY_GRID (1, 14, 2, 1),
-    RECT_BY_GRID (2, 15, 1, 2), RECT_BY_GRID (3, 16, 1, 1),
-    RECT_BY_GRID (5, 14, 0, 4), RECT_BY_GRID (21, 17, 0, 3),
-    RECT_BY_GRID (27, 21, 0, 4), RECT_BY_GRID (30, 26, 0, 4)},
+  SDL_Rect field_walkable = {0, 0, 1152, 512},
+    field_unwalkables [] = {R_BY_GR (8, 0, 1, 4), R_BY_GR (8, 7, 1, 4), /* parking */
+			    R_BY_GR (8, 11, 24, 1), R_BY_GR (32, 0, 1, 12),
+			    R_BY_GR (12, 0, 1, 1), R_BY_GR (17, 0, 1, 1),
+			    R_BY_GR (21, 0, 1, 1), R_BY_GR (27, 0, 1, 1),
+			    R_BY_GR (9, 9, 1, 2), R_BY_GR (13, 9, 1, 2),
+			    R_BY_GR (19, 9, 1, 2), R_BY_GR (24, 9, 1, 2),
+
+			    /* neighborhood */
+			    R_BY_GR (9, 13, 6, 8), R_BY_GR (8, 17, 1, 1),
+			    R_BY_GR (8, 19, 1, 1), R_BY_GR (15, 20, 1, 1),
+			    R_BY_GR (17, 16, 4, 5), R_BY_GR (22, 15, 4, 6),
+			    R_BY_GR (26, 19, 1, 1), R_BY_GR (17, 14, 9, 1),
+
+			    R_BY_GR (22, 23, 2, 2), R_BY_GR (27, 16, 1, 2),
+			    R_BY_GR (30, 20, 1, 1),
+
+			    /* border */
+			    R_BY_GR (37, 0, 1, 2), R_BY_GR (35, 2, 3, 1),
+			    R_BY_GR (34, 2, 1, 20), R_BY_GR (34, 25, 1, 5),
+
+			    /* house */
+			    R_BY_GR (49, 10, 5, 3), R_BY_GR (49, 13, 2, 1),
+			    R_BY_GR (52, 13, 2, 1), R_BY_GR (46, 7, 8, 1),
+			    R_BY_GR (46, 9, 1, 5), R_BY_GR (52, 15, 4, 1),
+			    R_BY_GR (55, 11, 1, 3), R_BY_GR (57, 10, 1, 2),
+			    R_BY_GR (58, 12, 1, 2), R_BY_GR (59, 14, 1, 2),
+
+			    /* top left field */
+			    R_BY_GR (41, 0, 2, 2), R_BY_GR (45, 1, 2, 2),
+			    R_BY_GR (46, 4, 2, 2), R_BY_GR (40, 3, 4, 4),
+			    R_BY_GR (36, 7, 2, 2), R_BY_GR (37, 14, 2, 2),
+			    R_BY_GR (40, 10, 3, 3), R_BY_GR (49, 0, 3, 1),
+			    R_BY_GR (40, 14, 2, 1), R_BY_GR (41, 15, 1, 2),
+			    R_BY_GR (42, 16, 1, 1), R_BY_GR (36, 18, 8, 1),
+			    R_BY_GR (44, 14, 0, 4), R_BY_GR (46, 19, 1, 1),
+
+			    /* top right field */
+			    R_BY_GR (60, 8, 1, 2), R_BY_GR (64, 7, 1, 1),
+			    R_BY_GR (66, 1, 2, 2), R_BY_GR (68, 2, 2, 2),
+
+			    /* bottom field */
+			    R_BY_GR (61, 18, 1, 1), R_BY_GR (37, 31, 7, 1),
+			    R_BY_GR (49, 24, 3, 1), R_BY_GR (47, 29, 1, 2),
+			    R_BY_GR (49, 28, 1, 2), R_BY_GR (50, 31, 5, 1),
+			    R_BY_GR (59, 26, 2, 6), R_BY_GR (59, 22, 1, 2),
+			    R_BY_GR (52, 28, 3, 2), R_BY_GR (63, 22, 2, 2),
+			    R_BY_GR (63, 25, 2, 2), R_BY_GR (63, 28, 2, 2),
+			    R_BY_GR (67, 26, 2, 2), R_BY_GR (60, 17, 0, 3),
+			    R_BY_GR (60, 20, 6, 1), R_BY_GR (66, 21, 0, 4),
+			    R_BY_GR (66, 25, 3, 1), R_BY_GR (69, 26, 0, 4),
+			    R_BY_GR (69, 30, 3, 1), R_BY_GR (65, 14, 3, 1),
+			    R_BY_GR (67, 16, 3, 1), R_BY_GR (41, 27, 3, 3),
+			    R_BY_GR (40, 21, 1, 1), R_BY_GR (41, 25, 1, 1),
+			    R_BY_GR (45, 25, 1, 1), R_BY_GR (45, 29, 1, 1)},
+
     field_zombie_spawns [] = {RECT_BY_GRID (13, 31, 1, 1),
-    RECT_BY_GRID (31, 22, 1, 1), RECT_BY_GRID (16, 0, 1, 1),
-    RECT_BY_GRID (0, 23, 1, 1)};
+			      RECT_BY_GRID (31, 22, 1, 1),
+			      RECT_BY_GRID (16, 0, 1, 1),
+			      RECT_BY_GRID (0, 23, 1, 1)};
 
   struct server_area room = {0};
   SDL_Rect room_walkable = RECT_BY_GRID (0, 0, 12, 12),
@@ -1329,8 +1361,8 @@ main (int argc, char *argv[])
   field.id = 0;
   field.walkable = field_walkable;
   field.unwalkables = field_unwalkables;
-  field.unwalkables_num = 47;
-  field.warps = make_warp_by_grid (12, 13, 1, 1, &room, 5, 11, NULL);
+  field.unwalkables_num = 81;
+  field.warps = make_warp_by_grid (51, 13, 1, 1, &room, 5, 11, NULL);
   field.interactibles = NULL;
   field.npcs = NULL;
   field.zombies = NULL;
@@ -1345,7 +1377,7 @@ main (int argc, char *argv[])
   room.walkable = room_walkable;
   room.unwalkables = room_unwalkables;
   room.unwalkables_num = 10;
-  room.warps = make_warp_by_grid (5, 11, 2, 1, &field, 12, 14,
+  room.warps = make_warp_by_grid (5, 11, 2, 1, &field, 51, 14,
 				  make_warp_by_grid (10, 8, 2, 2, &basement, 10,
 						     10, NULL));
   room.interactibles = make_interactible_by_grid

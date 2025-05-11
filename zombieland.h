@@ -23,6 +23,7 @@
 
 #define RECT_BY_GRID(x,y,w,h) {(x)*GRID_CELL_W, (y)*GRID_CELL_H, (w)*GRID_CELL_W, \
     (h)*GRID_CELL_H}
+#define R_BY_GR(x,y,w,h) RECT_BY_GRID(x, y, w, h)
 
 
 #define ZOMBIELAND_PORT 19894

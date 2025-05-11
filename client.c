@@ -164,12 +164,10 @@ main (int argc, char *argv[])
   uint32_t id, last_update = 0;
 
   struct client_area field;
-  SDL_Rect field_srcs [] = {RECT_BY_GRID (0, 0, 32, 32),
-    RECT_BY_GRID (32, 0, 32, 32), RECT_BY_GRID (64, 0, 32, 32),
-    RECT_BY_GRID (96, 0, 32, 32), RECT_BY_GRID (128, 0, 32, 32)},
-    field_overlays [] = {RECT_BY_GRID (0, 32, 32, 32),
-    RECT_BY_GRID (32, 32, 32, 32), RECT_BY_GRID (64, 32, 32, 32),
-    RECT_BY_GRID (96, 32, 32, 32), RECT_BY_GRID (128, 32, 32, 32)},
+  SDL_Rect field_srcs [] = {RECT_BY_GRID (0, 0, 72, 32)},
+    field_overlays [] = {RECT_BY_GRID (0, 32, 72, 32),
+    RECT_BY_GRID (72, 32, 72, 32), RECT_BY_GRID (144, 32, 72, 32),
+    RECT_BY_GRID (216, 32, 72, 32), RECT_BY_GRID (288, 32, 72, 32)},
     field_walkable = {0, 0, 512, 512};
 
   struct client_area room;
@@ -531,7 +529,7 @@ main (int argc, char *argv[])
   field.id = 0;
   field.texture = areatxtr;
   field.display_srcs = field_srcs;
-  field.area_frames_num = 5;
+  field.area_frames_num = 1;
   field.overlay_srcs = field_overlays;
   field.overlay_frames_num = 5;
   field.walkable = field_walkable;
