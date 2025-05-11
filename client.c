@@ -22,10 +22,6 @@
 
 
 
-#define WINDOW_WIDTH 256
-#define WINDOW_HEIGHT 256
-
-
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>

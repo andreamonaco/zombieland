@@ -1003,6 +1003,14 @@ swap_objects (enum object_type *t1, enum object_type *t2)
 }
 
 
+int
+is_visible_by_player (SDL_Rect charbox, SDL_Rect entity)
+{
+  return abs (charbox.x-entity.x) < WINDOW_WIDTH
+    && abs (charbox.y-entity.y) < WINDOW_HEIGHT;
+}
+
+
 void
 send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pls,
 		   struct agent *as, struct shot *ss, struct object *objs)
@@ -1059,7 +1067,8 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	break;
 
       if ((as->type != AGENT_PLAYER || as->data_ptr.player != &pls [id])
-	  && as->area == pls [id].agent->area)
+	  && as->area == pls [id].agent->area
+	  && is_visible_by_player (pls [id].agent->place, as->place))
 	{
 	  vis.type = as->type == AGENT_PLAYER ? VISIBLE_PLAYER : VISIBLE_ZOMBIE;
 	  vis.x = as->place.x;
@@ -1094,7 +1103,8 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	  > MAXMSGSIZE)
 	break;
 
-      if (objs->area == pls [id].agent->area)
+      if (objs->area == pls [id].agent->area
+	  && is_visible_by_player (pls [id].agent->place, objs->place))
 	{
 	  switch (objs->type)
 	    {
@@ -1136,7 +1146,8 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	  > MAXMSGSIZE)
 	break;
 
-      if (ss->areaid == pls [id].agent->area->id)
+      if (ss->areaid == pls [id].agent->area->id
+	  && is_visible_by_player (pls [id].agent->place, ss->target))
 	{
 	  vis.type = VISIBLE_SHOT;
 	  vis.x = ss->target.x;
