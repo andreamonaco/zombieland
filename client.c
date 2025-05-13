@@ -225,6 +225,7 @@ main (int argc, char *argv[])
     healthobjrect = {0, 0, 16, 16}, bulletobjrect = {16, 0, 16, 16},
     foodobjrect = {32, 0, 16, 16}, waterobjrect = {48, 0, 16, 16},
     fleshobjrect = {0, 16, 16, 16}, searchableiconrect = {16, 16, 16, 16},
+    searchingiconrect = {32, 16, 16, 16},
     bagslotsrects [] = {{30, 48, 16, 16}, {82, 48, 16, 16}, {30, 96, 16, 16},
 			{82, 96, 16, 16}, {30, 144, 16, 16}, {82, 144, 16, 16},
 			{30, 192, 16, 16}, {82, 192, 16, 16},
@@ -899,8 +900,7 @@ main (int argc, char *argv[])
 	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
 					+i*sizeof (vis));
 
-	      if ((vis.type < VISIBLE_HEALTH || vis.type > VISIBLE_FLESH)
-		  && vis.type != VISIBLE_SEARCHABLE)
+	      if (vis.type < VISIBLE_HEALTH || vis.type > VISIBLE_FLESH)
 		continue;
 
 	      pers.x = -camera_src.x + area->walkable.x + vis.x;
@@ -912,8 +912,7 @@ main (int argc, char *argv[])
 			      : vis.type == VISIBLE_AMMO ? &bulletobjrect
 			      : vis.type == VISIBLE_FOOD ? &foodobjrect
 			      : vis.type == VISIBLE_WATER ? &waterobjrect
-			      : vis.type == VISIBLE_FLESH ? &fleshobjrect
-			      : &searchableiconrect, &pers);
+			      : &fleshobjrect, &pers);
 	    }
 
 	  for (i = 0; i < state->args.server_state.num_visibles; i++)
@@ -977,6 +976,27 @@ main (int argc, char *argv[])
 					   ((loc_char_speed_x || loc_char_speed_y)
 					    ? 1+(frame_counter%12)/6 : 0)],
 			  &character_dest);
+	}
+
+      if (latest_srv_state)
+	{
+	  for (i = 0; i < state->args.server_state.num_visibles; i++)
+	    {
+	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
+					+i*sizeof (vis));
+
+	      if (vis.type != VISIBLE_SEARCHABLE
+		  && vis.type != VISIBLE_SEARCHING)
+		continue;
+
+	      pers.x = -camera_src.x + area->walkable.x + vis.x;
+	      pers.y = -camera_src.y + area->walkable.y + vis.y;
+	      pers.w = GRID_CELL_W;
+	      pers.h = GRID_CELL_H;
+	      SDL_RenderCopy (rend, objectstxtr,
+			      vis.type == VISIBLE_SEARCHABLE ? &searchableiconrect
+			      : &searchingiconrect, &pers);
+	    }
 	}
 
       if (area->overlay_frames_num)

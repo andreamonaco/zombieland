@@ -109,6 +109,7 @@ client_char_state_args
 #define VISIBLE_WATER  6
 #define VISIBLE_FLESH  7
 #define VISIBLE_SEARCHABLE 8
+#define VISIBLE_SEARCHING 9
 
 struct
 visible

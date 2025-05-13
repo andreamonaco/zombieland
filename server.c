@@ -1044,7 +1044,8 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	  msg->args.server_state.bag [i] = pls [id].bag [i].type;
 	}
 
-      if (pls [id].might_search_at)
+      if (pls [id].might_search_at
+	  && pls [id].might_search_at->searched_by == &pls [id])
 	{
 	  msg->args.server_state.is_searching++;
 
@@ -1096,6 +1097,28 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	}
 
       as = as->next;
+    }
+
+  for (i = 0; i < MAX_PLAYERS; i++)
+    {
+      if (pls [i].id != -1 && pls [id].agent->area == pls [i].agent->area
+	  && pls [i].is_searching && pls [i].might_search_at
+	  && pls [i].might_search_at->searched_by == &pls [i])
+	{
+	  if (sizeof (msg)+msg->args.server_state.num_visibles
+	      *sizeof (struct visible) > MAXMSGSIZE)
+	    break;
+
+	  vis.type = VISIBLE_SEARCHING;
+	  vis.x = pls [i].agent->place.x+12;
+	  vis.y = pls [i].agent->place.y-16;
+	  vis.w = 16;
+	  vis.h = 16;
+
+	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
+			*sizeof (vis)], &vis, sizeof (vis));
+	  msg->args.server_state.num_visibles++;
+	}
     }
 
   while (objs)
@@ -1163,7 +1186,8 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
       ss = ss->next;
     }
 
-  if (!pls [id].is_searching && pls [id].might_search_at)
+  if (!pls [id].is_searching && pls [id].might_search_at
+      && !pls [id].might_search_at->searched_by)
     {
       vis.type = VISIBLE_SEARCHABLE;
       vis.x = pls [id].might_search_at->icon.x;
@@ -1571,7 +1595,17 @@ main (int argc, char *argv[])
 			  players [id].is_searching = 1;
 			}
 		      else
-			players [id].is_searching = 0;
+			{
+			  if (players [id].is_searching)
+			    {
+			      if (players [id].might_search_at
+				  && players [id].might_search_at->searched_by
+				  == &players [id])
+				players [id].might_search_at->searched_by = NULL;
+			    }
+
+			  players [id].is_searching = 0;
+			}
 
 		      players [id].swap1 = msg->args.client_char_state.swap [0];
 		      players [id].swap2 = msg->args.client_char_state.swap [1];
@@ -1931,7 +1965,17 @@ main (int argc, char *argv[])
 	  while (b)
 	    {
 	      if (IS_RECT_CONTAINED (players [i].agent->place, b->place))
-		players [i].might_search_at = b;
+		{
+		  players [i].might_search_at = b;
+
+		  if (players [i].is_searching)
+		    {
+		      if (!b->searched_by)
+			b->searched_by = &players [i];
+		    }
+
+		  break;
+		}
 
 	      b = b->next;
 	    }
@@ -1939,10 +1983,12 @@ main (int argc, char *argv[])
 	  if (players [i].is_searching && players [i].swap1 >= 0
 	      && (players [i].swap1 < BAG_SIZE
 		  || (players [i].might_search_at
+		      && players [i].might_search_at->searched_by == &players [i]
 		      && players [i].swap1 < BAG_SIZE*2))
 	      && players [i].swap2 >= 0
 	      && (players [i].swap2 < BAG_SIZE
 		  || (players [i].might_search_at
+		      && players [i].might_search_at->searched_by == &players [i]
 		      && players [i].swap2 < BAG_SIZE*2))
 	      && !players [i].swap_rest)
 	    {
@@ -2048,6 +2094,10 @@ main (int argc, char *argv[])
 	      send_message (sockfd, &players [i].address, -1, MSG_PLAYER_DIED);
 	      players [i].id = -1;
 
+	      if (players [i].might_search_at
+		  && players [i].might_search_at->searched_by == &players [i])
+		players [i].might_search_at->searched_by = NULL;
+
 	      if (players [i].agent->prev)
 		players [i].agent->prev->next = players [i].agent->next;
 	      else
@@ -2089,6 +2139,10 @@ main (int argc, char *argv[])
 		  printf ("player %s disconnected due to timeout\n",
 			  players [i].name);
 		  players [i].id = -1;
+
+		  if (players [i].might_search_at
+		      && players [i].might_search_at->searched_by == &players [i])
+		    players [i].might_search_at->searched_by = NULL;
 
 		  if (players [i].agent->prev)
 		    players [i].agent->prev->next = players [i].agent->next;
