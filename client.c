@@ -157,9 +157,7 @@ main (int argc, char *argv[])
   uint16_t portoff = 0, tmp;
   struct hostent *server;
 
-  struct message msg, *state;
-  char buf1 [MAXMSGSIZE], buf2 [MAXMSGSIZE];
-  char *buf, *latest_srv_state = NULL;
+  struct message msg, *state, buf1, buf2, *buf, *latest_srv_state = NULL;
 
   uint32_t id, last_update = 0;
 
@@ -738,11 +736,11 @@ main (int argc, char *argv[])
 
       while (1)
 	{
-	  buf = (char *)&buf1 == latest_srv_state ? (char *)&buf2 : (char *)&buf1;
+	  buf = &buf1 == latest_srv_state ? &buf2 : &buf1;
 
 	  recvlen = recvfrom (sockfd, buf, MAXMSGSIZE, MSG_DONTWAIT,
 			      (struct sockaddr *) &recv_addr, &recv_addr_len);
-	  state = (struct message *)buf;
+	  state = buf;
 
 	  if (recvlen < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
 	    break;

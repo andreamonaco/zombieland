@@ -1254,7 +1254,7 @@ main (int argc, char *argv[])
   int sockfd;
   fd_set fdset;
   struct timeval timeout = {0};
-  char buffer [MAXMSGSIZE];
+  struct message buffer;
   ssize_t recvlen;
   struct sockaddr_in local_addr, client_addr;
   socklen_t client_addr_sz = sizeof (client_addr);
@@ -1471,7 +1471,7 @@ main (int argc, char *argv[])
 	    break;
 
 	  recvlen =
-	    recvfrom (sockfd, buffer, MAXMSGSIZE, 0,
+	    recvfrom (sockfd, &buffer, sizeof (buffer), 0,
 		      (struct sockaddr *) &client_addr, &client_addr_sz);
 
 	  if (recvlen < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
@@ -1495,7 +1495,7 @@ main (int argc, char *argv[])
 	      return 1;
 	    }
 
-	  msg = (struct message *) buffer;
+	  msg = (struct message *) &buffer;
 	  msg->type = ntohl (msg->type);
 
 	  switch (msg->type)
