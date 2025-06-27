@@ -1015,57 +1015,59 @@ void
 send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pls,
 		   struct agent *as, struct shot *ss, struct object *objs)
 {
-  char buf [MAXMSGSIZE] = {0};
-  struct message *msg = (struct message *) &buf;
-  struct visible vis;
+  static struct message msg;
+  struct visible vis = {0};
   int i;
 
-  msg->type = htonl (MSG_SERVER_STATE);
-  msg->args.server_state.frame_counter = frame_counter;
-  msg->args.server_state.areaid = pls [id].agent->area->id;
-  msg->args.server_state.x = pls [id].agent->place.x;
-  msg->args.server_state.y = pls [id].agent->place.y;
-  msg->args.server_state.w = pls [id].agent->place.w;
-  msg->args.server_state.h = pls [id].agent->place.h;
-  msg->args.server_state.char_facing = pls [id].facing;
-  msg->args.server_state.life = pls [id].agent->life;
-  msg->args.server_state.is_immortal = !!pls [id].agent->immortal;
-  msg->args.server_state.bullets = pls [id].bullets;
-  msg->args.server_state.hunger = pls [id].hunger;
-  msg->args.server_state.thirst = pls [id].thirst;
-  msg->args.server_state.just_shot = pls [id].shoot_rest > 6;
-  msg->args.server_state.just_stabbed = pls [id].stab_rest > 2;
-  msg->args.server_state.is_searching = pls [id].is_searching;
+  msg.type = htonl (MSG_SERVER_STATE);
+  msg.args.server_state.frame_counter = frame_counter;
+  msg.args.server_state.areaid = pls [id].agent->area->id;
+  msg.args.server_state.x = pls [id].agent->place.x;
+  msg.args.server_state.y = pls [id].agent->place.y;
+  msg.args.server_state.w = pls [id].agent->place.w;
+  msg.args.server_state.h = pls [id].agent->place.h;
+  msg.args.server_state.char_facing = pls [id].facing;
+  msg.args.server_state.life = pls [id].agent->life;
+  msg.args.server_state.is_immortal = !!pls [id].agent->immortal;
+  msg.args.server_state.bullets = pls [id].bullets;
+  msg.args.server_state.hunger = pls [id].hunger;
+  msg.args.server_state.thirst = pls [id].thirst;
+  msg.args.server_state.just_shot = pls [id].shoot_rest > 6;
+  msg.args.server_state.just_stabbed = pls [id].stab_rest > 2;
+  msg.args.server_state.is_searching = pls [id].is_searching;
 
   if (pls [id].is_searching)
     {
       for (i = 0; i < BAG_SIZE; i++)
 	{
-	  msg->args.server_state.bag [i] = pls [id].bag [i].type;
+	  msg.args.server_state.bag [i] = pls [id].bag [i].type;
 	}
 
       if (pls [id].might_search_at
 	  && pls [id].might_search_at->searched_by == &pls [id])
 	{
-	  msg->args.server_state.is_searching++;
+	  msg.args.server_state.is_searching++;
 
 	  for (i = 0; i < BAG_SIZE; i++)
 	    {
-	      msg->args.server_state.bag [BAG_SIZE+i]
+	      msg.args.server_state.bag [BAG_SIZE+i]
 		= pls [id].might_search_at->content [i].type;
 	    }
 	}
     }
 
-  msg->args.server_state.num_visibles = 0;
-  msg->args.server_state.npcid = pls [id].npcid;
-  msg->args.server_state.textbox_lines_num = pls [id].textbox_lines_num;
+  msg.args.server_state.num_visibles = 0;
+  msg.args.server_state.npcid = pls [id].npcid;
+  msg.args.server_state.textbox_lines_num = pls [id].textbox_lines_num;
 
   while (as)
     {
-      if (sizeof (msg)+(msg->args.server_state.num_visibles+1)
-	  *sizeof (struct visible) > MAXMSGSIZE)
-	break;
+      if (msg.args.server_state.num_visibles == MAX_VISIBLES)
+	{
+	  fprintf (stderr, "too many visibles to send to player %d, skipping some\n",
+		   id);
+	  goto send;
+	}
 
       if ((as->type != AGENT_PLAYER || as->data_ptr.player != &pls [id])
 	  && as->area == pls [id].agent->area
@@ -1091,9 +1093,9 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	      vis.is_immortal = !!as->immortal;
 	    }
 
-	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
-			*sizeof (vis)], &vis, sizeof (vis));
-	  msg->args.server_state.num_visibles++;
+	  memcpy (&msg.args.server_state.visibles
+		  [msg.args.server_state.num_visibles], &vis, sizeof (vis));
+	  msg.args.server_state.num_visibles++;
 	}
 
       as = as->next;
@@ -1105,9 +1107,12 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	  && pls [i].is_searching && pls [i].might_search_at
 	  && pls [i].might_search_at->searched_by == &pls [i])
 	{
-	  if (sizeof (msg)+msg->args.server_state.num_visibles
-	      *sizeof (struct visible) > MAXMSGSIZE)
-	    break;
+	  if (msg.args.server_state.num_visibles == MAX_VISIBLES)
+	    {
+	      fprintf (stderr, "too many visibles to send to player %d, skipping some\n",
+		       id);
+	      goto send;
+	    }
 
 	  vis.type = VISIBLE_SEARCHING;
 	  vis.x = pls [i].agent->place.x+12;
@@ -1115,17 +1120,20 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	  vis.w = 16;
 	  vis.h = 16;
 
-	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
-			*sizeof (vis)], &vis, sizeof (vis));
-	  msg->args.server_state.num_visibles++;
+	  memcpy (&msg.args.server_state.visibles
+		  [msg.args.server_state.num_visibles], &vis, sizeof (vis));
+	  msg.args.server_state.num_visibles++;
 	}
     }
 
   while (objs)
     {
-      if (sizeof (msg)+msg->args.server_state.num_visibles*sizeof (struct visible)
-	  > MAXMSGSIZE)
-	break;
+      if (msg.args.server_state.num_visibles == MAX_VISIBLES)
+	{
+	  fprintf (stderr, "too many visibles to send to player %d, skipping some\n",
+		   id);
+	  goto send;
+	}
 
       if (objs->area == pls [id].agent->area
 	  && is_visible_by_player (pls [id].agent->place, objs->place))
@@ -1156,9 +1164,9 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	  vis.w = objs->place.w;
 	  vis.h = objs->place.h;
 
-	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
-			*sizeof (vis)], &vis, sizeof (vis));
-	  msg->args.server_state.num_visibles++;
+	  memcpy (&msg.args.server_state.visibles
+		  [msg.args.server_state.num_visibles], &vis, sizeof (vis));
+	  msg.args.server_state.num_visibles++;
 	}
 
       objs = objs->next;
@@ -1166,9 +1174,12 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 
   while (ss)
     {
-      if (sizeof (msg)+msg->args.server_state.num_visibles*sizeof (struct visible)
-	  > MAXMSGSIZE)
-	break;
+      if (msg.args.server_state.num_visibles == MAX_VISIBLES)
+	{
+	  fprintf (stderr, "too many visibles to send to player %d, skipping some\n",
+		   id);
+	  goto send;
+	}
 
       if (ss->areaid == pls [id].agent->area->id
 	  && is_visible_by_player (pls [id].agent->place, ss->target))
@@ -1178,9 +1189,9 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	  vis.y = ss->target.y;
 	  vis.w = ss->target.w;
 	  vis.h = ss->target.h;
-	  memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
-			*sizeof (vis)], &vis, sizeof (vis));
-	  msg->args.server_state.num_visibles++;
+	  memcpy (&msg.args.server_state.visibles
+		  [msg.args.server_state.num_visibles], &vis, sizeof (vis));
+	  msg.args.server_state.num_visibles++;
 	}
 
       ss = ss->next;
@@ -1194,24 +1205,22 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
       vis.y = pls [id].might_search_at->icon.y;
       vis.w = pls [id].might_search_at->icon.w;
       vis.h = pls [id].might_search_at->icon.h;
-      memcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
-		    *sizeof (vis)], &vis, sizeof (vis));
-      msg->args.server_state.num_visibles++;
+      memcpy (&msg.args.server_state.visibles
+	      [msg.args.server_state.num_visibles], &vis, sizeof (vis));
+      msg.args.server_state.num_visibles++;
     }
 
-  if (pls [id].textbox
-      && sizeof (msg)+msg->args.server_state.num_visibles*sizeof (struct visible)
-      +msg->args.server_state.textbox_lines_num*TEXTLINESIZE+1 <= MAXMSGSIZE)
+ send:
+  if (pls [id].textbox)
     {
-      strcpy (&buf [sizeof (*msg)+msg->args.server_state.num_visibles
-		    *sizeof (vis)], pls [id].textbox);
+      strcpy (msg.args.server_state.textbox, pls [id].textbox);
     }
   else
-    msg->args.server_state.textbox_lines_num = 0;
+    msg.args.server_state.textbox_lines_num = 0;
 
-  if (sendto (sockfd, buf,
-	      sizeof (*msg)+msg->args.server_state.num_visibles*sizeof (vis)
-	      +msg->args.server_state.textbox_lines_num*TEXTLINESIZE+1, 0,
+  if (sendto (sockfd, &msg, offsetof (struct message, args)
+	      + offsetof (struct server_state_args, visibles)
+	      + sizeof (struct visible) * msg.args.server_state.num_visibles, 0,
 	      (struct sockaddr *)&pls [id].address, sizeof (pls [id].address)) < 0)
     {
       fprintf (stderr, "could not send data\n");

@@ -45,7 +45,7 @@
 #define WINDOW_WIDTH 256
 #define WINDOW_HEIGHT 256
 
-#define MAXTEXTSIZE 512
+#define MAXTEXTLINES 10
 #define TEXTLINESIZE 30
 
 
@@ -136,6 +136,8 @@ object_type
   };
 
 
+#define MAX_VISIBLES 128
+
 struct
 server_state_args
 {
@@ -152,9 +154,11 @@ server_state_args
   uint32_t just_stabbed;
   uint32_t is_searching;
   enum object_type bag [BAG_SIZE*2];
-  uint32_t num_visibles;
   int32_t npcid;
   uint32_t textbox_lines_num;
+  char textbox [TEXTLINESIZE*MAXTEXTLINES+1];
+  uint32_t num_visibles;
+  struct visible visibles [MAX_VISIBLES];
 };
 
 

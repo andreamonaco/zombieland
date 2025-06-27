@@ -212,7 +212,7 @@ main (int argc, char *argv[])
     *texttxtr, *bagtxtr, *objectstxtr;
   SDL_Surface *iconsurf, *textsurf;
   TTF_Font *hudfont, *textfont;
-  char textbox [MAXTEXTSIZE], hudtext [20];
+  char textbox [TEXTLINESIZE*MAXTEXTLINES+1], hudtext [20];
   int textlines = 0, textcursor, is_searching = 0, bagcursor, bagswap1, bagswap2,
     swaprest = 0;
   char tmpch;
@@ -897,8 +897,7 @@ main (int argc, char *argv[])
 	{
 	  for (i = 0; i < state->args.server_state.num_visibles; i++)
 	    {
-	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
-					+i*sizeof (vis));
+	      vis = state->args.server_state.visibles [i];
 
 	      if (vis.type < VISIBLE_HEALTH || vis.type > VISIBLE_FLESH)
 		continue;
@@ -917,8 +916,7 @@ main (int argc, char *argv[])
 
 	  for (i = 0; i < state->args.server_state.num_visibles; i++)
 	    {
-	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
-					+i*sizeof (vis));
+	      vis = state->args.server_state.visibles [i];
 
 	      if (vis.type != VISIBLE_ZOMBIE)
 		continue;
@@ -945,8 +943,7 @@ main (int argc, char *argv[])
 
 	  for (i = 0; i < state->args.server_state.num_visibles; i++)
 	    {
-	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
-					+i*sizeof (vis));
+	      vis = state->args.server_state.visibles [i];
 
 	      if (vis.type != VISIBLE_PLAYER)
 		continue;
@@ -982,8 +979,7 @@ main (int argc, char *argv[])
 	{
 	  for (i = 0; i < state->args.server_state.num_visibles; i++)
 	    {
-	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
-					+i*sizeof (vis));
+	      vis = state->args.server_state.visibles [i];
 
 	      if (vis.type != VISIBLE_SEARCHABLE
 		  && vis.type != VISIBLE_SEARCHING)
@@ -1014,8 +1010,7 @@ main (int argc, char *argv[])
 	{
 	  for (i = 0; i < state->args.server_state.num_visibles; i++)
 	    {
-	      vis = *(struct visible *)(latest_srv_state+sizeof (struct message)
-					+i*sizeof (vis));
+	      vis = state->args.server_state.visibles [i];
 
 	      if (vis.type != VISIBLE_SHOT)
 		continue;
@@ -1030,9 +1025,7 @@ main (int argc, char *argv[])
 	{
 	  do_interact = 0;
 
-	  strcpy (textbox, latest_srv_state+sizeof (struct message)
-		  +sizeof (struct visible)
-		  *state->args.server_state.num_visibles);
+	  strcpy (textbox, state->args.server_state.textbox);
 	  textlines = state->args.server_state.textbox_lines_num;
 	  textcursor = 0;
 
