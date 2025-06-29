@@ -49,17 +49,17 @@ send_message (int sockfd, struct sockaddr_in *addr, uint16_t portoff,
     {
     case MSG_CLIENT_CHAR_STATE:
       va_start (valist, type);
-      msg.args.client_char_state.id = va_arg (valist, uint32_t);
-      msg.args.client_char_state.frame_counter = va_arg (valist, uint32_t);
-      msg.args.client_char_state.char_speed_x = va_arg (valist, int32_t);
-      msg.args.client_char_state.char_speed_y = va_arg (valist, int32_t);
-      msg.args.client_char_state.char_facing = va_arg (valist, enum facing);
+      msg.args.client_char_state.id = htonl (va_arg (valist, uint32_t));
+      msg.args.client_char_state.frame_counter = htonl (va_arg (valist, uint32_t));
+      msg.args.client_char_state.char_speed_x = htonl (va_arg (valist, int32_t));
+      msg.args.client_char_state.char_speed_y = htonl (va_arg (valist, int32_t));
+      msg.args.client_char_state.char_facing = htonl (va_arg (valist, enum facing));
       msg.args.client_char_state.do_interact = va_arg (valist, uint32_t);
       msg.args.client_char_state.do_shoot = va_arg (valist, uint32_t);
       msg.args.client_char_state.do_stab = va_arg (valist, uint32_t);
       msg.args.client_char_state.do_search = va_arg (valist, uint32_t);
-      msg.args.client_char_state.swap [0] = va_arg (valist, int32_t);
-      msg.args.client_char_state.swap [1] = va_arg (valist, int32_t);
+      msg.args.client_char_state.swap [0] = htonl (va_arg (valist, int32_t));
+      msg.args.client_char_state.swap [1] = htonl (va_arg (valist, int32_t));
       va_end (valist);
       break;
     case MSG_SERVER_STATE:

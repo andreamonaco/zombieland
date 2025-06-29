@@ -147,7 +147,7 @@ server_state_args
   enum facing char_facing;
   int32_t life;
   uint32_t is_immortal;
-  int32_t bullets;
+  uint32_t bullets;
   uint32_t hunger;
   uint32_t thirst;
   uint32_t just_shot;

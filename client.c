@@ -197,8 +197,8 @@ main (int argc, char *argv[])
 
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
     do_shoot = 0, do_stab = 0, do_search = 0, life = MAX_PLAYER_HEALTH,
-    is_immortal = 0, bullets = 16, hunger = 0, thirst = 0, just_shot = 0,
-    just_stabbed = 0;
+    is_immortal = 0, bullets = 16, hunger = 0, thirst = 0, num_visibles,
+    just_shot = 0, just_stabbed = 0;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct visible vis;
 
@@ -765,9 +765,9 @@ main (int argc, char *argv[])
 	    {
 	    case MSG_SERVER_STATE:
 	      if (!latest_srv_state ||
-		  last_update < state->args.server_state.frame_counter)
+		  last_update < ntohl (state->args.server_state.frame_counter))
 		{
-		  last_update = state->args.server_state.frame_counter;
+		  last_update = ntohl (state->args.server_state.frame_counter);
 		  latest_srv_state = buf;
 		}
 	      break;
@@ -801,7 +801,7 @@ main (int argc, char *argv[])
 
 	  while (ar)
 	    {
-	      if (ar->id == state->args.server_state.areaid)
+	      if (ar->id == ntohl (state->args.server_state.areaid))
 		{
 		  area = ar;
 		  break;
@@ -817,23 +817,25 @@ main (int argc, char *argv[])
 	      return 1;
 	    }
 
-	  if ((character_box.x != state->args.server_state.x
-	       || character_box.y != state->args.server_state.y)
+	  if ((character_box.x != ntohl (state->args.server_state.x)
+	       || character_box.y != ntohl (state->args.server_state.y))
 	      && textlines)
 	    {
 	      textlines = 0;
 	    }
 
-	  character_box.x = state->args.server_state.x;
-	  character_box.y = state->args.server_state.y;
-	  character_box.w = state->args.server_state.w;
-	  character_box.h = state->args.server_state.h;
+	  character_box.x = ntohl (state->args.server_state.x);
+	  character_box.y = ntohl (state->args.server_state.y);
+	  character_box.w = ntohl (state->args.server_state.w);
+	  character_box.h = ntohl (state->args.server_state.h);
 	  srv_char_facing = state->args.server_state.char_facing;
-	  life = state->args.server_state.life;
+	  life = ntohl (state->args.server_state.life);
 	  is_immortal = state->args.server_state.is_immortal;
-	  bullets = state->args.server_state.bullets;
-	  hunger = state->args.server_state.hunger;
-	  thirst = state->args.server_state.thirst;
+	  bullets = ntohl (state->args.server_state.bullets);
+	  hunger = ntohl (state->args.server_state.hunger);
+	  thirst = ntohl (state->args.server_state.thirst);
+	  num_visibles = ntohl (state->args.server_state.num_visibles);
+
 
 	  if (state->args.server_state.just_shot && !just_shot)
 	    {
@@ -893,15 +895,16 @@ main (int argc, char *argv[])
 
       if (latest_srv_state)
 	{
-	  for (i = 0; i < state->args.server_state.num_visibles; i++)
+	  for (i = 0; i < num_visibles; i++)
 	    {
 	      vis = state->args.server_state.visibles [i];
+	      vis.type = ntohl (vis.type);
 
 	      if (vis.type < VISIBLE_HEALTH || vis.type > VISIBLE_FLESH)
 		continue;
 
-	      pers.x = -camera_src.x + area->walkable.x + vis.x;
-	      pers.y = -camera_src.y + area->walkable.y + vis.y;
+	      pers.x = -camera_src.x + area->walkable.x + ntohl (vis.x);
+	      pers.y = -camera_src.y + area->walkable.y + ntohl (vis.y);
 	      pers.w = GRID_CELL_W;
 	      pers.h = GRID_CELL_H;
 	      SDL_RenderCopy (rend, objectstxtr,
@@ -912,14 +915,16 @@ main (int argc, char *argv[])
 			      : &fleshobjrect, &pers);
 	    }
 
-	  for (i = 0; i < state->args.server_state.num_visibles; i++)
+	  for (i = 0; i < num_visibles; i++)
 	    {
 	      vis = state->args.server_state.visibles [i];
+	      vis.type = ntohl (vis.type);
 
 	      if (vis.type != VISIBLE_ZOMBIE)
 		continue;
 
-	      pers.x = -camera_src.x + area->walkable.x + vis.x + zombie_origin.x;
+	      pers.x = -camera_src.x + area->walkable.x + ntohl (vis.x)
+		+ zombie_origin.x;
 
 	      if (vis.is_immortal)
 		{
@@ -929,31 +934,33 @@ main (int argc, char *argv[])
 		    pers.y += (frame_counter%3-1)*5;
 		}
 
-	      pers.y = -camera_src.y + area->walkable.y + vis.y + zombie_origin.y;
+	      pers.y = -camera_src.y + area->walkable.y + ntohl (vis.y)
+		+ zombie_origin.y;
 	      pers.w = character_dest.w;
 	      pers.h = character_dest.h;
 	      SDL_RenderCopy (rend, zombietxtr,
-			      &zombie_srcs [vis.facing*3+
+			      &zombie_srcs [ntohl (vis.facing)*3+
 					    ((vis.speed_x || vis.speed_y)
 					     ? 1+(frame_counter%12)/6 : 0)],
 			      &pers);
 	    }
 
-	  for (i = 0; i < state->args.server_state.num_visibles; i++)
+	  for (i = 0; i < num_visibles; i++)
 	    {
 	      vis = state->args.server_state.visibles [i];
+	      vis.type = ntohl (vis.type);
 
 	      if (vis.type != VISIBLE_PLAYER)
 		continue;
 
-	      pers.x = -camera_src.x + area->walkable.x + vis.x
+	      pers.x = -camera_src.x + area->walkable.x + ntohl (vis.x)
 		+ character_origin.x;
-	      pers.y = -camera_src.y + area->walkable.y + vis.y
+	      pers.y = -camera_src.y + area->walkable.y + ntohl (vis.y)
 		+ character_origin.y;
 	      pers.w = character_dest.w;
 	      pers.h = character_dest.h;
 	      SDL_RenderCopy (rend, charactertxtr,
-			      &character_srcs [vis.facing*3+
+			      &character_srcs [ntohl (vis.facing)*3+
 					       ((vis.speed_x || vis.speed_y)
 						? 1+(frame_counter%12)/6 : 0)],
 			      &pers);
@@ -975,16 +982,17 @@ main (int argc, char *argv[])
 
       if (latest_srv_state)
 	{
-	  for (i = 0; i < state->args.server_state.num_visibles; i++)
+	  for (i = 0; i < num_visibles; i++)
 	    {
 	      vis = state->args.server_state.visibles [i];
+	      vis.type = ntohl (vis.type);
 
 	      if (vis.type != VISIBLE_SEARCHABLE
 		  && vis.type != VISIBLE_SEARCHING)
 		continue;
 
-	      pers.x = -camera_src.x + area->walkable.x + vis.x;
-	      pers.y = -camera_src.y + area->walkable.y + vis.y;
+	      pers.x = -camera_src.x + area->walkable.x + ntohl (vis.x);
+	      pers.y = -camera_src.y + area->walkable.y + ntohl (vis.y);
 	      pers.w = GRID_CELL_W;
 	      pers.h = GRID_CELL_H;
 	      SDL_RenderCopy (rend, objectstxtr,
@@ -1006,15 +1014,16 @@ main (int argc, char *argv[])
 
       if (latest_srv_state)
 	{
-	  for (i = 0; i < state->args.server_state.num_visibles; i++)
+	  for (i = 0; i < num_visibles; i++)
 	    {
 	      vis = state->args.server_state.visibles [i];
+	      vis.type = ntohl (vis.type);
 
 	      if (vis.type != VISIBLE_SHOT)
 		continue;
 
-	      sh.x = -camera_src.x + area->walkable.x + vis.x;
-	      sh.y = -camera_src.y + area->walkable.y + vis.y;
+	      sh.x = -camera_src.x + area->walkable.x + ntohl (vis.x);
+	      sh.y = -camera_src.y + area->walkable.y + ntohl (vis.y);
 	      SDL_RenderCopy (rend, effectstxtr, &shot_src, &sh);
 	    }
 	}
@@ -1024,12 +1033,12 @@ main (int argc, char *argv[])
 	  do_interact = 0;
 
 	  strcpy (textbox, state->args.server_state.textbox);
-	  textlines = state->args.server_state.textbox_lines_num;
+	  textlines = ntohl (state->args.server_state.textbox_lines_num);
 	  textcursor = 0;
 
-	  if (state->args.server_state.npcid >= 0)
+	  if ((int32_t) ntohl (state->args.server_state.npcid) >= 0)
 	    {
-	      area->npcs [state->args.server_state.npcid].facing
+	      area->npcs [ntohl (state->args.server_state.npcid)].facing
 		= loc_char_facing == FACING_DOWN ? FACING_UP
 		: loc_char_facing == FACING_UP ? FACING_DOWN
 		: loc_char_facing == FACING_RIGHT ? FACING_LEFT
@@ -1099,7 +1108,7 @@ main (int argc, char *argv[])
 	  if (!is_searching)
 	    {
 	      bagcursor = 0, bagswap1 = -1, bagswap2 = -1;
-	      is_searching = state->args.server_state.is_searching;
+	      is_searching = ntohl (state->args.server_state.is_searching);
 	    }
 
 	  SDL_RenderCopy (rend, bagtxtr,
@@ -1108,7 +1117,7 @@ main (int argc, char *argv[])
 
 	  for (i = 0; i < BAG_SIZE*is_searching; i++)
 	    {
-	      switch (state->args.server_state.bag [i])
+	      switch (ntohl (state->args.server_state.bag [i]))
 		{
 		case OBJECT_HEALTH:
 		  SDL_RenderCopy (rend, objectstxtr, &healthobjrect,
@@ -1146,7 +1155,7 @@ main (int argc, char *argv[])
 	      SDL_RenderCopy (rend, bagtxtr, &bagswapsrc, &bagcursordest);
 	    }
 
-	  render_string (objcaptions [state->args.server_state.bag [bagcursor]],
+	  render_string (objcaptions [ntohl (state->args.server_state.bag [bagcursor])],
 			 objcaptionrect, hudfont, textcol, rend);
 	}
       else

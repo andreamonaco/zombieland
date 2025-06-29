@@ -107,7 +107,7 @@ player
   int32_t speed_x, speed_y;
   enum facing facing;
 
-  int32_t bullets;
+  uint32_t bullets;
 
   uint32_t is_searching;
   struct bag *might_search_at;
@@ -1020,45 +1020,46 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
   int i;
 
   msg.type = htonl (MSG_SERVER_STATE);
-  msg.args.server_state.frame_counter = frame_counter;
-  msg.args.server_state.areaid = pls [id].agent->area->id;
-  msg.args.server_state.x = pls [id].agent->place.x;
-  msg.args.server_state.y = pls [id].agent->place.y;
-  msg.args.server_state.w = pls [id].agent->place.w;
-  msg.args.server_state.h = pls [id].agent->place.h;
+  msg.args.server_state.frame_counter = htonl (frame_counter);
+  msg.args.server_state.areaid = htonl (pls [id].agent->area->id);
+  msg.args.server_state.x = htonl (pls [id].agent->place.x);
+  msg.args.server_state.y = htonl (pls [id].agent->place.y);
+  msg.args.server_state.w = htonl (pls [id].agent->place.w);
+  msg.args.server_state.h = htonl (pls [id].agent->place.h);
   msg.args.server_state.char_facing = pls [id].facing;
-  msg.args.server_state.life = pls [id].agent->life;
+  msg.args.server_state.life = htonl (pls [id].agent->life);
   msg.args.server_state.is_immortal = !!pls [id].agent->immortal;
-  msg.args.server_state.bullets = pls [id].bullets;
-  msg.args.server_state.hunger = pls [id].hunger;
-  msg.args.server_state.thirst = pls [id].thirst;
+  msg.args.server_state.bullets = htonl (pls [id].bullets);
+  msg.args.server_state.hunger = htonl (pls [id].hunger);
+  msg.args.server_state.thirst = htonl (pls [id].thirst);
   msg.args.server_state.just_shot = pls [id].shoot_rest > 6;
   msg.args.server_state.just_stabbed = pls [id].stab_rest > 2;
-  msg.args.server_state.is_searching = pls [id].is_searching;
+  msg.args.server_state.is_searching = htonl (pls [id].is_searching);
 
   if (pls [id].is_searching)
     {
       for (i = 0; i < BAG_SIZE; i++)
 	{
-	  msg.args.server_state.bag [i] = pls [id].bag [i].type;
+	  msg.args.server_state.bag [i] = htonl (pls [id].bag [i].type);
 	}
 
       if (pls [id].might_search_at
 	  && pls [id].might_search_at->searched_by == &pls [id])
 	{
-	  msg.args.server_state.is_searching++;
+	  msg.args.server_state.is_searching
+	    = htonl (ntohl (msg.args.server_state.is_searching)+1);
 
 	  for (i = 0; i < BAG_SIZE; i++)
 	    {
 	      msg.args.server_state.bag [BAG_SIZE+i]
-		= pls [id].might_search_at->content [i].type;
+		= htonl (pls [id].might_search_at->content [i].type);
 	    }
 	}
     }
 
   msg.args.server_state.num_visibles = 0;
-  msg.args.server_state.npcid = pls [id].npcid;
-  msg.args.server_state.textbox_lines_num = pls [id].textbox_lines_num;
+  msg.args.server_state.npcid = htonl (pls [id].npcid);
+  msg.args.server_state.textbox_lines_num = htonl (pls [id].textbox_lines_num);
 
   while (as)
     {
@@ -1073,23 +1074,24 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	  && as->area == pls [id].agent->area
 	  && is_visible_by_player (pls [id].agent->place, as->place))
 	{
-	  vis.type = as->type == AGENT_PLAYER ? VISIBLE_PLAYER : VISIBLE_ZOMBIE;
-	  vis.x = as->place.x;
-	  vis.y = as->place.y;
-	  vis.w = as->place.w;
-	  vis.h = as->place.h;
+	  vis.type = htonl (as->type == AGENT_PLAYER ? VISIBLE_PLAYER
+			    : VISIBLE_ZOMBIE);
+	  vis.x = htonl (as->place.x);
+	  vis.y = htonl (as->place.y);
+	  vis.w = htonl (as->place.w);
+	  vis.h = htonl (as->place.h);
 
 	  if (as->type == AGENT_PLAYER)
 	    {
-	      vis.facing = as->data_ptr.player->facing;
-	      vis.speed_x = as->data_ptr.player->speed_x;
-	      vis.speed_y = as->data_ptr.player->speed_y;
+	      vis.facing = htonl (as->data_ptr.player->facing);
+	      vis.speed_x = htonl (as->data_ptr.player->speed_x);
+	      vis.speed_y = htonl (as->data_ptr.player->speed_y);
 	    }
 	  else
 	    {
-	      vis.facing = as->data_ptr.zombie->facing;
-	      vis.speed_x = as->data_ptr.zombie->speed_x;
-	      vis.speed_y = as->data_ptr.zombie->speed_y;
+	      vis.facing = htonl (as->data_ptr.zombie->facing);
+	      vis.speed_x = htonl (as->data_ptr.zombie->speed_x);
+	      vis.speed_y = htonl (as->data_ptr.zombie->speed_y);
 	      vis.is_immortal = !!as->immortal;
 	    }
 
@@ -1114,11 +1116,11 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	      goto send;
 	    }
 
-	  vis.type = VISIBLE_SEARCHING;
-	  vis.x = pls [i].agent->place.x+12;
-	  vis.y = pls [i].agent->place.y-16;
-	  vis.w = 16;
-	  vis.h = 16;
+	  vis.type = htonl (VISIBLE_SEARCHING);
+	  vis.x = htonl (pls [i].agent->place.x+12);
+	  vis.y = htonl (pls [i].agent->place.y-16);
+	  vis.w = htonl (16);
+	  vis.h = htonl (16);
 
 	  memcpy (&msg.args.server_state.visibles
 		  [msg.args.server_state.num_visibles], &vis, sizeof (vis));
@@ -1141,28 +1143,28 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	  switch (objs->type)
 	    {
 	    case OBJECT_HEALTH:
-	      vis.type = VISIBLE_HEALTH;
+	      vis.type = htonl (VISIBLE_HEALTH);
 	      break;
 	    case OBJECT_AMMO:
-	      vis.type = VISIBLE_AMMO;
+	      vis.type = htonl (VISIBLE_AMMO);
 	      break;
 	    case OBJECT_FOOD:
-	      vis.type = VISIBLE_FOOD;
+	      vis.type = htonl (VISIBLE_FOOD);
 	      break;
 	    case OBJECT_WATER:
-	      vis.type = VISIBLE_WATER;
+	      vis.type = htonl (VISIBLE_WATER);
 	      break;
 	    case OBJECT_FLESH:
-	      vis.type = VISIBLE_FLESH;
+	      vis.type = htonl (VISIBLE_FLESH);
 	      break;
 	    default:
 	      continue;
 	    }
 
-	  vis.x = objs->place.x;
-	  vis.y = objs->place.y;
-	  vis.w = objs->place.w;
-	  vis.h = objs->place.h;
+	  vis.x = htonl (objs->place.x);
+	  vis.y = htonl (objs->place.y);
+	  vis.w = htonl (objs->place.w);
+	  vis.h = htonl (objs->place.h);
 
 	  memcpy (&msg.args.server_state.visibles
 		  [msg.args.server_state.num_visibles], &vis, sizeof (vis));
@@ -1184,11 +1186,11 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
       if (ss->areaid == pls [id].agent->area->id
 	  && is_visible_by_player (pls [id].agent->place, ss->target))
 	{
-	  vis.type = VISIBLE_SHOT;
-	  vis.x = ss->target.x;
-	  vis.y = ss->target.y;
-	  vis.w = ss->target.w;
-	  vis.h = ss->target.h;
+	  vis.type = htonl (VISIBLE_SHOT);
+	  vis.x = htonl (ss->target.x);
+	  vis.y = htonl (ss->target.y);
+	  vis.w = htonl (ss->target.w);
+	  vis.h = htonl (ss->target.h);
 	  memcpy (&msg.args.server_state.visibles
 		  [msg.args.server_state.num_visibles], &vis, sizeof (vis));
 	  msg.args.server_state.num_visibles++;
@@ -1200,17 +1202,19 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
   if (!pls [id].is_searching && pls [id].might_search_at
       && !pls [id].might_search_at->searched_by)
     {
-      vis.type = VISIBLE_SEARCHABLE;
-      vis.x = pls [id].might_search_at->icon.x;
-      vis.y = pls [id].might_search_at->icon.y;
-      vis.w = pls [id].might_search_at->icon.w;
-      vis.h = pls [id].might_search_at->icon.h;
+      vis.type = htonl (VISIBLE_SEARCHABLE);
+      vis.x = htonl (pls [id].might_search_at->icon.x);
+      vis.y = htonl (pls [id].might_search_at->icon.y);
+      vis.w = htonl (pls [id].might_search_at->icon.w);
+      vis.h = htonl (pls [id].might_search_at->icon.h);
       memcpy (&msg.args.server_state.visibles
 	      [msg.args.server_state.num_visibles], &vis, sizeof (vis));
       msg.args.server_state.num_visibles++;
     }
 
  send:
+  msg.args.server_state.num_visibles = htonl (msg.args.server_state.num_visibles);
+
   if (pls [id].textbox)
     {
       strcpy (msg.args.server_state.textbox, pls [id].textbox);
@@ -1220,8 +1224,8 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 
   if (sendto (sockfd, &msg, offsetof (struct message, args)
 	      + offsetof (struct server_state_args, visibles)
-	      + sizeof (struct visible) * msg.args.server_state.num_visibles, 0,
-	      (struct sockaddr *)&pls [id].address, sizeof (pls [id].address)) < 0)
+	      + sizeof (struct visible) * ntohl (msg.args.server_state.num_visibles),
+	      0, (struct sockaddr *)&pls [id].address, sizeof (pls [id].address)) < 0)
     {
       fprintf (stderr, "could not send data\n");
       exit (1);
@@ -1547,31 +1551,31 @@ main (int argc, char *argv[])
 		}
 	      break;
 	    case MSG_CLIENT_CHAR_STATE:
-	      id = msg->args.client_char_state.id;
+	      id = ntohl (msg->args.client_char_state.id);
 
 	      if (players [id].id == -1)
 		{
 		  fprintf (stderr, "got state from unknown id %d\n", id);
 		}
 	      else if (players [id].last_update
-		       < msg->args.client_char_state.frame_counter)
+		       < ntohl (msg->args.client_char_state.frame_counter))
 		{
 		  if (!players [id].freeze)
 		    {
 		      if (!players [id].is_searching)
 			{
 			  players [id].speed_x =
-			    msg->args.client_char_state.char_speed_x > 0
+			    (int32_t) ntohl (msg->args.client_char_state.char_speed_x) > 0
 			    ? CHAR_SPEED
-			    : msg->args.client_char_state.char_speed_x < 0
+			    : (int32_t) ntohl (msg->args.client_char_state.char_speed_x) < 0
 			    ? -CHAR_SPEED : 0;
 			  players [id].speed_y =
-			    msg->args.client_char_state.char_speed_y > 0
+			    (int32_t) ntohl (msg->args.client_char_state.char_speed_y) > 0
 			    ? CHAR_SPEED
-			    : msg->args.client_char_state.char_speed_y < 0
+			    : (int32_t) ntohl (msg->args.client_char_state.char_speed_y) < 0
 			    ? -CHAR_SPEED : 0;
 			  players [id].facing
-			    = msg->args.client_char_state.char_facing;
+			    = ntohl (msg->args.client_char_state.char_facing);
 			}
 
 		      players [id].interact
@@ -1616,12 +1620,14 @@ main (int argc, char *argv[])
 			  players [id].is_searching = 0;
 			}
 
-		      players [id].swap1 = msg->args.client_char_state.swap [0];
-		      players [id].swap2 = msg->args.client_char_state.swap [1];
+		      players [id].swap1 =
+			(int32_t) ntohl (msg->args.client_char_state.swap [0]);
+		      players [id].swap2 =
+			(int32_t) ntohl (msg->args.client_char_state.swap [1]);
 		    }
 
 		  players [id].last_update
-		    = msg->args.client_char_state.frame_counter;
+		    = ntohl (msg->args.client_char_state.frame_counter);
 		  players [id].timeout = CLIENT_TIMEOUT;
 		}
 	      break;
