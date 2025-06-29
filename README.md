@@ -80,8 +80,7 @@ the same 2D map and fight.
 
 __Does Zombieland work across architectures?__
 
-Not yet probably: endianness conversions are still not applied consistently.  I
-will fix this soon enough.
+It should.  Let me know if you find any issue.
 
 
 
@@ -140,6 +139,13 @@ handling of SIGINT.  I will look into it further.
 __Does Zombieland contain any line of code written by AI?__
 
 No!  This is a game about zombies, not written by zombies.
+
+
+
+__How can I reach the author?__
+
+You can write an email at monacoandrea + 94 + at + gmail + .com, where "+" is
+concatenation.
 
 
 
