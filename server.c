@@ -104,6 +104,7 @@ player
   uint32_t last_update;
 
   char name [MAX_LOGNAME_LEN+1];
+  uint32_t bodytype;
   int32_t speed_x, speed_y;
   enum facing facing;
 
@@ -271,8 +272,8 @@ set_rect (SDL_Rect *rect, int x, int y, int w, int h)
 
 
 uint32_t
-create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
-	       struct server_area *area, struct player pls [],
+create_player (char name[], uint32_t bodytype, struct sockaddr_in *addr,
+	       uint16_t portoff, struct server_area *area, struct player pls [],
 	       struct agent **agents)
 {
   int i, j;
@@ -309,6 +310,7 @@ create_player (char name[], struct sockaddr_in *addr, uint16_t portoff,
   pls [i].portoffset = portoff;
   pls [i].last_update = 0;
   strcpy (pls [i].name, name);
+  pls [i].bodytype = bodytype;
   pls [i].speed_x = pls [i].speed_y = pls [i].facing = 0;
   pls [i].bullets = 16;
   pls [i].is_searching = 0;
@@ -1076,6 +1078,8 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	{
 	  vis.type = htonl (as->type == AGENT_PLAYER ? VISIBLE_PLAYER
 			    : VISIBLE_ZOMBIE);
+	  vis.subtype = as->type == AGENT_PLAYER
+	    ? htonl (as->data_ptr.player->bodytype) : 0;
 	  vis.x = htonl (as->place.x);
 	  vis.y = htonl (as->place.y);
 	  vis.w = htonl (as->place.w);
@@ -1521,7 +1525,13 @@ main (int argc, char *argv[])
 		    }
 		}
 
-	      id = create_player (msg->args.login.logname, &client_addr,
+	      msg->args.login.bodytype = ntohl (msg->args.login.bodytype);
+
+	      if (msg->args.login.bodytype < 0 || msg->args.login.bodytype > 6)
+		msg->args.login.bodytype = 0;
+
+	      id = create_player (msg->args.login.logname,
+				  msg->args.login.bodytype, &client_addr,
 				  ntohs (msg->args.login.portoff), &field,
 				  players, &agents);
 

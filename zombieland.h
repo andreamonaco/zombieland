@@ -75,6 +75,7 @@ login_args
 {
   uint16_t portoff;
   char logname [MAX_LOGNAME_LEN+1];
+  uint32_t bodytype;
 };
 
 
@@ -115,6 +116,7 @@ struct
 visible
 {
   uint32_t type;
+  uint32_t subtype;
   uint32_t x, y, w, h;
   enum facing facing;
   int32_t speed_x, speed_y;

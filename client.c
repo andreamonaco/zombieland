@@ -185,20 +185,53 @@ main (int argc, char *argv[])
   SDL_Rect character_srcs [] = {{0, 6, 16, 21}, {16, 6, 16, 21}, {48, 6, 16, 21},
 				{0, 69, 16, 21}, {16, 69, 16, 21}, {48, 69, 16, 21},
 				{0, 38, 16, 21}, {16, 38, 16, 21}, {48, 38, 16, 21},
-				{0, 102, 16, 21}, {16, 102, 16, 21}, {48, 102, 16, 21}},
-    character_box = RECT_BY_GRID (6, 0, 1, 1), character_origin = {0, -5, 0, 0},
+				{0, 102, 16, 21}, {16, 102, 16, 21}, {48, 102, 16, 21},
+
+				{20, 129, 16, 16}, {20, 146, 16, 16}, {20, 163, 16, 16},
+				{37, 129, 16, 16}, {37, 146, 16, 16}, {37, 163, 16, 16},
+				{54, 129, 16, 16}, {54, 146, 16, 16}, {54, 163, 16, 16},
+				{3, 129, 16, 16}, {3, 146, 16, 16}, {3, 163, 16, 16},
+
+				{20, 180, 16, 16}, {20, 197, 16, 16}, {20, 214, 16, 16},
+				{37, 180, 16, 16}, {37, 197, 16, 16}, {37, 214, 16, 16},
+				{54, 180, 16, 16}, {54, 197, 16, 16}, {54, 214, 16, 16},
+				{3, 180, 16, 16}, {3, 197, 16, 16}, {3, 214, 16, 16},
+
+				{20, 231, 16, 16}, {20, 248, 16, 16}, {20, 265, 16, 16},
+				{37, 231, 16, 16}, {37, 248, 16, 16}, {37, 265, 16, 16},
+				{54, 231, 16, 16}, {54, 248, 16, 16}, {54, 265, 16, 16},
+				{3, 231, 16, 16}, {3, 248, 16, 16}, {3, 265, 16, 16},
+
+				{20, 282, 16, 16}, {20, 299, 16, 16}, {20, 316, 16, 16},
+				{37, 282, 16, 16}, {37, 299, 16, 16}, {37, 316, 16, 16},
+				{54, 282, 16, 16}, {54, 299, 16, 16}, {54, 316, 16, 16},
+				{3, 282, 16, 16}, {3, 299, 16, 16}, {3, 316, 16, 16},
+
+				{20, 333, 16, 16}, {20, 350, 16, 16}, {20, 367, 16, 16},
+				{37, 333, 16, 16}, {37, 350, 16, 16}, {37, 367, 16, 16},
+				{54, 333, 16, 16}, {54, 350, 16, 16}, {54, 367, 16, 16},
+				{3, 333, 16, 16}, {3, 350, 16, 16}, {3, 367, 16, 16},
+
+				{20, 384, 16, 16}, {20, 401, 16, 16}, {20, 418, 16, 16},
+				{37, 384, 16, 16}, {37, 401, 16, 16}, {37, 418, 16, 16},
+				{54, 384, 16, 16}, {54, 401, 16, 16}, {54, 418, 16, 16},
+				{3, 384, 16, 16}, {3, 401, 16, 16}, {3, 418, 16, 16}},
+    character_origin []= {{0, -5, 16, 21}, {0, 0, 16, 16}, {0, 0, 16, 16},
+			  {0, 0, 16, 16}, {0, 0, 16, 16}, {0, 0, 16, 16},
+			  {0, 0, 16, 16}},
+    character_box = RECT_BY_GRID (6, 0, 1, 1),
     character_dest = {0, 0, 16, 21}, pers, shot_src = {40, 18, 16, 16},
     sh = {0, 0, GRID_CELL_W, GRID_CELL_H},
     zombie_srcs [] = {{0, 6, 16, 21}, {16, 6, 16, 21}, {48, 6, 16, 21},
 		      {0, 69, 16, 21}, {16, 69, 16, 21}, {48, 69, 16, 21},
 		      {0, 38, 16, 21}, {16, 38, 16, 21}, {48, 38, 16, 21},
 		      {0, 102, 16, 21}, {16, 102, 16, 21}, {48, 102, 16, 21}},
-    zombie_origin = {0, -5, 0, 0};
+    zombie_origin = {0, -5, 16, 21};
 
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
-    do_shoot = 0, do_stab = 0, do_search = 0, life = MAX_PLAYER_HEALTH,
-    is_immortal = 0, bullets = 16, hunger = 0, thirst = 0, num_visibles,
-    just_shot = 0, just_stabbed = 0;
+    do_shoot = 0, do_stab = 0, do_search = 0, bodytype = 0,
+    life = MAX_PLAYER_HEALTH, is_immortal = 0, bullets = 16, hunger = 0,
+    thirst = 0, num_visibles, just_shot = 0, just_stabbed = 0;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct visible vis;
 
@@ -266,6 +299,14 @@ main (int argc, char *argv[])
       return 1;
     }
 
+  if (argc >= 4)
+    {
+      if (strlen (argv [3]) == 1 && '0' <= *argv [3] && *argv [3] <= '6')
+	bodytype = *argv [3]-'0';
+      else
+	fprintf (stderr, "warning: body type must be between 0 and 6\n");
+    }
+
   sockfd = socket (AF_INET, SOCK_DGRAM, 0);
 
   if (sockfd < 0)
@@ -316,6 +357,7 @@ main (int argc, char *argv[])
   tmp = htons (portoff);
   memcpy (&msg.args.login.portoff, &tmp, sizeof (tmp));
   strcpy (msg.args.login.logname, argv [2]);
+  msg.args.login.bodytype = htonl (bodytype);
 
   printf ("contacting server %s... ", argv [1]);
   fflush (stdout);
@@ -555,8 +597,10 @@ main (int argc, char *argv[])
   basement.walkable = basement_walkable;
 
   SDL_RenderCopy (rend, field.texture, NULL, NULL);
-  character_dest.x = character_box.x + character_origin.x;
-  character_dest.y = character_box.y + character_origin.y;
+  character_dest.x = character_box.x + character_origin [bodytype].x;
+  character_dest.y = character_box.y + character_origin [bodytype].y;
+  character_dest.w = character_origin [bodytype].w;
+  character_dest.h = character_origin [bodytype].h;
   SDL_RenderCopy (rend, charactertxtr, &character_srcs [loc_char_facing],
 		  &character_dest);
   SDL_RenderPresent (rend);
@@ -936,8 +980,8 @@ main (int argc, char *argv[])
 
 	      pers.y = -camera_src.y + area->walkable.y + ntohl (vis.y)
 		+ zombie_origin.y;
-	      pers.w = character_dest.w;
-	      pers.h = character_dest.h;
+	      pers.w = zombie_origin.w;
+	      pers.h = zombie_origin.h;
 	      SDL_RenderCopy (rend, zombietxtr,
 			      &zombie_srcs [ntohl (vis.facing)*3+
 					    ((vis.speed_x || vis.speed_y)
@@ -949,18 +993,23 @@ main (int argc, char *argv[])
 	    {
 	      vis = state->args.server_state.visibles [i];
 	      vis.type = ntohl (vis.type);
+	      vis.subtype = ntohl (vis.subtype);
+
+	      if (vis.subtype < 0 || vis.subtype > 6)
+		vis.subtype = 0;
 
 	      if (vis.type != VISIBLE_PLAYER)
 		continue;
 
 	      pers.x = -camera_src.x + area->walkable.x + ntohl (vis.x)
-		+ character_origin.x;
+		+ character_origin [vis.subtype].x;
 	      pers.y = -camera_src.y + area->walkable.y + ntohl (vis.y)
-		+ character_origin.y;
-	      pers.w = character_dest.w;
-	      pers.h = character_dest.h;
+		+ character_origin [vis.subtype].y;
+	      pers.w = character_origin [vis.subtype].w;
+	      pers.h = character_origin [vis.subtype].h;
 	      SDL_RenderCopy (rend, charactertxtr,
-			      &character_srcs [ntohl (vis.facing)*3+
+			      &character_srcs [vis.subtype*12
+					       +ntohl (vis.facing)*3+
 					       ((vis.speed_x || vis.speed_y)
 						? 1+(frame_counter%12)/6 : 0)],
 			      &pers);
@@ -970,11 +1019,14 @@ main (int argc, char *argv[])
       if (!is_immortal || frame_counter%4 < 2)
 	{
 	  character_dest.x = -camera_src.x + area->walkable.x + character_box.x
-	    + character_origin.x;
+	    + character_origin [bodytype].x;
 	  character_dest.y = -camera_src.y + area->walkable.y + character_box.y
-	    + character_origin.y;
+	    + character_origin [bodytype].y;
+	  character_dest.w = character_origin [bodytype].w;
+	  character_dest.h = character_origin [bodytype].h;
 	  SDL_RenderCopy (rend, charactertxtr,
-			  &character_srcs [loc_char_facing*3+
+			  &character_srcs [bodytype*12
+					   +loc_char_facing*3+
 					   ((loc_char_speed_x || loc_char_speed_y)
 					    ? 1+(frame_counter%12)/6 : 0)],
 			  &character_dest);
