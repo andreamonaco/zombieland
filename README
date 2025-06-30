@@ -45,7 +45,9 @@ __How can I play Zombieland?__
 
 Start the server (zombielandd) on some computer, then start the client
 (zombieland) with two arguments: the address of the server and any username you
-like.
+like.  Optionally, pass a third argument with a number between 0 and 6 to choose
+your appearance; see the file character.png to preview each look, numbered from
+0 to 6 going down.
 
 Move around with the arrows, fire with F, stab with R to hit enemies nearby with
 the knife, interact with objects (reading signs and so on) with Space and close
@@ -63,7 +65,8 @@ __Can I test Zombieland locally?__
 
 Yes.  After building, start first the server (zombielandd), then the client
 (zombieland) on another terminal, the latter with 127.0.0.1 and any username as
-arguments.  You can even run multiple clients on the same system.
+arguments (optionally a third argument to choose your appearance, see "How can I
+play Zombieland?").  You can even run multiple clients on the same system.
 
 
 
