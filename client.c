@@ -277,7 +277,7 @@ main (int argc, char *argv[])
     screen_overlay = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
     halfscreen = {0, 0, WINDOW_WIDTH/2, WINDOW_HEIGHT};
 
-  Mix_Chunk *shootsfx, *stabsfx;
+  Mix_Chunk *shootsfx, *stabsfx, *reloadsfx;
 
   int quit = 0, i, got_update;
   uint32_t frame_counter = 1, timeout = SERVER_TIMEOUT;
@@ -561,6 +561,15 @@ main (int argc, char *argv[])
   stabsfx = Mix_LoadWAV ("knifesharpener1.flac");
 
   if (!stabsfx)
+    {
+      fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
+  reloadsfx = Mix_LoadWAV ("reload.wav");
+
+  if (!reloadsfx)
     {
       fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
       SDL_Quit ();
@@ -875,6 +884,10 @@ main (int argc, char *argv[])
 	  srv_char_facing = state->args.server_state.char_facing;
 	  life = ntohl (state->args.server_state.life);
 	  is_immortal = state->args.server_state.is_immortal;
+
+	  if (ntohl (state->args.server_state.bullets) > bullets)
+	    Mix_PlayChannel (-1, reloadsfx, 0);
+
 	  bullets = ntohl (state->args.server_state.bullets);
 	  hunger = ntohl (state->args.server_state.hunger);
 	  thirst = ntohl (state->args.server_state.thirst);
