@@ -39,7 +39,7 @@
 #include "zombieland.h"
 
 
-#define AREA_FRAME_DURATION 4
+#define AREA_FRAME_DURATION 130
 
 struct
 npc
@@ -280,9 +280,7 @@ main (int argc, char *argv[])
   Mix_Chunk *shootsfx, *stabsfx, *reloadsfx;
 
   int quit = 0, i, got_update;
-  uint32_t frame_counter = 1, timeout = SERVER_TIMEOUT;
-  Uint32 t1, t2;
-  double delay;
+  Uint32 frame_counter = 1, timeout = SERVER_TIMEOUT;
 
 
   print_welcome_message ();
@@ -616,8 +614,6 @@ main (int argc, char *argv[])
 
   while (!quit)
     {
-      t1 = SDL_GetTicks ();
-
       while (SDL_PollEvent (&event))
 	{
 	  switch (event.type)
@@ -846,6 +842,8 @@ main (int argc, char *argv[])
       else
 	timeout = SERVER_TIMEOUT;
 
+      frame_counter = SDL_GetTicks ();
+
       if (latest_srv_state)
 	{
 	  state = (struct message *)latest_srv_state;
@@ -894,14 +892,14 @@ main (int argc, char *argv[])
 	  num_visibles = ntohl (state->args.server_state.num_visibles);
 
 
-	  if (state->args.server_state.just_shot && !just_shot)
+	  if (state->args.server_state.just_shot && frame_counter-just_shot>100)
 	    {
-	      just_shot = 3;
+	      just_shot = frame_counter;
 	    }
 
-	  if (state->args.server_state.just_stabbed && !just_stabbed)
+	  if (state->args.server_state.just_stabbed && frame_counter-just_stabbed>66)
 	    {
-	      just_stabbed = 2;
+	      just_stabbed = frame_counter;
 	    }
 	}
 
@@ -982,23 +980,23 @@ main (int argc, char *argv[])
 
 	      pers.x = -camera_src.x + area->walkable.x + ntohl (vis.x)
 		+ zombie_origin.x;
+	      pers.y = -camera_src.y + area->walkable.y + ntohl (vis.y)
+		+ zombie_origin.y;
 
 	      if (vis.is_immortal)
 		{
-		  if (frame_counter % 6 < 3)
-		    pers.x += (frame_counter%3-1)*5;
+		  if (frame_counter % 200 < 100)
+		    pers.x += (frame_counter%99/33-1)*5;
 		  else
-		    pers.y += (frame_counter%3-1)*5;
+		    pers.y += (frame_counter%99/33-1)*5;
 		}
 
-	      pers.y = -camera_src.y + area->walkable.y + ntohl (vis.y)
-		+ zombie_origin.y;
 	      pers.w = zombie_origin.w;
 	      pers.h = zombie_origin.h;
 	      SDL_RenderCopy (rend, zombietxtr,
 			      &zombie_srcs [ntohl (vis.facing)*3+
 					    ((vis.speed_x || vis.speed_y)
-					     ? 1+(frame_counter%12)/6 : 0)],
+					     ? 1+(frame_counter%400)/200 : 0)],
 			      &pers);
 	    }
 
@@ -1024,12 +1022,12 @@ main (int argc, char *argv[])
 			      &character_srcs [vis.subtype*12
 					       +ntohl (vis.facing)*3+
 					       ((vis.speed_x || vis.speed_y)
-						? 1+(frame_counter%12)/6 : 0)],
+						? 1+(frame_counter%400)/200 : 0)],
 			      &pers);
 	    }
 	}
 
-      if (!is_immortal || frame_counter%4 < 2)
+      if (!is_immortal || frame_counter%130 < 65)
 	{
 	  character_dest.x = -camera_src.x + area->walkable.x + character_box.x
 	    + character_origin [bodytype].x;
@@ -1041,7 +1039,7 @@ main (int argc, char *argv[])
 			  &character_srcs [bodytype*12
 					   +loc_char_facing*3+
 					   ((loc_char_speed_x || loc_char_speed_y)
-					    ? 1+(frame_counter%12)/6 : 0)],
+					    ? 1+(frame_counter%400)/200 : 0)],
 			  &character_dest);
 	}
 
@@ -1228,32 +1226,11 @@ main (int argc, char *argv[])
 
       SDL_RenderPresent (rend);
 
-      if (just_shot)
-	{
-	  if (just_shot == 3)
-	    Mix_PlayChannel (-1, shootsfx, 0);
+      if (just_shot == frame_counter)
+	Mix_PlayChannel (-1, shootsfx, 0);
 
-	  just_shot--;
-	}
-
-      if (just_stabbed)
-	{
-	  if (just_stabbed == 2)
-	    Mix_PlayChannel (-1, stabsfx, 0);
-
-	  just_stabbed--;
-	}
-
-      frame_counter++;
-
-      t2 = SDL_GetTicks ();
-
-      delay = FRAME_DURATION - (t2 - t1);
-
-      if (delay > 0)
-	SDL_Delay (delay);
-      else
-	printf ("warning: frame skipped by %f\n", -delay);
+      if (just_stabbed == frame_counter)
+	Mix_PlayChannel (-1, stabsfx, 0);
     }
 
   SDL_Quit ();
