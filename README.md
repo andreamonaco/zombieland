@@ -89,15 +89,18 @@ It should.  Let me know if you find any issue.
 
 __Who made the assets?__
 
-I used a tileset taken by https://opengameart.org:
+For the maps I used the following tilesets taken from https://opengameart.org:
 
 "Zelda-like tilesets and sprites" by ArMM1998 licensed CC0 1.0 Universal:
 https://opengameart.org/content/zelda-like-tilesets-and-sprites
 
+"RPG Urban Pack" by Kenney (www.kenney.nl) licensed CC0 1.0 Universal:
+https://opengameart.org/content/rpg-urban-pack
+
 The actual maps are made by me and retain the same license.
 
-The player sprite (character.png), zombie sprite (NPC_test.png) and NPC sprite
-(log.png) come from that same set.
+The player sprites (character.png), zombie sprite (NPC_test.png) and NPC sprite
+(log.png) come from those same sets.
 
 The spark effect in effects.png comes from:
 
@@ -118,14 +121,19 @@ https://opengameart.org/content/digital-jots-5x5-pixel-font-with-katakana
 
 The sound effect bang_01.ogg comes from
 
-"25 CC0 bang / firework SFX" by rubberduck licensed CC0 1.0 Universal
+"25 CC0 bang / firework SFX" by rubberduck licensed CC0 1.0 Universal:
 https://opengameart.org/content/25-cc0-bang-firework-sfx
 
 while knifesharpener1.flac is taken from
 
 "Knife sharpening slice 1" by The Berklee College of Music licensed Attribution
-3.0 Unported (https://creativecommons.org/licenses/by/3.0)
+3.0 Unported (https://creativecommons.org/licenses/by/3.0):
 https://opengameart.org/content/knife-sharpening-slice-1
+
+and reload.wav is an effect I edited starting from
+
+"Handgun Reload Sound Effect" by zer0_sol licensed CC0 1.0 Universal:
+https://opengameart.org/content/handgun-reload-sound-effect
 
 All these assets are not final, I will probably make my own along the way, but
 they show that the engine works.
