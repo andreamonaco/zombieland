@@ -3,9 +3,16 @@ __What is Zombieland?__
 Zombieland is a working title for a game, a little MMO about the struggle for
 survival of humans against zombies.
 
-![A screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot1.png)
-![Another screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot2.png)
-![Another screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot3.png)
+![Screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot1.png)
+![Screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot2.png)
+![Screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot3.png)
+![Screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot4.png)
+![Screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot5.png)
+![Screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot6.png)
+![Screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot7.png)
+![Screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot8.png)
+![Screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot9.png)
+![Screenshot](https://raw.githubusercontent.com/andreamonaco/zombieland/refs/heads/main/screenshot10.png)
 
 
 
