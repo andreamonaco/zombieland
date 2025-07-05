@@ -1274,7 +1274,7 @@ main (int argc, char *argv[])
   struct bag *b;
 
   struct server_area field = {0}, *area;
-  SDL_Rect field_walkable = {0, 0, 1152, 512},
+  SDL_Rect field_walkable = {0, 0, 1152, 1024},
     field_unwalkables [] = {R_BY_GR (8, 0, 1, 4), R_BY_GR (8, 7, 1, 4), /* parking */
 			    R_BY_GR (8, 11, 24, 1), R_BY_GR (32, 0, 1, 12),
 			    R_BY_GR (12, 0, 1, 1), R_BY_GR (17, 0, 1, 1),
@@ -1301,6 +1301,7 @@ main (int argc, char *argv[])
 			    R_BY_GR (46, 9, 1, 5), R_BY_GR (52, 15, 4, 1),
 			    R_BY_GR (55, 11, 1, 3), R_BY_GR (57, 10, 1, 2),
 			    R_BY_GR (58, 12, 1, 2), R_BY_GR (59, 14, 1, 2),
+			    R_BY_GR (61, 13, 2, 2),
 
 			    /* top left field */
 			    R_BY_GR (41, 0, 2, 2), R_BY_GR (45, 1, 2, 2),
@@ -1316,10 +1317,15 @@ main (int argc, char *argv[])
 			    R_BY_GR (66, 1, 2, 2), R_BY_GR (68, 2, 2, 2),
 
 			    /* bottom field */
-			    R_BY_GR (61, 18, 1, 1), R_BY_GR (37, 31, 7, 1),
+			    R_BY_GR (61, 18, 1, 1), R_BY_GR (37, 31, 8, 1),
 			    R_BY_GR (49, 24, 3, 1), R_BY_GR (47, 29, 1, 2),
 			    R_BY_GR (49, 28, 1, 2), R_BY_GR (50, 31, 5, 1),
-			    R_BY_GR (59, 26, 2, 6), R_BY_GR (59, 22, 1, 2),
+			    R_BY_GR (50, 35, 3, 1), R_BY_GR (52, 37, 3, 1),
+			    R_BY_GR (50, 39, 4, 1), R_BY_GR (51, 40, 3, 1),
+			    R_BY_GR (50, 42, 3, 1), R_BY_GR (52, 44, 4, 1),
+			    R_BY_GR (57, 44, 2, 2), R_BY_GR (52, 46, 2, 1),
+			    R_BY_GR (53, 47, 2, 1), R_BY_GR (47, 49, 2, 2),
+			    R_BY_GR (59, 26, 2, 12), R_BY_GR (59, 22, 1, 2),
 			    R_BY_GR (52, 28, 3, 2), R_BY_GR (63, 22, 2, 2),
 			    R_BY_GR (63, 25, 2, 2), R_BY_GR (63, 28, 2, 2),
 			    R_BY_GR (67, 26, 2, 2), R_BY_GR (60, 17, 0, 3),
@@ -1327,8 +1333,32 @@ main (int argc, char *argv[])
 			    R_BY_GR (66, 25, 3, 1), R_BY_GR (69, 26, 0, 4),
 			    R_BY_GR (69, 30, 3, 1), R_BY_GR (65, 14, 3, 1),
 			    R_BY_GR (67, 16, 3, 1), R_BY_GR (41, 27, 3, 3),
+			    R_BY_GR (43, 24, 2, 2), R_BY_GR (37, 20, 4, 1),
+			    R_BY_GR (37, 26, 4, 1), R_BY_GR (45, 31, 1, 13),
+			    R_BY_GR (45, 46, 1, 13), R_BY_GR (45, 60, 1, 4),
 			    R_BY_GR (40, 21, 1, 1), R_BY_GR (41, 25, 1, 1),
-			    R_BY_GR (45, 25, 1, 1), R_BY_GR (45, 29, 1, 1)},
+			    R_BY_GR (45, 25, 1, 1), R_BY_GR (45, 29, 1, 1),
+			    R_BY_GR (63, 32, 2, 2), R_BY_GR (66, 33, 2, 2),
+			    R_BY_GR (63, 35, 2, 2), R_BY_GR (66, 36, 2, 2),
+			    R_BY_GR (63, 38, 2, 2), R_BY_GR (70, 33, 2, 2),
+
+			    /* lake */
+			    R_BY_GR (48, 56, 1, 8), R_BY_GR (49, 54, 1, 3),
+			    R_BY_GR (49, 54, 3, 1), R_BY_GR (51, 53, 1, 2),
+			    R_BY_GR (52, 52, 1, 2), R_BY_GR (52, 52, 3, 1),
+			    R_BY_GR (54, 50, 1, 3), R_BY_GR (55, 49, 1, 2),
+			    R_BY_GR (55, 49, 3, 1), R_BY_GR (57, 48, 1, 2),
+			    R_BY_GR (57, 48, 3, 1), R_BY_GR (59, 47, 1, 10),
+			    R_BY_GR (61, 47, 1, 10), R_BY_GR (62, 46, 1, 2),
+			    R_BY_GR (63, 45, 1, 2), R_BY_GR (64, 43, 1, 3),
+			    R_BY_GR (65, 42, 1, 2), R_BY_GR (65, 42, 3, 1),
+			    R_BY_GR (67, 41, 1, 2), R_BY_GR (67, 41, 3, 1),
+			    R_BY_GR (69, 39, 1, 3), R_BY_GR (70, 37, 1, 3),
+			    R_BY_GR (71, 36, 1, 2), R_BY_GR (58, 56, 1, 4),
+			    R_BY_GR (57, 59, 1, 5), R_BY_GR (62, 56, 2, 1),
+			    R_BY_GR (63, 56, 1, 3), R_BY_GR (64, 58, 1, 2),
+			    R_BY_GR (65, 59, 1, 2), R_BY_GR (66, 60, 1, 4),
+			    R_BY_GR (60, 60, 2, 3)},
 
     field_zombie_spawns [] = {RECT_BY_GRID (13, 31, 1, 1),
 			      RECT_BY_GRID (31, 22, 1, 1),
@@ -1403,7 +1433,7 @@ main (int argc, char *argv[])
   field.id = 0;
   field.walkable = field_walkable;
   field.unwalkables = field_unwalkables;
-  field.unwalkables_num = 81;
+  field.unwalkables_num = 135;
   field.warps = make_warp_by_grid (51, 13, 1, 1, &room, 5, 11, NULL);
   field.interactibles = NULL;
   field.npcs = NULL;

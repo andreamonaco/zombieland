@@ -162,14 +162,14 @@ main (int argc, char *argv[])
   uint32_t id, last_update = 0;
 
   struct client_area field;
-  SDL_Rect field_srcs [] = {RECT_BY_GRID (0, 0, 72, 32)},
-    field_overlays [] = {RECT_BY_GRID (0, 32, 72, 32),
-    RECT_BY_GRID (72, 32, 72, 32), RECT_BY_GRID (144, 32, 72, 32),
-    RECT_BY_GRID (216, 32, 72, 32), RECT_BY_GRID (288, 32, 72, 32)},
+  SDL_Rect field_srcs [] = {RECT_BY_GRID (0, 0, 72, 64)},
+    field_overlays [] = {RECT_BY_GRID (0, 64, 72, 64),
+    RECT_BY_GRID (72, 64, 72, 64), RECT_BY_GRID (144, 64, 72, 64),
+    RECT_BY_GRID (216, 64, 72, 64), RECT_BY_GRID (288, 64, 72, 64)},
     field_walkable = {0, 0, 512, 512};
 
   struct client_area room;
-  SDL_Rect room_src = {0, 1024, 256, 256},
+  SDL_Rect room_src = {0, 0, 256, 256},
     room_walkable = RECT_BY_GRID (2, 2, 12, 12);
   SDL_Rect room_npc_srcs [] = {{4, 5, 24, 24}, {4, 37, 24, 24}, {4, 69, 24, 24},
 			       {4, 101, 24, 24}};
@@ -177,7 +177,7 @@ main (int argc, char *argv[])
 			      {-4, -4, 0, 0}, FACING_DOWN}};
 
   struct client_area basement = {0};
-  SDL_Rect basement_src = {0, 1280, 256, 256},
+  SDL_Rect basement_src = {0, 256, 256, 256},
     basement_walkable = RECT_BY_GRID (2, 2, 12, 11);
 
   struct client_area *areas = &field, *area = &field, *ar;
@@ -239,8 +239,8 @@ main (int argc, char *argv[])
   SDL_Renderer *rend;
   SDL_Event event;
 
-  SDL_Texture *areatxtr, *charactertxtr, *zombietxtr, *npctxtr, *effectstxtr,
-    *texttxtr, *bagtxtr, *objectstxtr;
+  SDL_Texture *overworldtxtr, *interiorstxtr, *charactertxtr, *zombietxtr,
+    *npctxtr, *effectstxtr, *texttxtr, *bagtxtr, *objectstxtr;
   SDL_Surface *iconsurf, *textsurf;
   TTF_Font *hudfont, *textfont;
   char textbox [TEXTLINESIZE*MAXTEXTLINES+1], hudtext [20];
@@ -455,9 +455,18 @@ main (int argc, char *argv[])
   SDL_SetRenderDrawColor (rend, 100, 100, 100, 255);
   SDL_RenderClear (rend);
 
-  areatxtr = IMG_LoadTexture (rend, "area.png");
+  overworldtxtr = IMG_LoadTexture (rend, "overworld.png");
 
-  if (!areatxtr)
+  if (!overworldtxtr)
+    {
+      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
+  interiorstxtr = IMG_LoadTexture (rend, "interiors.png");
+
+  if (!interiorstxtr)
     {
       fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
       SDL_Quit ();
@@ -575,7 +584,7 @@ main (int argc, char *argv[])
     }
 
   field.id = 0;
-  field.texture = areatxtr;
+  field.texture = overworldtxtr;
   field.display_srcs = field_srcs;
   field.area_frames_num = 1;
   field.overlay_srcs = field_overlays;
@@ -586,7 +595,7 @@ main (int argc, char *argv[])
   field.next = &room;
 
   room.id = 1;
-  room.texture = areatxtr;
+  room.texture = interiorstxtr;
   room.display_srcs = &room_src;
   room.area_frames_num = 1;
   room.overlay_srcs = NULL;
@@ -598,7 +607,7 @@ main (int argc, char *argv[])
   room.next = &basement;
 
   basement.id = 2;
-  basement.texture = areatxtr;
+  basement.texture = interiorstxtr;
   basement.display_srcs = &basement_src;
   basement.area_frames_num = 1;
   basement.walkable = basement_walkable;
