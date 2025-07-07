@@ -237,8 +237,10 @@ server_area
 {
   uint32_t id;
   SDL_Rect walkable;
-  SDL_Rect *unwalkables;
-  int unwalkables_num;
+  SDL_Rect *full_obstacles;
+  int full_obstacles_num;
+  SDL_Rect *half_obstacles;
+  int half_obstacles_num;
 
   struct warp *warps;
   struct interactible *interactibles;
@@ -591,8 +593,9 @@ check_boundary (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable)
 
 
 SDL_Rect
-move_character (struct player *pl, SDL_Rect walkable, SDL_Rect unwalkables [],
-		int unwalkables_num, struct zombie *zs, int *character_hit)
+move_character (struct player *pl, SDL_Rect walkable, SDL_Rect full_obstacles [],
+		int full_obstacles_num, SDL_Rect half_obstacles [],
+		int half_obstacles_num, struct zombie *zs, int *character_hit)
 {
   int collided, speed_x = pl->speed_x, speed_y = pl->speed_y;
   struct zombie *z;
@@ -606,8 +609,16 @@ move_character (struct player *pl, SDL_Rect walkable, SDL_Rect unwalkables [],
   if (!speed_x && !speed_y)
     return charbox;
 
-  charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y, unwalkables,
-					  unwalkables_num, &collided);
+  charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y,
+					  full_obstacles, full_obstacles_num,
+					  &collided);
+
+  if (collided)
+    goto restart;
+
+  charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y,
+					  half_obstacles, half_obstacles_num,
+					  &collided);
 
   if (collided)
     goto restart;
@@ -644,8 +655,9 @@ move_character (struct player *pl, SDL_Rect walkable, SDL_Rect unwalkables [],
 
 SDL_Rect
 move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_y,
-	     SDL_Rect walkable, SDL_Rect unwalkables [], int unwalkables_num,
-	     struct player pls [])
+	     SDL_Rect walkable, SDL_Rect full_obstacles [],
+	     int full_obstacles_num, SDL_Rect half_obstacles [],
+	     int half_obstacles_num, struct player pls [])
 {
   int collided, i, sx = speed_x, sy = speed_y;
 
@@ -656,8 +668,16 @@ move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_
   if (!speed_x && !speed_y)
     return charbox;
 
-  charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y, unwalkables,
-					  unwalkables_num, &collided);
+  charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y,
+					  full_obstacles, full_obstacles_num,
+					  &collided);
+
+  if (collided)
+    goto restart;
+
+  charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y,
+					  half_obstacles, half_obstacles_num,
+					  &collided);
 
   if (collided)
     goto restart;
@@ -798,9 +818,9 @@ get_shot_rect (SDL_Rect charbox, enum facing facing, struct server_area *area,
 
   *hit = 0, *shotag = NULL;
 
-  for (i = 0; i < area->unwalkables_num; i++)
+  for (i = 0; i < area->full_obstacles_num; i++)
     {
-      if (is_target_hit (charbox, facing, area->unwalkables [i], 0, &dist,
+      if (is_target_hit (charbox, facing, area->full_obstacles [i], 0, &dist,
 			 &hitpart) && dist <= GUN_RANGE)
 	{
 	  if (!*hit || is_closer (facing, hitpart, ret))
@@ -1275,7 +1295,7 @@ main (int argc, char *argv[])
 
   struct server_area field = {0}, *area;
   SDL_Rect field_walkable = {0, 0, 1152, 1024},
-    field_unwalkables [] = {R_BY_GR (8, 0, 1, 4), R_BY_GR (8, 7, 1, 4), /* parking */
+    field_full_obs [] = {R_BY_GR (8, 0, 1, 4), R_BY_GR (8, 7, 1, 4), /* parking */
 			    R_BY_GR (8, 11, 24, 1), R_BY_GR (32, 0, 1, 12),
 			    R_BY_GR (12, 0, 1, 1), R_BY_GR (17, 0, 1, 1),
 			    R_BY_GR (21, 0, 1, 1), R_BY_GR (27, 0, 1, 1),
@@ -1341,24 +1361,26 @@ main (int argc, char *argv[])
 			    R_BY_GR (63, 32, 2, 2), R_BY_GR (66, 33, 2, 2),
 			    R_BY_GR (63, 35, 2, 2), R_BY_GR (66, 36, 2, 2),
 			    R_BY_GR (63, 38, 2, 2), R_BY_GR (70, 33, 2, 2),
-
-			    /* lake */
-			    R_BY_GR (48, 56, 1, 8), R_BY_GR (49, 54, 1, 3),
-			    R_BY_GR (49, 54, 3, 1), R_BY_GR (51, 53, 1, 2),
-			    R_BY_GR (52, 52, 1, 2), R_BY_GR (52, 52, 3, 1),
-			    R_BY_GR (54, 50, 1, 3), R_BY_GR (55, 49, 1, 2),
-			    R_BY_GR (55, 49, 3, 1), R_BY_GR (57, 48, 1, 2),
-			    R_BY_GR (57, 48, 3, 1), R_BY_GR (59, 47, 1, 10),
-			    R_BY_GR (61, 47, 1, 10), R_BY_GR (62, 46, 1, 2),
-			    R_BY_GR (63, 45, 1, 2), R_BY_GR (64, 43, 1, 3),
-			    R_BY_GR (65, 42, 1, 2), R_BY_GR (65, 42, 3, 1),
-			    R_BY_GR (67, 41, 1, 2), R_BY_GR (67, 41, 3, 1),
-			    R_BY_GR (69, 39, 1, 3), R_BY_GR (70, 37, 1, 3),
-			    R_BY_GR (71, 36, 1, 2), R_BY_GR (58, 56, 1, 4),
-			    R_BY_GR (57, 59, 1, 5), R_BY_GR (62, 56, 2, 1),
-			    R_BY_GR (63, 56, 1, 3), R_BY_GR (64, 58, 1, 2),
-			    R_BY_GR (65, 59, 1, 2), R_BY_GR (66, 60, 1, 4),
+			    R_BY_GR (60, 47, 0, 10), R_BY_GR (61, 47, 0, 10),
 			    R_BY_GR (60, 60, 2, 3)},
+
+    field_half_obs [] = {/* lake */
+      R_BY_GR (48, 56, 1, 8), R_BY_GR (49, 54, 1, 3),
+      R_BY_GR (49, 54, 3, 1), R_BY_GR (51, 53, 1, 2),
+      R_BY_GR (52, 52, 1, 2), R_BY_GR (52, 52, 3, 1),
+      R_BY_GR (54, 50, 1, 3), R_BY_GR (55, 49, 1, 2),
+      R_BY_GR (55, 49, 3, 1), R_BY_GR (57, 48, 1, 2),
+      R_BY_GR (57, 48, 3, 1), R_BY_GR (59, 47, 1, 1),
+      R_BY_GR (62, 46, 1, 2), R_BY_GR (61, 47, 1, 1),
+      R_BY_GR (63, 45, 1, 2), R_BY_GR (64, 43, 1, 3),
+      R_BY_GR (65, 42, 1, 2), R_BY_GR (65, 42, 3, 1),
+      R_BY_GR (67, 41, 1, 2), R_BY_GR (67, 41, 3, 1),
+      R_BY_GR (69, 39, 1, 3), R_BY_GR (70, 37, 1, 3),
+      R_BY_GR (71, 36, 1, 2), R_BY_GR (58, 56, 1, 4),
+      R_BY_GR (59, 56, 1, 1), R_BY_GR (57, 59, 1, 5),
+      R_BY_GR (61, 56, 3, 1), R_BY_GR (63, 56, 1, 3),
+      R_BY_GR (64, 58, 1, 2), R_BY_GR (65, 59, 1, 2),
+      R_BY_GR (66, 60, 1, 4)},
 
     field_zombie_spawns [] = {RECT_BY_GRID (13, 31, 1, 1),
 			      RECT_BY_GRID (31, 22, 1, 1),
@@ -1367,7 +1389,7 @@ main (int argc, char *argv[])
 
   struct server_area room = {0};
   SDL_Rect room_walkable = RECT_BY_GRID (0, 0, 12, 12),
-    room_unwalkables [] = {RECT_BY_GRID (1, 6, 1, 3),
+    room_full_obs [] = {RECT_BY_GRID (1, 6, 1, 3),
     RECT_BY_GRID (7, 2, 3, 3), RECT_BY_GRID (7, 5, 1, 1),
     RECT_BY_GRID (0, 11, 5, 1), RECT_BY_GRID (7, 11, 5, 1),
     RECT_BY_GRID (7, 7, 1, 1), RECT_BY_GRID (3, 9, 1, 2),
@@ -1378,7 +1400,7 @@ main (int argc, char *argv[])
 
   struct server_area basement = {0};
   SDL_Rect basement_walkable = RECT_BY_GRID (0, 0, 12, 11),
-    basement_unwalkables [] = {RECT_BY_GRID (1, 0, 7, 2),
+    basement_full_obs [] = {RECT_BY_GRID (1, 0, 7, 2),
     RECT_BY_GRID (1, 4, 7, 2), RECT_BY_GRID (1, 8, 7, 2),
     RECT_BY_GRID (9, 0, 3, 3), RECT_BY_GRID (10, 7, 2, 0),
     RECT_BY_GRID (10, 7, 0, 3)};
@@ -1432,8 +1454,10 @@ main (int argc, char *argv[])
 
   field.id = 0;
   field.walkable = field_walkable;
-  field.unwalkables = field_unwalkables;
-  field.unwalkables_num = 135;
+  field.full_obstacles = field_full_obs;
+  field.full_obstacles_num = 107;
+  field.half_obstacles = field_half_obs;
+  field.half_obstacles_num = 31;
   field.warps = make_warp_by_grid (51, 13, 1, 1, &room, 5, 11, NULL);
   field.interactibles = NULL;
   field.npcs = NULL;
@@ -1447,8 +1471,8 @@ main (int argc, char *argv[])
 
   room.id = 1;
   room.walkable = room_walkable;
-  room.unwalkables = room_unwalkables;
-  room.unwalkables_num = 10;
+  room.full_obstacles = room_full_obs;
+  room.full_obstacles_num = 10;
   room.warps = make_warp_by_grid (5, 11, 2, 1, &field, 51, 14,
 				  make_warp_by_grid (10, 8, 2, 2, &basement, 10,
 						     10, NULL));
@@ -1471,8 +1495,8 @@ main (int argc, char *argv[])
 
   basement.id = 2;
   basement.walkable = basement_walkable;
-  basement.unwalkables = basement_unwalkables;
-  basement.unwalkables_num = 6;
+  basement.full_obstacles = basement_full_obs;
+  basement.full_obstacles_num = 6;
   basement.warps = make_warp_by_grid (10, 7, 2, 3, &room, 10, 7, NULL);
   basement.is_peaceful = 1;
   basement.bags = &basement_bag;
@@ -1809,8 +1833,10 @@ main (int argc, char *argv[])
 
 	  players [i].agent->place =
 	    move_character (&players [i], players [i].agent->area->walkable,
-			    players [i].agent->area->unwalkables,
-			    players [i].agent->area->unwalkables_num,
+			    players [i].agent->area->full_obstacles,
+			    players [i].agent->area->full_obstacles_num,
+			    players [i].agent->area->half_obstacles,
+			    players [i].agent->area->half_obstacles_num,
 			    players [i].agent->area->zombies, &char_hit);
 
 	  if (players [i].interact)
@@ -2131,8 +2157,11 @@ main (int argc, char *argv[])
 		  z->agent->place = move_zombie (z->agent->place, area,
 						 z->speed_x, z->speed_y,
 						 area->walkable,
-						 area->unwalkables,
-						 area->unwalkables_num, players);
+						 area->full_obstacles,
+						 area->full_obstacles_num,
+						 area->half_obstacles,
+						 area->half_obstacles_num,
+						 players);
 
 		  prz = z;
 		  z = z->next;
