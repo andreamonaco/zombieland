@@ -180,6 +180,16 @@ main (int argc, char *argv[])
   SDL_Rect basement_src = {0, 256, 256, 256},
     basement_walkable = RECT_BY_GRID (2, 2, 12, 11);
 
+  struct client_area hotel_ground = {0};
+  SDL_Rect hotel_ground_src = {256, 0, 256, 256},
+    hotel_ground_walkable = RECT_BY_GRID (2, 2, 12, 12);
+  struct npc hotel_ground_npcs [] = {{RECT_BY_GRID (1, 6, 1, 1), NULL, room_npc_srcs,
+				      {-4, -4, 0, 0}, FACING_RIGHT}};
+
+  struct client_area hotel_room = {0};
+  SDL_Rect hotel_room_src = {256, 256, 256, 256},
+    hotel_room_walkable = RECT_BY_GRID (6, 4, 12, 12);
+
   struct client_area *areas = &field, *area = &field, *ar;
 
   SDL_Rect character_srcs [] = {{0, 6, 16, 21}, {16, 6, 16, 21}, {48, 6, 16, 21},
@@ -611,6 +621,23 @@ main (int argc, char *argv[])
   basement.display_srcs = &basement_src;
   basement.area_frames_num = 1;
   basement.walkable = basement_walkable;
+  basement.next = &hotel_ground;
+
+  hotel_ground.id = 3;
+  hotel_ground.texture = interiorstxtr;
+  hotel_ground.display_srcs = &hotel_ground_src;
+  hotel_ground.area_frames_num = 1;
+  hotel_ground.walkable = hotel_ground_walkable;
+  hotel_ground_npcs [0].texture = npctxtr;
+  hotel_ground.npcs = hotel_ground_npcs;
+  hotel_ground.npcs_num = 1;
+  hotel_ground.next = &hotel_room;
+
+  hotel_room.id = 4;
+  hotel_room.texture = interiorstxtr;
+  hotel_room.display_srcs = &hotel_room_src;
+  hotel_room.area_frames_num = 1;
+  hotel_room.walkable = hotel_room_walkable;
 
   SDL_RenderCopy (rend, field.texture, NULL, NULL);
   character_dest.x = character_box.x + character_origin [bodytype].x;

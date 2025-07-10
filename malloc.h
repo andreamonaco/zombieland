@@ -21,3 +21,4 @@
 #include <stddef.h>
 
 void *malloc_and_check (size_t size);
+void *calloc_and_check (size_t nmemb, size_t size);

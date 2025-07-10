@@ -35,3 +35,19 @@ malloc_and_check (size_t size)
 
   return mem;
 }
+
+
+void *
+calloc_and_check (size_t nmemb, size_t size)
+{
+  void *mem = calloc (nmemb, size);
+
+  if (nmemb && size && !mem)
+    {
+      fprintf (stderr, "could not allocate %lu elements of %lu bytes each.  "
+	       "Exiting...\n", nmemb, size);
+      exit (1);
+    }
+
+  return mem;
+}

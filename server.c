@@ -168,7 +168,10 @@ struct
 agent
 {
   struct server_area *area;
+  struct private_server_area *private_area;
   SDL_Rect place;
+
+  struct private_server_area *priv_areas;
 
   int32_t life;
   int immortal;
@@ -252,6 +255,7 @@ server_area
   int zombie_spawns_num;
 
   int is_peaceful;
+  int is_private;
 
   struct object_spawn *object_spawns;
   int object_spawns_num, free_object_spawns_num;
@@ -259,6 +263,23 @@ server_area
   struct bag *bags;
 
   struct server_area *next;
+};
+
+
+struct
+private_server_area
+{
+  uint32_t id;
+  struct server_area *area;
+
+  struct object_spawn *object_spawns;
+  int object_spawns_num, free_object_spawns_num;
+
+  struct object *objects;
+
+  struct bag *bags;
+
+  struct private_server_area *next;
 };
 
 
@@ -270,6 +291,70 @@ set_rect (SDL_Rect *rect, int x, int y, int w, int h)
   rect->y = y;
   rect->w = w;
   rect->h = h;
+}
+
+
+struct private_server_area *
+allocate_private_areas (struct server_area *areas)
+{
+  struct private_server_area *ret = NULL, *par;
+  struct bag *bs, *b;
+  int i;
+
+  while (areas)
+    {
+      if (areas->is_private)
+	{
+	  if (ret)
+	    {
+	      par->next = malloc_and_check (sizeof (*par));
+	      par = par->next;
+	    }
+	  else
+	    {
+	      ret = par = malloc_and_check (sizeof (*par));
+	    }
+
+	  par->id = areas->id;
+	  par->area = areas;
+
+	  par->object_spawns = calloc_and_check (areas->object_spawns_num,
+						 sizeof (*par->object_spawns));
+	  par->object_spawns_num = par->free_object_spawns_num
+	    = areas->object_spawns_num;
+
+	  for (i = 0; i < par->object_spawns_num; i++)
+	    par->object_spawns [i].place = areas->object_spawns [i].place;
+
+	  par->objects = NULL;
+
+	  par->bags = NULL;
+	  bs = areas->bags;
+	  while (bs)
+	    {
+	      if (par->bags)
+		{
+		  b->next = calloc_and_check (1, sizeof (*par->bags));
+		  b = b->next;
+		}
+	      else
+		{
+		  par->bags = b = calloc_and_check (1, sizeof (*b));
+		}
+
+	      b->place = bs->place;
+	      b->icon = bs->icon;
+
+	      bs = bs->next;
+	    }
+
+	  par->next = NULL;
+	}
+
+      areas = areas->next;
+    }
+
+  return ret;
 }
 
 
@@ -292,7 +377,9 @@ create_player (char name[], uint32_t bodytype, struct sockaddr_in *addr,
 
   a = malloc_and_check (sizeof (*a));
   a->area = area;
+  a->private_area = NULL;
   set_rect (&a->place, 96, 0, 16, 16);
+  a->priv_areas = allocate_private_areas (area);
   a->life = MAX_PLAYER_HEALTH;
   a->immortal = 0;
   a->type = AGENT_PLAYER;
@@ -1083,7 +1170,7 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
   msg.args.server_state.npcid = htonl (pls [id].npcid);
   msg.args.server_state.textbox_lines_num = htonl (pls [id].textbox_lines_num);
 
-  while (as)
+  while (!pls [id].agent->area->is_private && as)
     {
       if (msg.args.server_state.num_visibles == MAX_VISIBLES)
 	{
@@ -1129,7 +1216,8 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 
   for (i = 0; i < MAX_PLAYERS; i++)
     {
-      if (pls [i].id != -1 && pls [id].agent->area == pls [i].agent->area
+      if (pls [i].id != -1 && !pls [id].agent->area->is_private
+	  && pls [id].agent->area == pls [i].agent->area
 	  && pls [i].is_searching && pls [i].might_search_at
 	  && pls [i].might_search_at->searched_by == &pls [i])
 	{
@@ -1151,6 +1239,9 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	  msg.args.server_state.num_visibles++;
 	}
     }
+
+  if (pls [id].agent->area->is_private)
+    objs = pls [id].agent->private_area->objects;
 
   while (objs)
     {
@@ -1305,7 +1396,8 @@ main (int argc, char *argv[])
 			    /* neighborhood */
 			    R_BY_GR (9, 13, 6, 8), R_BY_GR (8, 17, 1, 1),
 			    R_BY_GR (8, 19, 1, 1), R_BY_GR (15, 20, 1, 1),
-			    R_BY_GR (17, 16, 4, 5), R_BY_GR (22, 15, 4, 6),
+			    R_BY_GR (17, 16, 4, 5), R_BY_GR (22, 15, 4, 5),
+			    R_BY_GR (22, 20, 2, 1), R_BY_GR (25, 20, 1, 1),
 			    R_BY_GR (26, 19, 1, 1), R_BY_GR (17, 14, 9, 1),
 
 			    R_BY_GR (22, 23, 2, 2), R_BY_GR (27, 16, 1, 2),
@@ -1407,6 +1499,27 @@ main (int argc, char *argv[])
   struct bag basement_bag = {RECT_BY_GRID (9, 3, 3, 1),
 			     RECT_BY_GRID (10, 1, 1, 1)};
 
+  struct server_area hotel_ground = {0};
+  SDL_Rect hotel_ground_walkable = RECT_BY_GRID (0, 0, 12, 12),
+    hotel_ground_full_obs [] = {
+      RECT_BY_GRID (0, 11, 5, 1), RECT_BY_GRID (7, 11, 5, 1),
+      RECT_BY_GRID (0, 3, 3, 1), RECT_BY_GRID (2, 4, 1, 5),
+      RECT_BY_GRID (0, 8, 2, 1), RECT_BY_GRID (9, 3, 3, 1),
+      RECT_BY_GRID (9, 4, 1, 5), RECT_BY_GRID (10, 8, 2, 1),
+      RECT_BY_GRID (5, 0, 0, 3), RECT_BY_GRID (7, 0, 0, 3)};
+
+  struct server_area hotel_room = {0};
+  SDL_Rect hotel_room_walkable = RECT_BY_GRID (0, 0, 4, 8),
+    hotel_room_full_obs [] = {
+      RECT_BY_GRID (3, 0, 1, 3), RECT_BY_GRID (0, 4, 1, 3),
+      RECT_BY_GRID (0, 7, 3, 1)};
+  struct object_spawn hotel_room_object_spawns [] =
+    {{RECT_BY_GRID (1, 1, 1, 1), NULL}};
+  struct bag hotel_room_bag = {RECT_BY_GRID (3, 3, 1, 1),
+			       RECT_BY_GRID (4, 1, 1, 1)};
+
+  struct private_server_area *par;
+
   SDL_Event event;
   SDL_Rect hitrect;
 
@@ -1455,10 +1568,12 @@ main (int argc, char *argv[])
   field.id = 0;
   field.walkable = field_walkable;
   field.full_obstacles = field_full_obs;
-  field.full_obstacles_num = 107;
+  field.full_obstacles_num = 109;
   field.half_obstacles = field_half_obs;
   field.half_obstacles_num = 31;
-  field.warps = make_warp_by_grid (51, 13, 1, 1, &room, 5, 11, NULL);
+  field.warps = make_warp_by_grid (51, 13, 1, 1, &room, 5, 11,
+				   make_warp_by_grid (24, 20, 1, 1, &hotel_ground,
+						      5, 11, NULL));
   field.interactibles = NULL;
   field.npcs = NULL;
   field.zombies = NULL;
@@ -1500,6 +1615,33 @@ main (int argc, char *argv[])
   basement.warps = make_warp_by_grid (10, 7, 2, 3, &room, 10, 7, NULL);
   basement.is_peaceful = 1;
   basement.bags = &basement_bag;
+  basement.next = &hotel_ground;
+
+  hotel_ground.id = 3;
+  hotel_ground.walkable = hotel_ground_walkable;
+  hotel_ground.full_obstacles = hotel_ground_full_obs;
+  hotel_ground.full_obstacles_num = 10;
+  hotel_ground.warps = make_warp_by_grid (5, 11, 2, 1, &field, 24, 21,
+					  make_warp_by_grid (5, 0, 2, 3,
+							     &hotel_room, 3, 6,
+							     NULL));
+  hotel_ground.npcs = make_interactible_by_grid (2, 6, 1, 1,
+						 "The lodgings are upstairs.    "
+						 "Each person has a room.       ",
+						 NULL);
+  hotel_ground.is_peaceful = 1;
+  hotel_ground.next = &hotel_room;
+
+  hotel_room.id = 4;
+  hotel_room.walkable = hotel_room_walkable;
+  hotel_room.full_obstacles = hotel_room_full_obs;
+  hotel_room.full_obstacles_num = 3;
+  hotel_room.warps = make_warp_by_grid (3, 7, 1, 1, &hotel_ground, 6, 3, NULL);
+  hotel_room.is_peaceful = 1;
+  hotel_room.is_private = 1;
+  hotel_room.object_spawns = hotel_room_object_spawns;
+  hotel_room.object_spawns_num = hotel_room.free_object_spawns_num = 1;
+  hotel_room.bags = &hotel_room_bag;
 
   srand (time (NULL));
 
@@ -1824,6 +1966,38 @@ main (int argc, char *argv[])
 
 	      area = area->next;
 	    }
+
+	  for (i = 0; i < MAX_PLAYERS; i++)
+	    {
+	      if (players [i].id == -1)
+		continue;
+
+	      par = players [i].agent->priv_areas;
+
+	      while (par)
+		{
+		  if (par->free_object_spawns_num)
+		    {
+		      for (j = 0; j < par->object_spawns_num; j++)
+			{
+			  if (!par->object_spawns [j].content)
+			    {
+			      obj = malloc_and_check (sizeof (*obj));
+			      obj->area = par->area;
+			      obj->place = par->object_spawns [j].place;
+			      obj->type = rand () % 4 + 1;
+			      obj->spawn = &par->object_spawns [j];
+			      obj->next = par->objects;
+			      par->object_spawns [j].content = obj;
+			      par->objects = obj;
+			      break;
+			    }
+			}
+		    }
+
+		  par = par->next;
+		}
+	    }
 	}
 
       for (i = 0; i < MAX_PLAYERS; i++)
@@ -1976,6 +2150,23 @@ main (int argc, char *argv[])
 	      if (IS_RECT_CONTAINED (players [i].agent->place, w->place))
 		{
 		  players [i].agent->area = w->dest;
+
+		  if (w->dest->is_private)
+		    {
+		      par = players [i].agent->priv_areas;
+
+		      while (par)
+			{
+			  if (w->dest->id == par->id)
+			    {
+			      players [i].agent->private_area = par;
+			      break;
+			    }
+
+			  par = par->next;
+			}
+		    }
+
 		  players [i].agent->place.x = w->spawn.x;
 		  players [i].agent->place.y = w->spawn.y;
 		  break;
@@ -1984,7 +2175,10 @@ main (int argc, char *argv[])
 	      w = w->next;
 	    }
 
-	  obj = objects, probj = NULL;
+	  obj = players [i].agent->area->is_private
+	    ? players [i].agent->private_area->objects
+	    : objects;
+	  probj = NULL;
 
 	  while (obj)
 	    {
@@ -2024,14 +2218,21 @@ main (int argc, char *argv[])
 		  if (probj)
 		    probj->next = obj->next;
 		  else
-		    objects = obj->next;
+		    {
+		      if (players [i].agent->area->is_private)
+			players [i].agent->private_area->objects = obj->next;
+		      else
+			objects = obj->next;
+		    }
 
 		  if (obj->spawn)
 		    obj->spawn->content = NULL;
 
 		  free (obj);
 
-		  obj = probj ? probj->next : objects;
+		  obj = probj ? probj->next
+		    : players [i].agent->area->is_private
+		    ? players [i].agent->private_area->objects : objects;
 		}
 	      else
 		{
@@ -2041,7 +2242,10 @@ main (int argc, char *argv[])
 		}
 	    }
 
-	  players [i].might_search_at = NULL, b = players [i].agent->area->bags;
+	  players [i].might_search_at = NULL;
+	  b = players [i].agent->area->is_private
+	    ? players [i].agent->private_area->bags
+	    : players [i].agent->area->bags;
 
 	  while (b)
 	    {
