@@ -26,9 +26,11 @@ new features and bugfixes happen daily.
 __On which platforms does Zombieland run?__
 
 Zombieland is written in portable C and uses SDL2, SDL2_image, SDL2_ttf and
-SDL2_mixer for multimedia, so that part is fairly portable.
-Networking code uses the Posix API, so consult the docs of your platform about
-that.
+SDL2_mixer for multimedia, so that part is fairly portable; networking code uses
+the Posix API.  Of course it will work on GNU/Linux and the BSDs, also on Mac Os
+X; on Windows you will probably need some compatibility layer, let me know if
+you succeed!  For other platforms, consult your docs.
+
 The configure and build toolchain is autotools, but building is easy enough that
 you can do it yourself.
 
@@ -49,6 +51,13 @@ You are truly the lazy type!  Then these commands will probably suffice:
 
  $ cc -o zombieland client.c zombieland.c -lSDL2 -lSDL2_image -lSDL2_ttf -lSDL2_mixer
  $ cc -o zombielandd server.c zombieland.c malloc.c -lSDL2
+
+
+
+__How do I install Zombieland?__
+
+I don't think installation works yet.  Just build and run the game from the root
+of the cloned repository.
 
 
 
