@@ -287,7 +287,7 @@ main (int argc, char *argv[])
     screen_overlay = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
     halfscreen = {0, 0, WINDOW_WIDTH/2, WINDOW_HEIGHT};
 
-  Mix_Chunk *shootsfx, *stabsfx, *reloadsfx;
+  Mix_Chunk *shootsfx, *stabsfx, *healsfx, *reloadsfx, *eatsfx, *drinksfx;
 
   int quit = 0, i, got_update;
   Uint32 frame_counter = 1, timeout = SERVER_TIMEOUT;
@@ -584,9 +584,36 @@ main (int argc, char *argv[])
       return 1;
     }
 
+  healsfx = Mix_LoadWAV ("heartbeat.flac");
+
+  if (!healsfx)
+    {
+      fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
   reloadsfx = Mix_LoadWAV ("reload.wav");
 
   if (!reloadsfx)
+    {
+      fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
+  eatsfx = Mix_LoadWAV ("eat.wav");
+
+  if (!eatsfx)
+    {
+      fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
+  drinksfx = Mix_LoadWAV ("bottle.wav");
+
+  if (!drinksfx)
     {
       fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
       SDL_Quit ();
@@ -916,6 +943,10 @@ main (int argc, char *argv[])
 	  character_box.w = ntohl (state->args.server_state.w);
 	  character_box.h = ntohl (state->args.server_state.h);
 	  srv_char_facing = state->args.server_state.char_facing;
+
+	  if (ntohl (state->args.server_state.life) > life)
+	    Mix_PlayChannel (-1, healsfx, 0);
+
 	  life = ntohl (state->args.server_state.life);
 	  is_immortal = state->args.server_state.is_immortal;
 
@@ -923,7 +954,15 @@ main (int argc, char *argv[])
 	    Mix_PlayChannel (-1, reloadsfx, 0);
 
 	  bullets = ntohl (state->args.server_state.bullets);
+
+	  if (ntohl (state->args.server_state.hunger) < hunger)
+	    Mix_PlayChannel (-1, eatsfx, 0);
+
 	  hunger = ntohl (state->args.server_state.hunger);
+
+	  if (ntohl (state->args.server_state.thirst) < thirst)
+	    Mix_PlayChannel (-1, drinksfx, 0);
+
 	  thirst = ntohl (state->args.server_state.thirst);
 	  num_visibles = ntohl (state->args.server_state.num_visibles);
 
