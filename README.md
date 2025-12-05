@@ -18,8 +18,8 @@ survival of humans against zombies.
 
 __Where can I find the latest version of Zombieland?__
 
-There are no released versions yet.  Just build from the latest commit, since
-new features and bugfixes happen daily.
+There are commits tagged as released versions, but I'd suggest building from the
+latest commit, since new features and bugfixes happen frequently.
 
 
 
