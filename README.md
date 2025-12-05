@@ -146,10 +146,26 @@ while knifesharpener1.flac is taken from
 3.0 Unported (https://creativecommons.org/licenses/by/3.0):
 https://opengameart.org/content/knife-sharpening-slice-1
 
-and reload.wav is an effect I edited starting from
+reload.wav is an effect I edited starting from
 
 "Handgun Reload Sound Effect" by zer0_sol licensed CC0 1.0 Universal:
 https://opengameart.org/content/handgun-reload-sound-effect
+
+heartbeat.flac comes from
+
+"Heartbeat (single sound)" by Independent.nu licensed CC0 1.0 Universal:
+https://opengameart.org/content/heartbeat-single-sound
+
+eat.wav was edited from
+
+"7 Eating Crunches" by StarNinjas licensed CC0 1.0 Universal:
+https://opengameart.org/content/7-eating-crunches
+
+and bottle.wav comes from
+
+"RPG Sound Pack" by artisticdude licensed CC0 1.0 Universal:
+https://opengameart.org/content/rpg-sound-pack
+
 
 All these assets are not final, I will probably make my own along the way, but
 they show that the engine works.
