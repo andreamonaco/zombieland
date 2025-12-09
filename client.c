@@ -73,6 +73,22 @@ client_area
 };
 
 
+enum
+player_action
+  {
+    PLAYER_DO_NOTHING,
+    PLAYER_QUIT,
+    PLAYER_MOVE_LEFT,
+    PLAYER_MOVE_RIGHT,
+    PLAYER_MOVE_UP,
+    PLAYER_MOVE_DOWN,
+    PLAYER_INTERACT,
+    PLAYER_SHOOT,
+    PLAYER_STAB,
+    PLAYER_SEARCH
+  };
+
+
 
 void
 render_string (const char *string, SDL_Rect rect, TTF_Font *font, SDL_Color col,
@@ -160,6 +176,8 @@ main (int argc, char *argv[])
   struct message msg, *state, buf1, buf2, *buf, *latest_srv_state = NULL;
 
   uint32_t id, last_update = 0;
+
+  enum player_action controls [SDL_NUM_SCANCODES] = {0};
 
   struct client_area field;
   SDL_Rect field_srcs [] = {RECT_BY_GRID (0, 0, 72, 64)},
@@ -666,6 +684,18 @@ main (int argc, char *argv[])
   hotel_room.area_frames_num = 1;
   hotel_room.walkable = hotel_room_walkable;
 
+
+  controls [SDL_SCANCODE_ESCAPE] = PLAYER_QUIT;
+  controls [SDL_SCANCODE_A] = controls [SDL_SCANCODE_LEFT] = PLAYER_MOVE_LEFT;
+  controls [SDL_SCANCODE_D] = controls [SDL_SCANCODE_RIGHT] = PLAYER_MOVE_RIGHT;
+  controls [SDL_SCANCODE_W] = controls [SDL_SCANCODE_UP] = PLAYER_MOVE_UP;
+  controls [SDL_SCANCODE_S] = controls [SDL_SCANCODE_DOWN] = PLAYER_MOVE_DOWN;
+  controls [SDL_SCANCODE_SPACE] = PLAYER_INTERACT;
+  controls [SDL_SCANCODE_F] = PLAYER_SHOOT;
+  controls [SDL_SCANCODE_R] = PLAYER_STAB;
+  controls [SDL_SCANCODE_Q] = PLAYER_SEARCH;
+
+
   SDL_RenderCopy (rend, field.texture, NULL, NULL);
   character_dest.x = character_box.x + character_origin [bodytype].x;
   character_dest.y = character_box.y + character_origin [bodytype].y;
@@ -682,14 +712,14 @@ main (int argc, char *argv[])
 	  switch (event.type)
 	    {
 	    case SDL_KEYDOWN:
-	      switch (event.key.keysym.sym)
+	      switch (controls [event.key.keysym.scancode])
 		{
-		case SDLK_ESCAPE:
+		case PLAYER_QUIT:
 		  printf ("you quit the game.  Make sure that no client is "
 			  "started from this system in the next 60 seconds\n");
 		  quit = 1;
 		  break;
-		case SDLK_LEFT:
+		case PLAYER_MOVE_LEFT:
 		  if (!is_searching)
 		    {
 		      loc_char_speed_x = -2;
@@ -702,7 +732,7 @@ main (int argc, char *argv[])
 						   is_searching == 2);
 		    }
 		  break;
-		case SDLK_RIGHT:
+		case PLAYER_MOVE_RIGHT:
 		  if (!is_searching)
 		    {
 		      loc_char_speed_x = 2;
@@ -715,7 +745,7 @@ main (int argc, char *argv[])
 						   is_searching == 2);
 		    }
 		  break;
-		case SDLK_UP:
+		case PLAYER_MOVE_UP:
 		  if (!is_searching)
 		    {
 		      loc_char_speed_y = -2;
@@ -728,7 +758,7 @@ main (int argc, char *argv[])
 						   is_searching == 2);
 		    }
 		  break;
-		case SDLK_DOWN:
+		case PLAYER_MOVE_DOWN:
 		  if (!is_searching)
 		    {
 		      loc_char_speed_y = 2;
@@ -741,7 +771,7 @@ main (int argc, char *argv[])
 						   is_searching == 2);
 		    }
 		  break;
-		case SDLK_SPACE:
+		case PLAYER_INTERACT:
 		  if (is_searching)
 		    {
 		      if (bagswap1 >= 0)
@@ -767,47 +797,51 @@ main (int argc, char *argv[])
 			textlines = 0;
 		    }
 		  break;
-		case SDLK_f:
+		case PLAYER_SHOOT:
 		  do_shoot = 9;
 		  break;
-		case SDLK_r:
+		case PLAYER_STAB:
 		  do_stab = 4;
 		  break;
-		case SDLK_q:
+		case PLAYER_SEARCH:
 		  do_search = !do_search;
+		  break;
+		default:
 		  break;
 		}
 	      break;
 	    case SDL_KEYUP:
-	      switch (event.key.keysym.sym)
+	      switch (controls [event.key.keysym.scancode])
 		{
-		case SDLK_LEFT:
+		case PLAYER_MOVE_LEFT:
 		  if (loc_char_speed_x == -2)
 		    loc_char_speed_x = 0;
 		  if (loc_char_speed_y)
 		    loc_char_facing = (loc_char_speed_y > 0) ? FACING_DOWN
 		      : FACING_UP;
 		  break;
-		case SDLK_RIGHT:
+		case PLAYER_MOVE_RIGHT:
 		  if (loc_char_speed_x == 2)
 		    loc_char_speed_x = 0;
 		  if (loc_char_speed_y)
 		    loc_char_facing = loc_char_speed_y > 0 ? FACING_DOWN
 		      : FACING_UP;
 		  break;
-		case SDLK_UP:
+		case PLAYER_MOVE_UP:
 		  if (loc_char_speed_y == -2)
 		    loc_char_speed_y = 0;
 		  if (loc_char_speed_x)
 		    loc_char_facing = loc_char_speed_x > 0 ? FACING_RIGHT
 		      : FACING_LEFT;
 		  break;
-		case SDLK_DOWN:
+		case PLAYER_MOVE_DOWN:
 		  if (loc_char_speed_y == 2)
 		    loc_char_speed_y = 0;
 		  if (loc_char_speed_x)
 		    loc_char_facing = loc_char_speed_x > 0 ? FACING_RIGHT
 		      : FACING_LEFT;
+		  break;
+		default:
 		  break;
 		}
 	      break;
