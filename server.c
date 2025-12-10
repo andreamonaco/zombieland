@@ -72,9 +72,6 @@
 
 #define IMMORTAL_DURATION 20
 
-#define SHOOT_REST 10
-#define STAB_REST 5
-
 
 #define MAX_HUNGER 20
 #define HUNGER_UP 1800

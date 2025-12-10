@@ -42,7 +42,11 @@
 
 #define DURATION_OF_DISPLAY_FRAME 33
 
+#define INTERVAL_BETWEEN_SENDING_CLIENT_STATES 33
+
 #define AREA_FRAME_DURATION 130
+
+#define RESEND_ACTION 3
 
 
 struct
@@ -189,7 +193,7 @@ main (int argc, char *argv[])
 
   struct message msg, *state, buf1, buf2, *buf, *latest_srv_state = NULL;
 
-  uint32_t id, last_update = 0;
+  uint32_t id, latest_update = 0;
 
   enum player_action controls [SDL_NUM_SCANCODES] = {0};
 
@@ -274,6 +278,7 @@ main (int argc, char *argv[])
     do_shoot = 0, do_stab = 0, do_search = 0, bodytype = 0,
     life = MAX_PLAYER_HEALTH, is_immortal = 0, bullets = 16, hunger = 0,
     thirst = 0, num_visibles, just_shot = 0, just_stabbed = 0;
+  int last_shoot = 0, last_stab = 0;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct visible vis;
 
@@ -321,8 +326,9 @@ main (int argc, char *argv[])
 
   Mix_Chunk *shootsfx, *stabsfx, *healsfx, *reloadsfx, *eatsfx, *drinksfx;
 
-  int quit = 0, i, got_update, limit_fps = 0;
-  Uint32 frame_counter = 1, timeout = SERVER_TIMEOUT, last_display = 0;
+  int quit = 0, i, limit_fps = 0;
+  Uint32 frame_counter = 1, fc, latest_update_ticks = 0, last_sent_update = 0,
+    last_display = 0, ticks;
 
 
   print_welcome_message ();
@@ -736,6 +742,8 @@ main (int argc, char *argv[])
 
   while (!quit)
     {
+      ticks = SDL_GetTicks ();
+
       while (SDL_PollEvent (&event))
 	{
 	  switch (event.type)
@@ -817,7 +825,7 @@ main (int argc, char *argv[])
 			bagswap1 = bagcursor;
 		    }
 		  else if (!textlines)
-		    do_interact = 10;
+		    do_interact = RESEND_ACTION;
 		  else
 		    {
 		      textcursor += 2;
@@ -827,10 +835,18 @@ main (int argc, char *argv[])
 		    }
 		  break;
 		case PLAYER_SHOOT:
-		  do_shoot = 9;
+		  if (SHOOT_REST*FRAME_DURATION < ticks-last_shoot)
+		    {
+		      do_shoot = RESEND_ACTION;
+		      last_shoot = ticks;
+		    }
 		  break;
 		case PLAYER_STAB:
-		  do_stab = 4;
+		  if (STAB_REST*FRAME_DURATION < ticks-last_stab)
+		    {
+		      do_stab = RESEND_ACTION;
+		      last_stab = ticks;
+		    }
 		  break;
 		case PLAYER_SEARCH:
 		  do_search = !do_search;
@@ -882,32 +898,39 @@ main (int argc, char *argv[])
 	    }
 	}
 
-      if (loc_char_speed_x || loc_char_speed_y)
-	do_interact = 0;
 
-      send_message (sockfd, &server_addr, -1, MSG_CLIENT_CHAR_STATE, id,
-		    frame_counter, loc_char_speed_x, loc_char_speed_y,
-		    loc_char_facing, do_interact, do_shoot, do_stab, do_search,
-		    bagswap1, bagswap2);
+      fc = SDL_GetTicks ();
 
-      if (do_interact)
-	do_interact--;
-
-      if (do_shoot)
-	do_shoot--;
-
-      if (do_stab)
-	do_stab--;
-
-      if (swaprest)
+      if (fc-last_sent_update > INTERVAL_BETWEEN_SENDING_CLIENT_STATES)
 	{
-	  swaprest--;
+	  last_sent_update = fc;
 
-	  if (!swaprest)
-	    bagswap1 = bagswap2 = -1;
+	  if (loc_char_speed_x || loc_char_speed_y)
+	    do_interact = 0;
+
+	  send_message (sockfd, &server_addr, -1, MSG_CLIENT_CHAR_STATE, id, fc,
+			loc_char_speed_x, loc_char_speed_y, loc_char_facing,
+			do_interact, do_shoot, do_stab, do_search, bagswap1,
+			bagswap2);
+
+	  if (do_interact)
+	    do_interact--;
+
+	  if (do_shoot)
+	    do_shoot--;
+
+	  if (do_stab)
+	    do_stab--;
+
+	  if (swaprest)
+	    {
+	      swaprest--;
+
+	      if (!swaprest)
+		bagswap1 = bagswap2 = -1;
+	    }
 	}
 
-      got_update = 0;
 
       while (1)
 	{
@@ -932,7 +955,6 @@ main (int argc, char *argv[])
 	      return 1;
 	    }
 
-	  got_update = 1;
 
 	  state->type = ntohl (state->type);
 
@@ -940,10 +962,11 @@ main (int argc, char *argv[])
 	    {
 	    case MSG_SERVER_STATE:
 	      if (!latest_srv_state ||
-		  last_update < ntohl (state->args.server_state.frame_counter))
+		  latest_update < ntohl (state->args.server_state.frame_counter))
 		{
-		  last_update = ntohl (state->args.server_state.frame_counter);
+		  latest_update = ntohl (state->args.server_state.frame_counter);
 		  latest_srv_state = buf;
+		  latest_update_ticks = fc;
 		}
 	      break;
 	    case MSG_PLAYER_DIED:
@@ -955,18 +978,11 @@ main (int argc, char *argv[])
 	    }
 	}
 
-      if (!got_update)
+      if (fc-latest_update_ticks > SERVER_TIMEOUT)
 	{
-	  timeout--;
-
-	  if (!timeout)
-	    {
-	      fprintf (stderr, "no data from server until timeout\n");
-	      return 1;
-	    }
+	  fprintf (stderr, "reached timeout with no data from server\n");
+	  return 1;
 	}
-      else
-	timeout = SERVER_TIMEOUT;
 
 
       frame_counter = SDL_GetTicks ();

@@ -42,6 +42,9 @@
 
 #define MAX_PLAYER_HEALTH 30
 
+#define SHOOT_REST 10
+#define STAB_REST 5
+
 #define WINDOW_WIDTH 256
 #define WINDOW_HEIGHT 256
 
