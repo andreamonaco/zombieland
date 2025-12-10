@@ -39,7 +39,11 @@
 #include "zombieland.h"
 
 
+
+#define DURATION_OF_DISPLAY_FRAME 33
+
 #define AREA_FRAME_DURATION 130
+
 
 struct
 npc
@@ -147,6 +151,16 @@ move_bag_cursor (int command, int pos, int is_double)
     case SDLK_DOWN:
       return pos < 6 || (pos >= 8 && pos < 14) ? pos+2 : pos;
     }
+}
+
+
+void
+print_help_and_exit (void)
+{
+  printf ("Usage: zombieland SERVER_ADDRESS PLAYER_NAME [BODY_TYPE] [OPTIONS]\n"
+	  "\t-l, --limit-fps       limit display fps to 30 fps, otherwise it's unlimited\n"
+	  "\t-h, --help            display this help and exit\n");
+  exit (0);
 }
 
 
@@ -307,8 +321,8 @@ main (int argc, char *argv[])
 
   Mix_Chunk *shootsfx, *stabsfx, *healsfx, *reloadsfx, *eatsfx, *drinksfx;
 
-  int quit = 0, i, got_update;
-  Uint32 frame_counter = 1, timeout = SERVER_TIMEOUT;
+  int quit = 0, i, got_update, limit_fps = 0;
+  Uint32 frame_counter = 1, timeout = SERVER_TIMEOUT, last_display = 0;
 
 
   print_welcome_message ();
@@ -330,8 +344,23 @@ main (int argc, char *argv[])
       if (strlen (argv [3]) == 1 && '0' <= *argv [3] && *argv [3] <= '6')
 	bodytype = *argv [3]-'0';
       else
-	fprintf (stderr, "warning: body type must be between 0 and 6\n");
+	fprintf (stderr, "warning: body type must be between 0 and 6; "
+		 "defaulting to 0\n");
     }
+
+  for (i = 4; i < argc; i++)
+    {
+      if (!strcmp (argv [i], "--limit-fps") || !strcmp (argv [i], "-l"))
+	limit_fps = 1;
+      else if (!strcmp (argv [i], "--help") || !strcmp (argv [i], "-h"))
+	print_help_and_exit ();
+      else
+	{
+	  fprintf (stderr, "option '%s' not valid\n", argv [i]);
+	  print_help_and_exit ();
+	}
+    }
+
 
   sockfd = socket (AF_INET, SOCK_DGRAM, 0);
 
@@ -939,10 +968,18 @@ main (int argc, char *argv[])
       else
 	timeout = SERVER_TIMEOUT;
 
+
       frame_counter = SDL_GetTicks ();
 
-      if (latest_srv_state)
+      if (latest_srv_state
+	  && (!limit_fps || frame_counter-last_display > DURATION_OF_DISPLAY_FRAME))
 	{
+	  if (limit_fps && frame_counter-last_display > DURATION_OF_DISPLAY_FRAME*2)
+	    printf ("warning: display frame skipped\n");
+
+	  last_display = frame_counter;
+
+
 	  state = (struct message *)latest_srv_state;
 
 	  ar = areas;
@@ -1010,55 +1047,53 @@ main (int argc, char *argv[])
 	    {
 	      just_stabbed = frame_counter;
 	    }
-	}
 
-      camera_src.x = -WINDOW_WIDTH/2 + area->walkable.x + character_box.x
-	+ character_box.w/2;
-      camera_src.y = -WINDOW_HEIGHT/2 + area->walkable.y + character_box.y
-	+ character_box.h/2;
 
-      if (camera_src.x < 0)
-	{
-	  camera_src.x = 0;
-	}
-      else if (camera_src.x+WINDOW_WIDTH > area->display_srcs->w)
-	{
-	  camera_src.x = area->display_srcs->w-WINDOW_WIDTH;
-	}
+	  camera_src.x = -WINDOW_WIDTH/2 + area->walkable.x + character_box.x
+	    + character_box.w/2;
+	  camera_src.y = -WINDOW_HEIGHT/2 + area->walkable.y + character_box.y
+	    + character_box.h/2;
 
-      if (camera_src.y < 0)
-	{
-	  camera_src.y = 0;
-	}
-      else if (camera_src.y+WINDOW_HEIGHT > area->display_srcs->h)
-	{
-	  camera_src.y = area->display_srcs->h-WINDOW_HEIGHT;
-	}
+	  if (camera_src.x < 0)
+	    {
+	      camera_src.x = 0;
+	    }
+	  else if (camera_src.x+WINDOW_WIDTH > area->display_srcs->w)
+	    {
+	      camera_src.x = area->display_srcs->w-WINDOW_WIDTH;
+	    }
 
-      back_src.x = area->display_srcs
-	[frame_counter%(area->area_frames_num*AREA_FRAME_DURATION)
-	 /AREA_FRAME_DURATION].x + camera_src.x;
-      back_src.y = area->display_srcs
-	[frame_counter%(area->area_frames_num*AREA_FRAME_DURATION)
-	 /AREA_FRAME_DURATION].y + camera_src.y;
+	  if (camera_src.y < 0)
+	    {
+	      camera_src.y = 0;
+	    }
+	  else if (camera_src.y+WINDOW_HEIGHT > area->display_srcs->h)
+	    {
+	      camera_src.y = area->display_srcs->h-WINDOW_HEIGHT;
+	    }
 
-      SDL_RenderClear (rend);
-      SDL_RenderCopy (rend, area->texture, &back_src, &screen_dest);
+	  back_src.x = area->display_srcs
+	    [frame_counter%(area->area_frames_num*AREA_FRAME_DURATION)
+	     /AREA_FRAME_DURATION].x + camera_src.x;
+	  back_src.y = area->display_srcs
+	    [frame_counter%(area->area_frames_num*AREA_FRAME_DURATION)
+	     /AREA_FRAME_DURATION].y + camera_src.y;
 
-      for (i = 0; i < area->npcs_num; i++)
-	{
-	  pers.x = -camera_src.x + area->walkable.x + area->npcs [i].place.x
-	    + area->npcs [i].origin.x;
-	  pers.y = -camera_src.y + area->walkable.y + area->npcs [i].place.y
-	    + area->npcs [i].origin.y;
-	  pers.w = area->npcs [i].srcs [0].w;
-	  pers.h = area->npcs [i].srcs [0].h;
-	  SDL_RenderCopy (rend, area->npcs [i].texture,
-			  &area->npcs [i].srcs [area->npcs [i].facing], &pers);
-	}
+	  SDL_RenderClear (rend);
+	  SDL_RenderCopy (rend, area->texture, &back_src, &screen_dest);
 
-      if (latest_srv_state)
-	{
+	  for (i = 0; i < area->npcs_num; i++)
+	    {
+	      pers.x = -camera_src.x + area->walkable.x + area->npcs [i].place.x
+		+ area->npcs [i].origin.x;
+	      pers.y = -camera_src.y + area->walkable.y + area->npcs [i].place.y
+		+ area->npcs [i].origin.y;
+	      pers.w = area->npcs [i].srcs [0].w;
+	      pers.h = area->npcs [i].srcs [0].h;
+	      SDL_RenderCopy (rend, area->npcs [i].texture,
+			      &area->npcs [i].srcs [area->npcs [i].facing], &pers);
+	    }
+
 	  for (i = 0; i < num_visibles; i++)
 	    {
 	      vis = state->args.server_state.visibles [i];
@@ -1134,26 +1169,23 @@ main (int argc, char *argv[])
 						? 1+(frame_counter%400)/200 : 0)],
 			      &pers);
 	    }
-	}
 
-      if (!is_immortal || frame_counter%130 < 65)
-	{
-	  character_dest.x = -camera_src.x + area->walkable.x + character_box.x
-	    + character_origin [bodytype].x;
-	  character_dest.y = -camera_src.y + area->walkable.y + character_box.y
-	    + character_origin [bodytype].y;
-	  character_dest.w = character_origin [bodytype].w;
-	  character_dest.h = character_origin [bodytype].h;
-	  SDL_RenderCopy (rend, charactertxtr,
-			  &character_srcs [bodytype*12
-					   +loc_char_facing*3+
-					   ((loc_char_speed_x || loc_char_speed_y)
-					    ? 1+(frame_counter%400)/200 : 0)],
-			  &character_dest);
-	}
+	  if (!is_immortal || frame_counter%130 < 65)
+	    {
+	      character_dest.x = -camera_src.x + area->walkable.x + character_box.x
+		+ character_origin [bodytype].x;
+	      character_dest.y = -camera_src.y + area->walkable.y + character_box.y
+		+ character_origin [bodytype].y;
+	      character_dest.w = character_origin [bodytype].w;
+	      character_dest.h = character_origin [bodytype].h;
+	      SDL_RenderCopy (rend, charactertxtr,
+			      &character_srcs [bodytype*12
+					       +loc_char_facing*3+
+					       ((loc_char_speed_x || loc_char_speed_y)
+						? 1+(frame_counter%400)/200 : 0)],
+			      &character_dest);
+	    }
 
-      if (latest_srv_state)
-	{
 	  for (i = 0; i < num_visibles; i++)
 	    {
 	      vis = state->args.server_state.visibles [i];
@@ -1171,21 +1203,18 @@ main (int argc, char *argv[])
 			      vis.type == VISIBLE_SEARCHABLE ? &searchableiconrect
 			      : &searchingiconrect, &pers);
 	    }
-	}
 
-      if (area->overlay_frames_num)
-	{
-	  screen_overlay.x = area->overlay_srcs
-	    [frame_counter%(area->overlay_frames_num*AREA_FRAME_DURATION)
-	     /AREA_FRAME_DURATION].x + camera_src.x;
-	  screen_overlay.y = area->overlay_srcs
-	    [frame_counter%(area->overlay_frames_num*AREA_FRAME_DURATION)
-	     /AREA_FRAME_DURATION].y + camera_src.y;
-	  SDL_RenderCopy (rend, area->texture, &screen_overlay, &screen_dest);
-	}
+	  if (area->overlay_frames_num)
+	    {
+	      screen_overlay.x = area->overlay_srcs
+		[frame_counter%(area->overlay_frames_num*AREA_FRAME_DURATION)
+		 /AREA_FRAME_DURATION].x + camera_src.x;
+	      screen_overlay.y = area->overlay_srcs
+		[frame_counter%(area->overlay_frames_num*AREA_FRAME_DURATION)
+		 /AREA_FRAME_DURATION].y + camera_src.y;
+	      SDL_RenderCopy (rend, area->texture, &screen_overlay, &screen_dest);
+	    }
 
-      if (latest_srv_state)
-	{
 	  for (i = 0; i < num_visibles; i++)
 	    {
 	      vis = state->args.server_state.visibles [i];
@@ -1198,148 +1227,148 @@ main (int argc, char *argv[])
 	      sh.y = -camera_src.y + area->walkable.y + ntohl (vis.y);
 	      SDL_RenderCopy (rend, effectstxtr, &shot_src, &sh);
 	    }
-	}
 
-      if (latest_srv_state && state->args.server_state.textbox_lines_num)
-	{
-	  do_interact = 0;
-
-	  strcpy (textbox, state->args.server_state.textbox);
-	  textlines = ntohl (state->args.server_state.textbox_lines_num);
-	  textcursor = 0;
-
-	  if ((int32_t) ntohl (state->args.server_state.npcid) >= 0)
+	  if (state->args.server_state.textbox_lines_num)
 	    {
-	      area->npcs [ntohl (state->args.server_state.npcid)].facing
-		= loc_char_facing == FACING_DOWN ? FACING_UP
-		: loc_char_facing == FACING_UP ? FACING_DOWN
-		: loc_char_facing == FACING_RIGHT ? FACING_LEFT
-		: FACING_RIGHT;
-	    }
-	}
+	      do_interact = 0;
 
-      if (textlines)
-	{
-	  SDL_GetRenderDrawColor (rend, &colr, &colg, &colb, &cola);
-	  SDL_SetRenderDrawColor (rend, 255, 255, 255, 255);
-	  SDL_RenderFillRect (rend, &textbackrect);
-	  SDL_SetRenderDrawColor (rend, colr, colg, colb, cola);
+	      strcpy (textbox, state->args.server_state.textbox);
+	      textlines = ntohl (state->args.server_state.textbox_lines_num);
+	      textcursor = 0;
 
-	  for (i = 0; i <= 1; i++)
-	    {
-	      if (textcursor+i>=textlines)
-		break;
-
-	      tmpch = textbox [TEXTLINESIZE*(textcursor+i+1)];
-	      textbox [TEXTLINESIZE*(textcursor+i+1)] = 0;
-	      textsurf = TTF_RenderText_Solid (textfont,
-					       &textbox [TEXTLINESIZE*(textcursor+i)],
-					       textcol);
-	      textbox [TEXTLINESIZE*(textcursor+i+1)] = tmpch;
-
-	      if (!textsurf)
+	      if ((int32_t) ntohl (state->args.server_state.npcid) >= 0)
 		{
-		  fprintf (stderr, "could not print text: %s\n", TTF_GetError ());
-		  return 1;
-		}
-
-	      texttxtr = SDL_CreateTextureFromSurface (rend, textsurf);
-
-	      if (!texttxtr)
-		{
-		  fprintf (stderr, "could not create texture for text: %s\n",
-			   SDL_GetError ());
-		  return 1;
-		}
-
-	      textrect [i].w = textsurf->w;
-	      textrect [i].h = textsurf->h;
-
-	      SDL_RenderCopy (rend, texttxtr, NULL, &textrect [i]);
-	      SDL_DestroyTexture (texttxtr);
-	      SDL_FreeSurface (textsurf);
-	    }
-	}
-
-      sprintf (hudtext, "LIFE %2d/%2d", life, MAX_PLAYER_HEALTH);
-      render_string (hudtext, charliferect, hudfont, textcol, rend);
-
-      sprintf (hudtext, "AMMO %2d/16", bullets);
-      render_string (hudtext, bulletsrect, hudfont, textcol, rend);
-
-      sprintf (hudtext, "HUNGER %2d/20", hunger);
-      render_string (hudtext, hungerrect, hudfont, textcol, rend);
-
-      sprintf (hudtext, "THIRST %2d/20", thirst);
-      render_string (hudtext, thirstrect, hudfont, textcol, rend);
-
-      if (latest_srv_state && state->args.server_state.is_searching)
-	{
-	  loc_char_speed_x = loc_char_speed_y = 0;
-
-	  if (!is_searching)
-	    {
-	      bagcursor = 0, bagswap1 = -1, bagswap2 = -1;
-	      is_searching = ntohl (state->args.server_state.is_searching);
-	    }
-
-	  SDL_RenderCopy (rend, bagtxtr,
-			  is_searching == 1 ? &halfscreen : &screen_dest,
-			  is_searching == 1 ? &halfscreen : &screen_dest);
-
-	  for (i = 0; i < BAG_SIZE*is_searching; i++)
-	    {
-	      switch (ntohl (state->args.server_state.bag [i]))
-		{
-		case OBJECT_HEALTH:
-		  SDL_RenderCopy (rend, objectstxtr, &healthobjrect,
-				  &bagslotsrects [i]);
-		  break;
-		case OBJECT_AMMO:
-		  SDL_RenderCopy (rend, objectstxtr, &bulletobjrect,
-				  &bagslotsrects [i]);
-		  break;
-		case OBJECT_FOOD:
-		  SDL_RenderCopy (rend, objectstxtr, &foodobjrect,
-				  &bagslotsrects [i]);
-		  break;
-		case OBJECT_WATER:
-		  SDL_RenderCopy (rend, objectstxtr, &waterobjrect,
-				  &bagslotsrects [i]);
-		  break;
-		case OBJECT_FLESH:
-		  SDL_RenderCopy (rend, objectstxtr, &fleshobjrect,
-				  &bagslotsrects [i]);
-		  break;
-		default:
-		  break;
+		  area->npcs [ntohl (state->args.server_state.npcid)].facing
+		    = loc_char_facing == FACING_DOWN ? FACING_UP
+		    : loc_char_facing == FACING_UP ? FACING_DOWN
+		    : loc_char_facing == FACING_RIGHT ? FACING_LEFT
+		    : FACING_RIGHT;
 		}
 	    }
 
-	  bagcursordest.x = bagslotsrects [bagcursor].x-3;
-	  bagcursordest.y = bagslotsrects [bagcursor].y-3;
-	  SDL_RenderCopy (rend, bagtxtr, &bagcursorsrc, &bagcursordest);
-
-	  if (bagswap1 >= 0)
+	  if (textlines)
 	    {
-	      bagcursordest.x = bagslotsrects [bagswap1].x-3;
-	      bagcursordest.y = bagslotsrects [bagswap1].y-3;
-	      SDL_RenderCopy (rend, bagtxtr, &bagswapsrc, &bagcursordest);
+	      SDL_GetRenderDrawColor (rend, &colr, &colg, &colb, &cola);
+	      SDL_SetRenderDrawColor (rend, 255, 255, 255, 255);
+	      SDL_RenderFillRect (rend, &textbackrect);
+	      SDL_SetRenderDrawColor (rend, colr, colg, colb, cola);
+
+	      for (i = 0; i <= 1; i++)
+		{
+		  if (textcursor+i>=textlines)
+		    break;
+
+		  tmpch = textbox [TEXTLINESIZE*(textcursor+i+1)];
+		  textbox [TEXTLINESIZE*(textcursor+i+1)] = 0;
+		  textsurf = TTF_RenderText_Solid (textfont,
+						   &textbox [TEXTLINESIZE*(textcursor+i)],
+						   textcol);
+		  textbox [TEXTLINESIZE*(textcursor+i+1)] = tmpch;
+
+		  if (!textsurf)
+		    {
+		      fprintf (stderr, "could not print text: %s\n", TTF_GetError ());
+		      return 1;
+		    }
+
+		  texttxtr = SDL_CreateTextureFromSurface (rend, textsurf);
+
+		  if (!texttxtr)
+		    {
+		      fprintf (stderr, "could not create texture for text: %s\n",
+			       SDL_GetError ());
+		      return 1;
+		    }
+
+		  textrect [i].w = textsurf->w;
+		  textrect [i].h = textsurf->h;
+
+		  SDL_RenderCopy (rend, texttxtr, NULL, &textrect [i]);
+		  SDL_DestroyTexture (texttxtr);
+		  SDL_FreeSurface (textsurf);
+		}
 	    }
 
-	  render_string (objcaptions [ntohl (state->args.server_state.bag [bagcursor])],
-			 objcaptionrect, hudfont, textcol, rend);
+	  sprintf (hudtext, "LIFE %2d/%2d", life, MAX_PLAYER_HEALTH);
+	  render_string (hudtext, charliferect, hudfont, textcol, rend);
+
+	  sprintf (hudtext, "AMMO %2d/16", bullets);
+	  render_string (hudtext, bulletsrect, hudfont, textcol, rend);
+
+	  sprintf (hudtext, "HUNGER %2d/20", hunger);
+	  render_string (hudtext, hungerrect, hudfont, textcol, rend);
+
+	  sprintf (hudtext, "THIRST %2d/20", thirst);
+	  render_string (hudtext, thirstrect, hudfont, textcol, rend);
+
+	  if (state->args.server_state.is_searching)
+	    {
+	      loc_char_speed_x = loc_char_speed_y = 0;
+
+	      if (!is_searching)
+		{
+		  bagcursor = 0, bagswap1 = -1, bagswap2 = -1;
+		  is_searching = ntohl (state->args.server_state.is_searching);
+		}
+
+	      SDL_RenderCopy (rend, bagtxtr,
+			      is_searching == 1 ? &halfscreen : &screen_dest,
+			      is_searching == 1 ? &halfscreen : &screen_dest);
+
+	      for (i = 0; i < BAG_SIZE*is_searching; i++)
+		{
+		  switch (ntohl (state->args.server_state.bag [i]))
+		    {
+		    case OBJECT_HEALTH:
+		      SDL_RenderCopy (rend, objectstxtr, &healthobjrect,
+				      &bagslotsrects [i]);
+		      break;
+		    case OBJECT_AMMO:
+		      SDL_RenderCopy (rend, objectstxtr, &bulletobjrect,
+				      &bagslotsrects [i]);
+		      break;
+		    case OBJECT_FOOD:
+		      SDL_RenderCopy (rend, objectstxtr, &foodobjrect,
+				      &bagslotsrects [i]);
+		      break;
+		    case OBJECT_WATER:
+		      SDL_RenderCopy (rend, objectstxtr, &waterobjrect,
+				      &bagslotsrects [i]);
+		      break;
+		    case OBJECT_FLESH:
+		      SDL_RenderCopy (rend, objectstxtr, &fleshobjrect,
+				      &bagslotsrects [i]);
+		      break;
+		    default:
+		      break;
+		    }
+		}
+
+	      bagcursordest.x = bagslotsrects [bagcursor].x-3;
+	      bagcursordest.y = bagslotsrects [bagcursor].y-3;
+	      SDL_RenderCopy (rend, bagtxtr, &bagcursorsrc, &bagcursordest);
+
+	      if (bagswap1 >= 0)
+		{
+		  bagcursordest.x = bagslotsrects [bagswap1].x-3;
+		  bagcursordest.y = bagslotsrects [bagswap1].y-3;
+		  SDL_RenderCopy (rend, bagtxtr, &bagswapsrc, &bagcursordest);
+		}
+
+	      render_string (objcaptions [ntohl (state->args.server_state.bag [bagcursor])],
+			     objcaptionrect, hudfont, textcol, rend);
+	    }
+	  else
+	    is_searching = 0;
+
+	  SDL_RenderPresent (rend);
+
+	  if (just_shot == frame_counter)
+	    Mix_PlayChannel (-1, shootsfx, 0);
+
+	  if (just_stabbed == frame_counter)
+	    Mix_PlayChannel (-1, stabsfx, 0);
 	}
-      else
-	is_searching = 0;
-
-      SDL_RenderPresent (rend);
-
-      if (just_shot == frame_counter)
-	Mix_PlayChannel (-1, shootsfx, 0);
-
-      if (just_stabbed == frame_counter)
-	Mix_PlayChannel (-1, stabsfx, 0);
     }
 
   SDL_Quit ();
