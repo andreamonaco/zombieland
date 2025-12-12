@@ -2396,6 +2396,7 @@ main (int argc, char *argv[])
 	{
 	  if (players [i].id != -1 && players [i].agent->life <= 0)
 	    {
+	      printf ("player %s died\n", players [i].name);
 	      send_message (sockfd, &players [i].address, -1, MSG_PLAYER_DIED);
 	      players [i].id = -1;
 
