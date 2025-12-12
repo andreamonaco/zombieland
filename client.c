@@ -159,10 +159,50 @@ move_bag_cursor (int command, int pos, int is_double)
 
 
 void
+configure_keys (enum player_action controls [])
+{
+  SDL_Event ev;
+  char *prompts [] = {"move left: ", "move right: ", "move up: ", "move down: ",
+		      "interact: ", "shoot: ", "stab: ", "search: "};
+  int i, ret;
+
+  printf ("\nconfiguring keys... for each action, please press the key of your "
+	  "choice, while the windows has focus:\n");
+
+  for (i = 0; i < sizeof (prompts) / sizeof (prompts [0]); i++)
+    {
+      printf (prompts [i]);
+      fflush (stdout);
+
+      while ((ret = SDL_WaitEvent (&ev)))
+	{
+	  if (ev.type == SDL_KEYDOWN)
+	    {
+	      controls [ev.key.keysym.scancode] = i+2;
+	      printf (SDL_GetKeyName (ev.key.keysym.sym));
+	      break;
+	    }
+	}
+
+      if (!ret)
+	{
+	  printf ("error while reading an event\n");
+	  exit (1);
+	}
+
+      printf ("\n");
+    }
+
+  printf ("\n");
+}
+
+
+void
 print_help_and_exit (void)
 {
   printf ("Usage: zombieland SERVER_ADDRESS PLAYER_NAME [BODY_TYPE] [OPTIONS]\n"
 	  "\t-l, --limit-fps       limit display fps to 30 fps, otherwise it's unlimited\n"
+	  "\t-k, --configure-keys  configure controls before playing\n"
 	  "\t-h, --help            display this help and exit\n");
   exit (0);
 }
@@ -326,7 +366,7 @@ main (int argc, char *argv[])
 
   Mix_Chunk *shootsfx, *stabsfx, *healsfx, *reloadsfx, *eatsfx, *drinksfx;
 
-  int quit = 0, i, limit_fps = 0;
+  int quit = 0, i, limit_fps = 0, config_keys = 0;
   Uint32 frame_counter = 1, fc, latest_update_ticks = 0, last_sent_update = 0,
     last_display = 0, ticks;
 
@@ -358,6 +398,8 @@ main (int argc, char *argv[])
     {
       if (!strcmp (argv [i], "--limit-fps") || !strcmp (argv [i], "-l"))
 	limit_fps = 1;
+      else if (!strcmp (argv [i], "--configure-keys") || !strcmp (argv [i], "-k"))
+	config_keys = 1;
       else if (!strcmp (argv [i], "--help") || !strcmp (argv [i], "-h"))
 	print_help_and_exit ();
       else
@@ -720,15 +762,21 @@ main (int argc, char *argv[])
   hotel_room.walkable = hotel_room_walkable;
 
 
+  if (!config_keys)
+    {
+      controls [SDL_SCANCODE_A] = controls [SDL_SCANCODE_LEFT] = PLAYER_MOVE_LEFT;
+      controls [SDL_SCANCODE_D] = controls [SDL_SCANCODE_RIGHT] = PLAYER_MOVE_RIGHT;
+      controls [SDL_SCANCODE_W] = controls [SDL_SCANCODE_UP] = PLAYER_MOVE_UP;
+      controls [SDL_SCANCODE_S] = controls [SDL_SCANCODE_DOWN] = PLAYER_MOVE_DOWN;
+      controls [SDL_SCANCODE_SPACE] = PLAYER_INTERACT;
+      controls [SDL_SCANCODE_F] = PLAYER_SHOOT;
+      controls [SDL_SCANCODE_R] = PLAYER_STAB;
+      controls [SDL_SCANCODE_Q] = PLAYER_SEARCH;
+    }
+  else
+    configure_keys (controls);
+
   controls [SDL_SCANCODE_ESCAPE] = PLAYER_QUIT;
-  controls [SDL_SCANCODE_A] = controls [SDL_SCANCODE_LEFT] = PLAYER_MOVE_LEFT;
-  controls [SDL_SCANCODE_D] = controls [SDL_SCANCODE_RIGHT] = PLAYER_MOVE_RIGHT;
-  controls [SDL_SCANCODE_W] = controls [SDL_SCANCODE_UP] = PLAYER_MOVE_UP;
-  controls [SDL_SCANCODE_S] = controls [SDL_SCANCODE_DOWN] = PLAYER_MOVE_DOWN;
-  controls [SDL_SCANCODE_SPACE] = PLAYER_INTERACT;
-  controls [SDL_SCANCODE_F] = PLAYER_SHOOT;
-  controls [SDL_SCANCODE_R] = PLAYER_STAB;
-  controls [SDL_SCANCODE_Q] = PLAYER_SEARCH;
 
 
   SDL_RenderCopy (rend, field.texture, NULL, NULL);
