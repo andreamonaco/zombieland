@@ -357,11 +357,13 @@ allocate_private_areas (struct server_area *areas)
 
 uint32_t
 create_player (char name[], uint32_t bodytype, struct sockaddr_in *addr,
-	       uint16_t portoff, struct server_area *area, struct player pls [],
+	       uint16_t portoff, struct server_area *area,
+	       struct server_area *areas, struct player pls [],
 	       struct agent **agents)
 {
   int i, j;
   struct agent *a;
+  struct private_server_area *par;
 
   for (i = 0; i < MAX_PLAYERS; i++)
     {
@@ -375,8 +377,26 @@ create_player (char name[], uint32_t bodytype, struct sockaddr_in *addr,
   a = malloc_and_check (sizeof (*a));
   a->area = area;
   a->private_area = NULL;
-  set_rect (&a->place, 96, 0, 16, 16);
+  set_rect (&a->place, 16, 16, 16, 16);
+
   a->priv_areas = allocate_private_areas (area);
+
+  if (area->is_private)
+    {
+      par = a->priv_areas;
+
+      while (par)
+	{
+	  if (area->id == par->id)
+	    {
+	      a->private_area = par;
+	      break;
+	    }
+
+	  par = par->next;
+	}
+    }
+
   a->life = MAX_PLAYER_HEALTH;
   a->immortal = 0;
   a->type = AGENT_PLAYER;
@@ -1725,8 +1745,8 @@ main (int argc, char *argv[])
 
 	      id = create_player (msg->args.login.logname,
 				  msg->args.login.bodytype, &client_addr,
-				  ntohs (msg->args.login.portoff), &field,
-				  players, &agents);
+				  ntohs (msg->args.login.portoff), &hotel_room,
+				  &field, players, &agents);
 
 	      if (id == -1)
 		{
