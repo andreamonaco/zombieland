@@ -41,17 +41,6 @@
 #include "zombieland.h"
 
 
-#define RECT_X_INTERSECT(i,j) ((i).x+(i).w>(j).x&&(j).x+(j).w>(i).x)
-
-#define RECT_Y_INTERSECT(i, j) ((i).y+(i).h>(j).y&&(j).y+(j).h>(i).y)
-
-#define RECT_INTERSECT(x,y) (RECT_X_INTERSECT(x,y) && RECT_Y_INTERSECT(x,y))
-
-
-#define IS_RECT_CONTAINED(i,j) ((i).x>=(j).x&&(i).x+(i).w<=(j).x+(j).w	\
-				&&(i).y>=(j).y&&(i).y+(i).h<=(j).y+(j).h)
-
-
 #define SIGN(x) ((x) > 0 ? 1 : -1)
 
 

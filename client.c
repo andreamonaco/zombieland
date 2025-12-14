@@ -50,6 +50,18 @@
 
 
 struct
+walking_sfx
+{
+  SDL_Rect *places;
+  int places_num;
+
+  Mix_Chunk *sfx;
+
+  int channel;
+};
+
+
+struct
 npc
 {
   SDL_Rect place;
@@ -73,6 +85,9 @@ client_area
   int overlay_frames_num;
 
   SDL_Rect walkable;
+
+  struct walking_sfx *walk_sfxs;
+  int walk_sfxs_num;
 
   struct npc *npcs;
   int npcs_num;
@@ -242,7 +257,10 @@ main (int argc, char *argv[])
     field_overlays [] = {RECT_BY_GRID (0, 64, 72, 64),
     RECT_BY_GRID (72, 64, 72, 64), RECT_BY_GRID (144, 64, 72, 64),
     RECT_BY_GRID (216, 64, 72, 64), RECT_BY_GRID (288, 64, 72, 64)},
-    field_walkable = {0, 0, 512, 512};
+    field_walkable = {0, 0, 512, 512},
+    field_pond [] = {RECT_BY_GRID (63, 10, 2, 2), RECT_BY_GRID (65, 11, 4, 1),
+		     RECT_BY_GRID (69, 6, 3, 7)};
+  struct walking_sfx field_sfx = {field_pond, 3, NULL, -1};
 
   struct client_area room;
   SDL_Rect room_src = {0, 0, 256, 256},
@@ -364,9 +382,10 @@ main (int argc, char *argv[])
     screen_overlay = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
     halfscreen = {0, 0, WINDOW_WIDTH/2, WINDOW_HEIGHT};
 
-  Mix_Chunk *shootsfx, *stabsfx, *healsfx, *reloadsfx, *eatsfx, *drinksfx;
+  Mix_Chunk *shootsfx, *stabsfx, *healsfx, *reloadsfx, *eatsfx, *drinksfx,
+    *pondsfx;
 
-  int quit = 0, i, limit_fps = 0, config_keys = 0;
+  int quit = 0, i, j, limit_fps = 0, config_keys = 0;
   Uint32 frame_counter = 1, fc, latest_update_ticks = 0, last_sent_update = 0,
     last_display = 0, ticks;
 
@@ -715,6 +734,15 @@ main (int argc, char *argv[])
       return 1;
     }
 
+  pondsfx = Mix_LoadWAV ("pond.wav");
+
+  if (!pondsfx)
+    {
+      fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
   field.id = 0;
   field.texture = overworldtxtr;
   field.display_srcs = field_srcs;
@@ -722,6 +750,9 @@ main (int argc, char *argv[])
   field.overlay_srcs = field_overlays;
   field.overlay_frames_num = 5;
   field.walkable = field_walkable;
+  field_sfx.sfx = pondsfx;
+  field.walk_sfxs = &field_sfx;
+  field.walk_sfxs_num = 1;
   field.npcs = NULL;
   field.npcs_num = 0;
   field.next = &room;
@@ -1426,6 +1457,40 @@ main (int argc, char *argv[])
 	    is_searching = 0;
 
 	  SDL_RenderPresent (rend);
+
+	  for (i = 0; i < area->walk_sfxs_num; i++)
+	    {
+	      if (!loc_char_speed_x && !loc_char_speed_y)
+		{
+		  if (area->walk_sfxs [i].channel >= 0)
+		    {
+		      Mix_HaltChannel (area->walk_sfxs [i].channel);
+		      area->walk_sfxs [i].channel = -1;
+		    }
+		}
+	      else
+		{
+		  for (j = 0; j < area->walk_sfxs [i].places_num; j++)
+		    {
+		      if (RECT_INTERSECT (character_box,
+					  area->walk_sfxs [i].places [j]))
+			{
+			  if (area->walk_sfxs [i].channel < 0)
+			    area->walk_sfxs [i].channel
+			      = Mix_PlayChannel (-1, area->walk_sfxs [i].sfx, -1);
+
+			  break;
+			}
+		    }
+
+		  if (j == area->walk_sfxs [i].places_num
+		      && area->walk_sfxs [i].channel >= 0)
+		    {
+		      Mix_HaltChannel (area->walk_sfxs [i].channel);
+		      area->walk_sfxs [i].channel = -1;
+		    }
+		}
+	    }
 
 	  if (just_shot == frame_counter)
 	    Mix_PlayChannel (-1, shootsfx, 0);

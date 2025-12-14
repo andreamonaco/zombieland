@@ -26,6 +26,17 @@
 #define R_BY_GR(x,y,w,h) RECT_BY_GRID(x, y, w, h)
 
 
+#define RECT_X_INTERSECT(i,j) ((i).x+(i).w>(j).x&&(j).x+(j).w>(i).x)
+
+#define RECT_Y_INTERSECT(i, j) ((i).y+(i).h>(j).y&&(j).y+(j).h>(i).y)
+
+#define RECT_INTERSECT(x,y) (RECT_X_INTERSECT(x,y) && RECT_Y_INTERSECT(x,y))
+
+
+#define IS_RECT_CONTAINED(i,j) ((i).x>=(j).x&&(i).x+(i).w<=(j).x+(j).w	\
+				&&(i).y>=(j).y&&(i).y+(i).h<=(j).y+(j).h)
+
+
 #define ZOMBIELAND_PORT 19894
 #define FRAME_DURATION 33.333f   /* 30 hz */
 #define CLIENT_TIMEOUT 1800
