@@ -23,6 +23,9 @@ you succeed!  For other platforms, consult your docs.
 The configure and build toolchain is autotools, but building is easy enough that
 you can do it yourself.
 
+I'm also working on an easy-to-install package for Windows and some GNU/Linux
+distributions.
+
 
 
 __How can I build Zombieland?__
@@ -58,15 +61,21 @@ like.  Optionally, pass a third argument with a number between 0 and 6 to choose
 your appearance; see the file character.png to preview each look, numbered from
 0 to 6 going down.
 
-Move around with the arrows, fire with F, stab with R to hit enemies nearby with
-the knife, interact with objects (reading signs and so on) with Space and close
-the game with Esc.  Any number of players can shoot at each other and at the
-zombies until they die.
+Move around with the arrows or with WASD, fire with F, stab with R to hit
+enemies nearby with the knife, interact with objects (reading signs and so on)
+with Space and close the game with Esc.  Any number of players can shoot at each
+other and at the zombies until they die.
 You can also open and close the inventory with Q; you can collect rotten meat
 dropped by zombies in your bag.  If you find a searchable object in the
 environment, a symbol with a bag will appear on that object; pressing Q will
 then open both your inventory and that bag; with Space you can select an object
 and move it between the two inventories.
+There's a day-night cycle in the game.
+
+You can configure the controls before playing by passing the -k option.
+
+The client limits display frame rate to 30 fps by default; you can get unlimited
+fps with the -u option.
 
 
 
