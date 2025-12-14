@@ -217,7 +217,8 @@ void
 print_help_and_exit (void)
 {
   printf ("Usage: zombieland SERVER_ADDRESS PLAYER_NAME [BODY_TYPE] [OPTIONS]\n"
-	  "\t-l, --limit-fps       limit display fps to 30 fps, otherwise it's unlimited\n"
+	  "\t-u, --dont-limit-fps  don't limit display fps, otherwise it's 30 fps\n"
+	  "\t-v, --verbose         if limiting fps, print a warning for each missed frame\n"
 	  "\t-k, --configure-keys  configure controls before playing\n"
 	  "\t-h, --help            display this help and exit\n");
   exit (0);
@@ -387,7 +388,7 @@ main (int argc, char *argv[])
   Mix_Chunk *shootsfx, *stabsfx, *healsfx, *reloadsfx, *eatsfx, *drinksfx,
     *pondsfx;
 
-  int quit = 0, i, j, limit_fps = 0, config_keys = 0;
+  int quit = 0, i, j, limit_fps = 1, verbose = 0, config_keys = 0;
   Uint32 frame_counter = 1, fc, latest_update_ticks = 0, last_sent_update = 0,
     last_display = 0, ticks;
 
@@ -417,8 +418,10 @@ main (int argc, char *argv[])
 
   for (i = 4; i < argc; i++)
     {
-      if (!strcmp (argv [i], "--limit-fps") || !strcmp (argv [i], "-l"))
-	limit_fps = 1;
+      if (!strcmp (argv [i], "--dont-limit-fps") || !strcmp (argv [i], "-u"))
+	limit_fps = 0;
+      else if (!strcmp (argv [i], "--verbose") || !strcmp (argv [i], "-v"))
+	verbose = 1;
       else if (!strcmp (argv [i], "--configure-keys") || !strcmp (argv [i], "-k"))
 	config_keys = 1;
       else if (!strcmp (argv [i], "--help") || !strcmp (argv [i], "-h"))
@@ -1092,8 +1095,9 @@ main (int argc, char *argv[])
       if (latest_srv_state
 	  && (!limit_fps || frame_counter-last_display > DURATION_OF_DISPLAY_FRAME))
 	{
-	  if (limit_fps && frame_counter-last_display > DURATION_OF_DISPLAY_FRAME*2)
-	    printf ("warning: display frame skipped\n");
+	  if (limit_fps && verbose
+	      && frame_counter-last_display > DURATION_OF_DISPLAY_FRAME*2)
+	    printf ("warning: at least one display frame was skipped\n");
 
 	  last_display = frame_counter;
 
