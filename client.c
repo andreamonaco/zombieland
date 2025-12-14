@@ -77,7 +77,8 @@ client_area
 {
   uint32_t id;
 
-  SDL_Texture *texture;
+  SDL_Texture *texture [3];
+  int respects_time;
   SDL_Rect *display_srcs;
   int area_frames_num;
 
@@ -336,7 +337,7 @@ main (int argc, char *argv[])
     do_shoot = 0, do_stab = 0, do_search = 0, bodytype = 0,
     life = MAX_PLAYER_HEALTH, is_immortal = 0, bullets = 16, hunger = 0,
     thirst = 0, num_visibles, just_shot = 0, just_stabbed = 0;
-  int last_shoot = 0, last_stab = 0;
+  int last_shoot = 0, last_stab = 0, time, phase;
   enum facing loc_char_facing = FACING_DOWN, srv_char_facing = FACING_DOWN;
   struct visible vis;
 
@@ -344,8 +345,9 @@ main (int argc, char *argv[])
   SDL_Renderer *rend;
   SDL_Event event;
 
-  SDL_Texture *overworldtxtr, *interiorstxtr, *charactertxtr, *zombietxtr,
-    *npctxtr, *effectstxtr, *texttxtr, *bagtxtr, *objectstxtr;
+  SDL_Texture *overworldtxtr, *overworld2txtr, *overworld3txtr, *interiorstxtr,
+    *charactertxtr, *zombietxtr, *npctxtr, *effectstxtr, *texttxtr, *bagtxtr,
+    *objectstxtr;
   SDL_Surface *iconsurf, *textsurf;
   TTF_Font *hudfont, *textfont;
   char textbox [TEXTLINESIZE*MAXTEXTLINES+1], hudtext [20];
@@ -588,6 +590,24 @@ main (int argc, char *argv[])
       return 1;
     }
 
+  overworld2txtr = IMG_LoadTexture (rend, "overworld2.png");
+
+  if (!overworld2txtr)
+    {
+      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
+  overworld3txtr = IMG_LoadTexture (rend, "overworld3.png");
+
+  if (!overworld3txtr)
+    {
+      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
+      SDL_Quit ();
+      return 1;
+    }
+
   interiorstxtr = IMG_LoadTexture (rend, "interiors.png");
 
   if (!interiorstxtr)
@@ -744,7 +764,10 @@ main (int argc, char *argv[])
     }
 
   field.id = 0;
-  field.texture = overworldtxtr;
+  field.texture [0] = overworldtxtr;
+  field.texture [1] = overworld2txtr;
+  field.texture [2] = overworld3txtr;
+  field.respects_time = 1;
   field.display_srcs = field_srcs;
   field.area_frames_num = 1;
   field.overlay_srcs = field_overlays;
@@ -758,7 +781,7 @@ main (int argc, char *argv[])
   field.next = &room;
 
   room.id = 1;
-  room.texture = interiorstxtr;
+  room.texture [0] = interiorstxtr;
   room.display_srcs = &room_src;
   room.area_frames_num = 1;
   room.overlay_srcs = NULL;
@@ -770,14 +793,14 @@ main (int argc, char *argv[])
   room.next = &basement;
 
   basement.id = 2;
-  basement.texture = interiorstxtr;
+  basement.texture [0] = interiorstxtr;
   basement.display_srcs = &basement_src;
   basement.area_frames_num = 1;
   basement.walkable = basement_walkable;
   basement.next = &hotel_ground;
 
   hotel_ground.id = 3;
-  hotel_ground.texture = interiorstxtr;
+  hotel_ground.texture [0] = interiorstxtr;
   hotel_ground.display_srcs = &hotel_ground_src;
   hotel_ground.area_frames_num = 1;
   hotel_ground.walkable = hotel_ground_walkable;
@@ -787,7 +810,7 @@ main (int argc, char *argv[])
   hotel_ground.next = &hotel_room;
 
   hotel_room.id = 4;
-  hotel_room.texture = interiorstxtr;
+  hotel_room.texture [0] = interiorstxtr;
   hotel_room.display_srcs = &hotel_room_src;
   hotel_room.area_frames_num = 1;
   hotel_room.walkable = hotel_room_walkable;
@@ -810,7 +833,7 @@ main (int argc, char *argv[])
   controls [SDL_SCANCODE_ESCAPE] = PLAYER_QUIT;
 
 
-  SDL_RenderCopy (rend, field.texture, NULL, NULL);
+  SDL_RenderCopy (rend, field.texture [0], NULL, NULL);
   character_dest.x = character_box.x + character_origin [bodytype].x;
   character_dest.y = character_box.y + character_origin [bodytype].y;
   character_dest.w = character_origin [bodytype].w;
@@ -1130,6 +1153,7 @@ main (int argc, char *argv[])
 	    Mix_PlayChannel (-1, drinksfx, 0);
 
 	  thirst = ntohl (state->args.server_state.thirst);
+
 	  num_visibles = ntohl (state->args.server_state.num_visibles);
 
 
@@ -1175,7 +1199,13 @@ main (int argc, char *argv[])
 	     /AREA_FRAME_DURATION].y + camera_src.y;
 
 	  SDL_RenderClear (rend);
-	  SDL_RenderCopy (rend, area->texture, &back_src, &screen_dest);
+
+	  time = (latest_update % 43200) / 1800;
+	  phase = (time+15)%24/6;
+	  phase = (phase == 3) ? 1 : phase;
+
+	  SDL_RenderCopy (rend, area->texture [area->respects_time ? phase : 0],
+			  &back_src, &screen_dest);
 
 	  for (i = 0; i < area->npcs_num; i++)
 	    {
@@ -1307,7 +1337,8 @@ main (int argc, char *argv[])
 	      screen_overlay.y = area->overlay_srcs
 		[frame_counter%(area->overlay_frames_num*AREA_FRAME_DURATION)
 		 /AREA_FRAME_DURATION].y + camera_src.y;
-	      SDL_RenderCopy (rend, area->texture, &screen_overlay, &screen_dest);
+	      SDL_RenderCopy (rend, area->texture [area->respects_time ? phase : 0],
+			      &screen_overlay, &screen_dest);
 	    }
 
 	  for (i = 0; i < num_visibles; i++)
