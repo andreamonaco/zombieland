@@ -36,6 +36,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_mixer.h>
 
+#include "malloc.h"
 #include "zombieland.h"
 
 
@@ -210,6 +211,81 @@ configure_keys (enum player_action controls [])
     }
 
   printf ("\n");
+}
+
+
+char *
+concatenate_strings (const char *s1, const char *s2)
+{
+  char *ret = malloc_and_check (strlen (s1)+strlen (s2)+1);
+
+  strcpy (ret, s1);
+  strcpy (ret+strlen (s1), s2);
+
+  return ret;
+}
+
+
+SDL_Texture *
+load_texture (const char *name, SDL_Renderer *rend)
+{
+  SDL_Texture *ret;
+  char *path = concatenate_strings ("./assets/", name);
+
+  ret = IMG_LoadTexture (rend, path);
+
+  if (!ret)
+    {
+      fprintf (stderr, "could not load texture %s: %s\n", path, SDL_GetError ());
+      SDL_Quit ();
+      exit (1);
+    }
+
+  free (path);
+
+  return ret;
+}
+
+
+TTF_Font *
+load_font (const char *name, int size)
+{
+  TTF_Font *ret;
+  char *path = concatenate_strings ("./assets/", name);
+
+  ret = TTF_OpenFont (path, size);
+
+  if (!ret)
+    {
+      fprintf (stderr, "could not load font %s: %s\n", path, TTF_GetError ());
+      SDL_Quit ();
+      exit (1);
+    }
+
+  free (path);
+
+  return ret;
+}
+
+
+Mix_Chunk *
+load_wav (const char *name)
+{
+  Mix_Chunk *ret;
+  char *path = concatenate_strings ("./assets/", name);
+
+  ret = Mix_LoadWAV (path);
+
+  if (!ret)
+    {
+      fprintf (stderr, "could not load sound file %s: %s\n", path, Mix_GetError ());
+      SDL_Quit ();
+      exit (1);
+    }
+
+  free (path);
+
+  return ret;
 }
 
 
@@ -584,187 +660,40 @@ main (int argc, char *argv[])
   SDL_SetRenderDrawColor (rend, 100, 100, 100, 255);
   SDL_RenderClear (rend);
 
-  overworldtxtr = IMG_LoadTexture (rend, "overworld.png");
 
-  if (!overworldtxtr)
-    {
-      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
+  overworldtxtr = load_texture ("overworld.png", rend);
+  overworld2txtr = load_texture ("overworld2.png", rend);
+  overworld3txtr = load_texture ("overworld3.png", rend);
+  interiorstxtr = load_texture ("interiors.png", rend);
+  charactertxtr = load_texture ("character.png", rend);
+  zombietxtr = load_texture ("NPC_test.png", rend);
+  npctxtr = load_texture ("log.png", rend);
+  effectstxtr = load_texture ("effects.png", rend);
+  bagtxtr = load_texture ("bag.png", rend);
+  objectstxtr = load_texture ("objects.png", rend);
 
-  overworld2txtr = IMG_LoadTexture (rend, "overworld2.png");
-
-  if (!overworld2txtr)
-    {
-      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  overworld3txtr = IMG_LoadTexture (rend, "overworld3.png");
-
-  if (!overworld3txtr)
-    {
-      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  interiorstxtr = IMG_LoadTexture (rend, "interiors.png");
-
-  if (!interiorstxtr)
-    {
-      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  charactertxtr = IMG_LoadTexture (rend, "character.png");
-
-  if (!charactertxtr)
-    {
-      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  zombietxtr = IMG_LoadTexture (rend, "NPC_test.png");
-
-  if (!zombietxtr)
-    {
-      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  npctxtr = IMG_LoadTexture (rend, "log.png");
-
-  if (!npctxtr)
-    {
-      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  effectstxtr = IMG_LoadTexture (rend, "effects.png");
-
-  if (!effectstxtr)
-    {
-      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  bagtxtr = IMG_LoadTexture (rend, "bag.png");
-
-  if (!bagtxtr)
-    {
-      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  objectstxtr = IMG_LoadTexture (rend, "objects.png");
-
-  if (!objectstxtr)
-    {
-      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  iconsurf = IMG_Load ("icon.png");
+  iconsurf = IMG_Load ("assets/icon.png");
 
   if (!iconsurf)
     {
-      fprintf (stderr, "could not load art: %s\n", SDL_GetError ());
+      fprintf (stderr, "could not load image ./assets/icon.png: %s\n", SDL_GetError ());
       SDL_Quit ();
       return 1;
     }
 
   SDL_SetWindowIcon (win, iconsurf);
 
-  hudfont = TTF_OpenFont ("Boxy-Bold.ttf", 12);
+  hudfont = load_font ("Boxy-Bold.ttf", 12);
+  textfont = load_font ("DigitalJots.ttf", 20);
 
-  if (!hudfont)
-    {
-      fprintf (stderr, "could not load font: %s\n", TTF_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
+  shootsfx = load_wav ("bang_01.ogg");
+  stabsfx = load_wav ("knifesharpener1.flac");
+  healsfx = load_wav ("heartbeat.flac");
+  reloadsfx = load_wav ("reload.wav");
+  eatsfx = load_wav ("eat.wav");
+  drinksfx = load_wav ("bottle.wav");
+  pondsfx = load_wav ("pond.wav");
 
-  textfont = TTF_OpenFont ("DigitalJots.ttf", 20);
-
-  if (!textfont)
-    {
-      fprintf (stderr, "could not load font: %s\n", TTF_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  shootsfx = Mix_LoadWAV ("bang_01.ogg");
-
-  if (!shootsfx)
-    {
-      fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  stabsfx = Mix_LoadWAV ("knifesharpener1.flac");
-
-  if (!stabsfx)
-    {
-      fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  healsfx = Mix_LoadWAV ("heartbeat.flac");
-
-  if (!healsfx)
-    {
-      fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  reloadsfx = Mix_LoadWAV ("reload.wav");
-
-  if (!reloadsfx)
-    {
-      fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  eatsfx = Mix_LoadWAV ("eat.wav");
-
-  if (!eatsfx)
-    {
-      fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  drinksfx = Mix_LoadWAV ("bottle.wav");
-
-  if (!drinksfx)
-    {
-      fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
-
-  pondsfx = Mix_LoadWAV ("pond.wav");
-
-  if (!pondsfx)
-    {
-      fprintf (stderr, "could not load sound effect: %s\n", Mix_GetError ());
-      SDL_Quit ();
-      return 1;
-    }
 
   field.id = 0;
   field.texture [0] = overworldtxtr;
