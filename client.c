@@ -214,6 +214,16 @@ configure_keys (enum player_action controls [])
 }
 
 
+void
+scale_rect (SDL_Rect *rect, int factor)
+{
+  rect->x *= factor;
+  rect->y *= factor;
+  rect->w *= factor;
+  rect->h *= factor;
+}
+
+
 char *
 concatenate_strings (const char *s1, const char *s2)
 {
@@ -293,6 +303,7 @@ void
 print_help_and_exit (void)
 {
   printf ("Usage: zombieland SERVER_ADDRESS PLAYER_NAME [BODY_TYPE] [OPTIONS]\n"
+	  "\t-d, --double-size     double the resolution through upscaling\n"
 	  "\t-u, --dont-limit-fps  don't limit display fps, otherwise it's 30 fps\n"
 	  "\t-v, --verbose         if limiting fps, print a warning for each missed frame\n"
 	  "\t-k, --configure-keys  configure controls before playing\n"
@@ -459,12 +470,14 @@ main (int argc, char *argv[])
     back_src = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
     screen_dest = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
     screen_overlay = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
-    halfscreen = {0, 0, WINDOW_WIDTH/2, WINDOW_HEIGHT};
+    leftscreen = {0, 0, WINDOW_WIDTH/2, WINDOW_HEIGHT},
+    singlebagsrc = {0, 0, WINDOW_WIDTH/2, WINDOW_HEIGHT},
+    doublebagsrc = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
 
   Mix_Chunk *shootsfx, *stabsfx, *healsfx, *reloadsfx, *eatsfx, *drinksfx,
     *pondsfx;
 
-  int quit = 0, i, j, limit_fps = 1, verbose = 0, config_keys = 0;
+  int quit = 0, i, j, scaling = 1, limit_fps = 1, verbose = 0, config_keys = 0;
   Uint32 frame_counter = 1, fc, latest_update_ticks = 0, last_sent_update = 0,
     last_display = 0, ticks;
 
@@ -494,7 +507,9 @@ main (int argc, char *argv[])
 
   for (i = 4; i < argc; i++)
     {
-      if (!strcmp (argv [i], "--dont-limit-fps") || !strcmp (argv [i], "-u"))
+      if (!strcmp (argv [i], "--double-size") || !strcmp (argv [i], "-d"))
+	scaling = 2;
+      else if (!strcmp (argv [i], "--dont-limit-fps") || !strcmp (argv [i], "-u"))
 	limit_fps = 0;
       else if (!strcmp (argv [i], "--verbose") || !strcmp (argv [i], "-v"))
 	verbose = 1;
@@ -616,8 +631,8 @@ main (int argc, char *argv[])
     }
 
   win = SDL_CreateWindow ("ZombieLand", SDL_WINDOWPOS_UNDEFINED,
-			  SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH, WINDOW_HEIGHT,
-			  0);
+			  SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH*scaling,
+			  WINDOW_HEIGHT*scaling, SDL_WINDOW_OPENGL);
 
   if (!win)
     {
@@ -683,8 +698,8 @@ main (int argc, char *argv[])
 
   SDL_SetWindowIcon (win, iconsurf);
 
-  hudfont = load_font ("Boxy-Bold.ttf", 12);
-  textfont = load_font ("DigitalJots.ttf", 20);
+  hudfont = load_font ("Boxy-Bold.ttf", 12*scaling);
+  textfont = load_font ("DigitalJots.ttf", 20*scaling);
 
   shootsfx = load_wav ("bang_01.ogg");
   stabsfx = load_wav ("knifesharpener1.flac");
@@ -746,6 +761,29 @@ main (int argc, char *argv[])
   hotel_room.display_srcs = &hotel_room_src;
   hotel_room.area_frames_num = 1;
   hotel_room.walkable = hotel_room_walkable;
+
+
+  if (scaling > 1)
+    {
+      scale_rect (&screen_dest, scaling);
+      scale_rect (&leftscreen, scaling);
+
+      scale_rect (&textbackrect, scaling);
+      scale_rect (&textrect [0], scaling);
+      scale_rect (&textrect [1], scaling);
+
+      scale_rect (&charliferect, scaling);
+      scale_rect (&bulletsrect, scaling);
+      scale_rect (&hungerrect, scaling);
+      scale_rect (&thirstrect, scaling);
+
+      scale_rect (&bagcursordest, scaling);
+
+      for (i = 0; i < 16; i++)
+	scale_rect (&bagslotsrects [i], scaling);
+
+      scale_rect (&objcaptionrect, scaling);
+    }
 
 
   if (!config_keys)
@@ -1142,12 +1180,12 @@ main (int argc, char *argv[])
 
 	  for (i = 0; i < area->npcs_num; i++)
 	    {
-	      pers.x = -camera_src.x + area->walkable.x + area->npcs [i].place.x
-		+ area->npcs [i].origin.x;
-	      pers.y = -camera_src.y + area->walkable.y + area->npcs [i].place.y
-		+ area->npcs [i].origin.y;
-	      pers.w = area->npcs [i].srcs [0].w;
-	      pers.h = area->npcs [i].srcs [0].h;
+	      pers.x = (-camera_src.x + area->walkable.x + area->npcs [i].place.x
+			+ area->npcs [i].origin.x)*scaling;
+	      pers.y = (-camera_src.y + area->walkable.y + area->npcs [i].place.y
+			+ area->npcs [i].origin.y)*scaling;
+	      pers.w = area->npcs [i].srcs [0].w*scaling;
+	      pers.h = area->npcs [i].srcs [0].h*scaling;
 	      SDL_RenderCopy (rend, area->npcs [i].texture,
 			      &area->npcs [i].srcs [area->npcs [i].facing], &pers);
 	    }
@@ -1160,10 +1198,10 @@ main (int argc, char *argv[])
 	      if (vis.type < VISIBLE_HEALTH || vis.type > VISIBLE_FLESH)
 		continue;
 
-	      pers.x = -camera_src.x + area->walkable.x + ntohl (vis.x);
-	      pers.y = -camera_src.y + area->walkable.y + ntohl (vis.y);
-	      pers.w = GRID_CELL_W;
-	      pers.h = GRID_CELL_H;
+	      pers.x = (-camera_src.x + area->walkable.x + ntohl (vis.x))*scaling;
+	      pers.y = (-camera_src.y + area->walkable.y + ntohl (vis.y))*scaling;
+	      pers.w = GRID_CELL_W*scaling;
+	      pers.h = GRID_CELL_H*scaling;
 	      SDL_RenderCopy (rend, objectstxtr,
 			      vis.type == VISIBLE_HEALTH ? &healthobjrect
 			      : vis.type == VISIBLE_AMMO ? &bulletobjrect
@@ -1180,10 +1218,10 @@ main (int argc, char *argv[])
 	      if (vis.type != VISIBLE_ZOMBIE)
 		continue;
 
-	      pers.x = -camera_src.x + area->walkable.x + ntohl (vis.x)
-		+ zombie_origin.x;
-	      pers.y = -camera_src.y + area->walkable.y + ntohl (vis.y)
-		+ zombie_origin.y;
+	      pers.x = (-camera_src.x + area->walkable.x + ntohl (vis.x)
+			+ zombie_origin.x)*scaling;
+	      pers.y = (-camera_src.y + area->walkable.y + ntohl (vis.y)
+			+ zombie_origin.y)*scaling;
 
 	      if (vis.is_immortal)
 		{
@@ -1193,8 +1231,8 @@ main (int argc, char *argv[])
 		    pers.y += (frame_counter%99/33-1)*5;
 		}
 
-	      pers.w = zombie_origin.w;
-	      pers.h = zombie_origin.h;
+	      pers.w = zombie_origin.w*scaling;
+	      pers.h = zombie_origin.h*scaling;
 	      SDL_RenderCopy (rend, zombietxtr,
 			      &zombie_srcs [ntohl (vis.facing)*3+
 					    ((vis.speed_x || vis.speed_y)
@@ -1214,12 +1252,12 @@ main (int argc, char *argv[])
 	      if (vis.type != VISIBLE_PLAYER)
 		continue;
 
-	      pers.x = -camera_src.x + area->walkable.x + ntohl (vis.x)
-		+ character_origin [vis.subtype].x;
-	      pers.y = -camera_src.y + area->walkable.y + ntohl (vis.y)
-		+ character_origin [vis.subtype].y;
-	      pers.w = character_origin [vis.subtype].w;
-	      pers.h = character_origin [vis.subtype].h;
+	      pers.x = (-camera_src.x + area->walkable.x + ntohl (vis.x)
+			+ character_origin [vis.subtype].x)*scaling;
+	      pers.y = (-camera_src.y + area->walkable.y + ntohl (vis.y)
+			+ character_origin [vis.subtype].y)*scaling;
+	      pers.w = character_origin [vis.subtype].w*scaling;
+	      pers.h = character_origin [vis.subtype].h*scaling;
 	      SDL_RenderCopy (rend, charactertxtr,
 			      &character_srcs [vis.subtype*12
 					       +ntohl (vis.facing)*3+
@@ -1230,12 +1268,12 @@ main (int argc, char *argv[])
 
 	  if (!is_immortal || frame_counter%130 < 65)
 	    {
-	      character_dest.x = -camera_src.x + area->walkable.x + character_box.x
-		+ character_origin [bodytype].x;
-	      character_dest.y = -camera_src.y + area->walkable.y + character_box.y
-		+ character_origin [bodytype].y;
-	      character_dest.w = character_origin [bodytype].w;
-	      character_dest.h = character_origin [bodytype].h;
+	      character_dest.x = (-camera_src.x + area->walkable.x + character_box.x
+				  + character_origin [bodytype].x)*scaling;
+	      character_dest.y = (-camera_src.y + area->walkable.y + character_box.y
+				  + character_origin [bodytype].y)*scaling;
+	      character_dest.w = character_origin [bodytype].w*scaling;
+	      character_dest.h = character_origin [bodytype].h*scaling;
 	      SDL_RenderCopy (rend, charactertxtr,
 			      &character_srcs [bodytype*12
 					       +loc_char_facing*3+
@@ -1253,10 +1291,10 @@ main (int argc, char *argv[])
 		  && vis.type != VISIBLE_SEARCHING)
 		continue;
 
-	      pers.x = -camera_src.x + area->walkable.x + ntohl (vis.x);
-	      pers.y = -camera_src.y + area->walkable.y + ntohl (vis.y);
-	      pers.w = GRID_CELL_W;
-	      pers.h = GRID_CELL_H;
+	      pers.x = (-camera_src.x + area->walkable.x + ntohl (vis.x))*scaling;
+	      pers.y = (-camera_src.y + area->walkable.y + ntohl (vis.y))*scaling;
+	      pers.w = GRID_CELL_W*scaling;
+	      pers.h = GRID_CELL_H*scaling;
 	      SDL_RenderCopy (rend, objectstxtr,
 			      vis.type == VISIBLE_SEARCHABLE ? &searchableiconrect
 			      : &searchingiconrect, &pers);
@@ -1282,8 +1320,10 @@ main (int argc, char *argv[])
 	      if (vis.type != VISIBLE_SHOT)
 		continue;
 
-	      sh.x = -camera_src.x + area->walkable.x + ntohl (vis.x);
-	      sh.y = -camera_src.y + area->walkable.y + ntohl (vis.y);
+	      sh.x = (-camera_src.x + area->walkable.x + ntohl (vis.x))*scaling;
+	      sh.y = (-camera_src.y + area->walkable.y + ntohl (vis.y))*scaling;
+	      sh.w = GRID_CELL_W*scaling;
+	      sh.h = GRID_CELL_H*scaling;
 	      SDL_RenderCopy (rend, effectstxtr, &shot_src, &sh);
 	    }
 
@@ -1371,8 +1411,8 @@ main (int argc, char *argv[])
 		}
 
 	      SDL_RenderCopy (rend, bagtxtr,
-			      is_searching == 1 ? &halfscreen : &screen_dest,
-			      is_searching == 1 ? &halfscreen : &screen_dest);
+			      is_searching == 1 ? &singlebagsrc : &doublebagsrc,
+			      is_searching == 1 ? &leftscreen : &screen_dest);
 
 	      for (i = 0; i < BAG_SIZE*is_searching; i++)
 		{
@@ -1403,14 +1443,14 @@ main (int argc, char *argv[])
 		    }
 		}
 
-	      bagcursordest.x = bagslotsrects [bagcursor].x-3;
-	      bagcursordest.y = bagslotsrects [bagcursor].y-3;
+	      bagcursordest.x = bagslotsrects [bagcursor].x-3*scaling;
+	      bagcursordest.y = bagslotsrects [bagcursor].y-3*scaling;
 	      SDL_RenderCopy (rend, bagtxtr, &bagcursorsrc, &bagcursordest);
 
 	      if (bagswap1 >= 0)
 		{
-		  bagcursordest.x = bagslotsrects [bagswap1].x-3;
-		  bagcursordest.y = bagslotsrects [bagswap1].y-3;
+		  bagcursordest.x = bagslotsrects [bagswap1].x-3*scaling;
+		  bagcursordest.y = bagslotsrects [bagswap1].y-3*scaling;
 		  SDL_RenderCopy (rend, bagtxtr, &bagswapsrc, &bagcursordest);
 		}
 
