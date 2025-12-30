@@ -23,7 +23,7 @@
 
 #define RECT_BY_GRID(x,y,w,h) {(x)*GRID_CELL_W, (y)*GRID_CELL_H, (w)*GRID_CELL_W, \
     (h)*GRID_CELL_H}
-#define R_BY_GR(x,y,w,h) RECT_BY_GRID(x, y, w, h)
+#define R_BY_GR RECT_BY_GRID
 
 
 #define RECT_X_INTERSECT(i,j) ((i).x+(i).w>(j).x&&(j).x+(j).w>(i).x)
