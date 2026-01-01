@@ -1495,10 +1495,10 @@ main (int argc, char *argv[])
       R_BY_GR (64, 58, 1, 2), R_BY_GR (65, 59, 1, 2),
       R_BY_GR (66, 60, 1, 4)},
 
-    field_zombie_spawns [] = {RECT_BY_GRID (13, 31, 1, 1),
-			      RECT_BY_GRID (31, 22, 1, 1),
-			      RECT_BY_GRID (16, 0, 1, 1),
-			      RECT_BY_GRID (0, 23, 1, 1)};
+    field_zombie_spawns [] = {RECT_BY_GRID (0, 23, 1, 1),
+			      RECT_BY_GRID (31, 63, 1, 1),
+			      RECT_BY_GRID (44, 0, 1, 1),
+			      RECT_BY_GRID (71, 32, 1, 1)};
 
   struct server_area room = {0};
   SDL_Rect room_walkable = RECT_BY_GRID (0, 0, 12, 12),
