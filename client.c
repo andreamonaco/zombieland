@@ -414,12 +414,17 @@ main (int argc, char *argv[])
 			  {0, 0, 16, 16}},
     character_box = RECT_BY_GRID (6, 0, 1, 1),
     character_dest = {0, 0, 16, 21}, pers, shot_src = {40, 18, 16, 16},
-    sh = {0, 0, GRID_CELL_W, GRID_CELL_H},
+    sh = {0, 0, GRID_CELL_W, GRID_CELL_H}, *zombierects,
     zombie_srcs [] = {{0, 6, 16, 21}, {16, 6, 16, 21}, {48, 6, 16, 21},
 		      {0, 69, 16, 21}, {16, 69, 16, 21}, {48, 69, 16, 21},
 		      {0, 38, 16, 21}, {16, 38, 16, 21}, {48, 38, 16, 21},
 		      {0, 102, 16, 21}, {16, 102, 16, 21}, {48, 102, 16, 21}},
-    zombie_origin = {0, -5, 16, 21};
+    zombie_origin = {0, -5, 16, 21},
+    blob_srcs [] = {{0, 3, 32, 32}, {31, 3, 32, 32}, {95, 3, 32, 32},
+		    {0, 96, 32, 32}, {31, 96, 32, 32}, {95, 96, 32, 32},
+		    {0, 68, 32, 32}, {31, 68, 32, 32}, {95, 68, 32, 32},
+		    {0, 36, 32, 32}, {31, 36, 32, 32}, {95, 36, 32, 32}},
+    blob_origin = {0, 0, 0, 0};
 
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
     do_shoot = 0, do_stab = 0, do_search = 0, bodytype = 0,
@@ -434,8 +439,8 @@ main (int argc, char *argv[])
   SDL_Event event;
 
   SDL_Texture *overworldtxtr, *overworld2txtr, *overworld3txtr, *interiorstxtr,
-    *charactertxtr, *zombietxtr, *npctxtr, *effectstxtr, *texttxtr, *bagtxtr,
-    *objectstxtr;
+    *charactertxtr, *zombietxtr, *blobtxtr, *npctxtr, *effectstxtr, *texttxtr,
+    *bagtxtr, *objectstxtr;
   SDL_Surface *iconsurf, *textsurf;
   TTF_Font *hudfont, *textfont;
   char textbox [TEXTLINESIZE*MAXTEXTLINES+1], hudtext [20];
@@ -682,6 +687,7 @@ main (int argc, char *argv[])
   interiorstxtr = load_texture ("interiors.png", rend);
   charactertxtr = load_texture ("character.png", rend);
   zombietxtr = load_texture ("NPC_test.png", rend);
+  blobtxtr = load_texture ("jumblysprite.png", rend);
   npctxtr = load_texture ("log.png", rend);
   effectstxtr = load_texture ("effects.png", rend);
   bagtxtr = load_texture ("bag.png", rend);
@@ -1231,10 +1237,21 @@ main (int argc, char *argv[])
 		    pers.y += (frame_counter%99/33-1)*5;
 		}
 
-	      pers.w = zombie_origin.w*scaling;
-	      pers.h = zombie_origin.h*scaling;
-	      SDL_RenderCopy (rend, zombietxtr,
-			      &zombie_srcs [ntohl (vis.facing)*3+
+	      if (vis.subtype == ZOMBIE_WALKER)
+		{
+		  pers.w = zombie_origin.w*scaling;
+		  pers.h = zombie_origin.h*scaling;
+		}
+	      else
+		{
+		  pers.w = 32*scaling;
+		  pers.h = 32*scaling;
+		}
+
+	      zombierects = vis.subtype == ZOMBIE_WALKER ? zombie_srcs : blob_srcs;
+
+	      SDL_RenderCopy (rend, vis.subtype == ZOMBIE_WALKER ? zombietxtr : blobtxtr,
+			      &zombierects [ntohl (vis.facing)*3+
 					    ((vis.speed_x || vis.speed_y)
 					     ? 1+(frame_counter%400)/200 : 0)],
 			      &pers);

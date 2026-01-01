@@ -73,6 +73,14 @@ facing
   };
 
 
+enum
+zombie_type
+  {
+    ZOMBIE_WALKER,
+    ZOMBIE_BLOB
+  };
+
+
 
 #define MSG_LOGIN              0
 #define MSG_LOGINOK            1

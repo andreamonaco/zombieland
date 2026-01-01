@@ -45,7 +45,9 @@
 
 
 #define CHAR_SPEED 2
-#define ZOMBIE_SPEED 2
+
+#define ZOMBIE_WALKER_SPEED 2
+#define ZOMBIE_BLOB_SPEED 1
 
 
 #define GUN_RANGE 120
@@ -55,7 +57,9 @@
 
 #define MAX_ZOMBIE_HEALTH 12
 
-#define TOUCH_DAMAGE 1
+#define TOUCH_DAMAGE_FROM_WALKER 1
+#define TOUCH_DAMAGE_FROM_BLOB   5
+
 #define STAB_DAMAGE  2
 #define SHOOT_DAMAGE 6
 
@@ -119,8 +123,14 @@ player
 };
 
 
+#define ZOMBIE_WALKER_THINKING_INTERVAL 25
+#define ZOMBIE_BLOB_THINKING_INTERVAL 75
+
+
 struct zombie
 {
+  enum zombie_type type;
+
   struct agent *agent;
 
   enum facing facing;
@@ -470,15 +480,16 @@ make_warp_by_grid (int placex, int placey, int placew, int placeh,
 
 
 struct zombie *
-make_zombie (int placex, int placey, enum facing facing,
-	     struct server_area *area, struct zombie *next,
-	     struct agent **agents)
+make_zombie (enum zombie_type type, int placex, int placey, enum facing facing,
+	     struct server_area *area, struct zombie *next, struct agent **agents)
 {
   struct zombie *ret = malloc_and_check (sizeof (*ret));
   struct agent *a = malloc_and_check (sizeof (*a));
 
   a->area = area;
-  set_rect (&a->place, placex, placey, GRID_CELL_W, GRID_CELL_H);
+  set_rect (&a->place, placex, placey,
+	    type == ZOMBIE_WALKER ? GRID_CELL_W : 2*GRID_CELL_W,
+	    type == ZOMBIE_WALKER ? GRID_CELL_H : 2*GRID_CELL_H);
   a->life = MAX_ZOMBIE_HEALTH;
   a->immortal = 0;
   a->type = AGENT_ZOMBIE;
@@ -491,6 +502,7 @@ make_zombie (int placex, int placey, enum facing facing,
 
   *agents = a;
 
+  ret->type = type;
   ret->agent = a;
   ret->facing = facing;
   ret->speed_x = ret->speed_y = 0;
@@ -729,7 +741,8 @@ move_character (struct player *pl, SDL_Rect walkable, SDL_Rect full_obstacles []
 	  if (!pl->agent->immortal)
 	    {
 	      pl->agent->immortal = IMMORTAL_DURATION;
-	      pl->agent->life -= TOUCH_DAMAGE;
+	      pl->agent->life -= z->type == ZOMBIE_WALKER
+		? TOUCH_DAMAGE_FROM_WALKER : TOUCH_DAMAGE_FROM_BLOB;
 	      pl->freeze = 6;
 	      pl->speed_x = -pl->speed_x*2;
 	      pl->speed_y = -pl->speed_y*2;
@@ -750,7 +763,7 @@ SDL_Rect
 move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_y,
 	     SDL_Rect walkable, SDL_Rect full_obstacles [],
 	     int full_obstacles_num, SDL_Rect half_obstacles [],
-	     int half_obstacles_num, struct player pls [])
+	     int half_obstacles_num, struct player pls [], enum zombie_type zt)
 {
   int collided, i, sx = speed_x, sy = speed_y;
 
@@ -789,7 +802,8 @@ move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_
 	  if (!pls [i].agent->immortal)
 	    {
 	      pls [i].agent->immortal = IMMORTAL_DURATION;
-	      pls [i].agent->life -= TOUCH_DAMAGE;
+	      pls [i].agent->life -= zt == ZOMBIE_WALKER
+		? TOUCH_DAMAGE_FROM_WALKER : TOUCH_DAMAGE_FROM_BLOB;
 	      pls [i].freeze = 6;
 	      pls [i].speed_x = sx*4;
 	      pls [i].speed_y = sy*4;
@@ -1192,7 +1206,8 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	  vis.type = htonl (as->type == AGENT_PLAYER ? VISIBLE_PLAYER
 			    : VISIBLE_ZOMBIE);
 	  vis.subtype = as->type == AGENT_PLAYER
-	    ? htonl (as->data_ptr.player->bodytype) : 0;
+	    ? htonl (as->data_ptr.player->bodytype) :
+	    as->type == AGENT_ZOMBIE ? htonl (as->data_ptr.zombie->type) : 0;
 	  vis.x = htonl (as->place.x);
 	  vis.y = htonl (as->place.y);
 	  vis.w = htonl (as->place.w);
@@ -1862,13 +1877,15 @@ main (int argc, char *argv[])
 		{
 		  if (!z->next_thinking)
 		    {
-		      id = compute_nearest_player (z, players, &dist);
+		      if (z->type == ZOMBIE_WALKER)
+			id = compute_nearest_player (z, players, &dist);
 
-		      if (id != -1 && dist < ZOMBIE_SIGHT)
+		      if (z->type == ZOMBIE_WALKER && id != -1
+			  && dist < ZOMBIE_SIGHT)
 			{
 			  if (z->agent->place.x != players [id].agent->place.x)
 			    {
-			      z->speed_x = ZOMBIE_SPEED
+			      z->speed_x = ZOMBIE_WALKER_SPEED
 				* (z->agent->place.x > players [id].agent->place.x
 				   ? -1 : 1);
 			      z->facing = z->speed_x > 0 ? FACING_RIGHT : FACING_LEFT;
@@ -1878,7 +1895,7 @@ main (int argc, char *argv[])
 
 			  if (z->agent->place.y != players [id].agent->place.y)
 			    {
-			      z->speed_y = ZOMBIE_SPEED
+			      z->speed_y = ZOMBIE_WALKER_SPEED
 				* (z->agent->place.y > players [id].agent->place.y
 				   ? -1 : 1);
 			      z->facing = z->speed_y > 0 ? FACING_DOWN : FACING_UP;
@@ -1888,16 +1905,22 @@ main (int argc, char *argv[])
 			}
 		      else
 			{
-			  z->speed_x = (rand () % 3 - 1)*ZOMBIE_SPEED;
+			  z->speed_x = (rand () % 3 - 1)*
+			    (z->type == ZOMBIE_WALKER ? ZOMBIE_WALKER_SPEED
+			     : ZOMBIE_BLOB_SPEED);
 			  z->facing = z->speed_x > 0 ? FACING_DOWN
 			    : z->speed_x < 0 ? FACING_UP : z->facing;
 
-			  z->speed_y = (rand () % 3 - 1)*ZOMBIE_SPEED;
+			  z->speed_y = (rand () % 3 - 1)*
+			    (z->type == ZOMBIE_WALKER ? ZOMBIE_WALKER_SPEED
+			     : ZOMBIE_BLOB_SPEED);
 			  z->facing = z->speed_y > 0 ? FACING_DOWN
 			    : z->speed_y < 0 ? FACING_UP : z->facing;
 			}
 
-		      z->next_thinking = 25;
+		      z->next_thinking = z->type == ZOMBIE_WALKER
+			? ZOMBIE_WALKER_THINKING_INTERVAL
+			: ZOMBIE_BLOB_THINKING_INTERVAL;
 		    }
 		  else
 		    z->next_thinking--;
@@ -1932,7 +1955,9 @@ main (int argc, char *argv[])
 	      if (area->zombie_spawns_num && area->zombies_num < MAX_ZOMBIES)
 		{
 		  i = rand () % area->zombie_spawns_num;
-		  area->zombies = make_zombie (area->zombie_spawns [i].x,
+		  area->zombies = make_zombie (rand () % 10 < 8 ? ZOMBIE_WALKER
+					       : ZOMBIE_BLOB,
+					       area->zombie_spawns [i].x,
 					       area->zombie_spawns [i].y,
 					       FACING_DOWN, area, area->zombies,
 					       &agents);
@@ -2371,7 +2396,7 @@ main (int argc, char *argv[])
 						 area->full_obstacles_num,
 						 area->half_obstacles,
 						 area->half_obstacles_num,
-						 players);
+						 players, z->type);
 
 		  prz = z;
 		  z = z->next;
