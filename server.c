@@ -1908,8 +1908,8 @@ main (int argc, char *argv[])
 			  z->speed_x = (rand () % 3 - 1)*
 			    (z->type == ZOMBIE_WALKER ? ZOMBIE_WALKER_SPEED
 			     : ZOMBIE_BLOB_SPEED);
-			  z->facing = z->speed_x > 0 ? FACING_DOWN
-			    : z->speed_x < 0 ? FACING_UP : z->facing;
+			  z->facing = z->speed_x > 0 ? FACING_RIGHT
+			    : z->speed_x < 0 ? FACING_LEFT : z->facing;
 
 			  z->speed_y = (rand () % 3 - 1)*
 			    (z->type == ZOMBIE_WALKER ? ZOMBIE_WALKER_SPEED
