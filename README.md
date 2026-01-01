@@ -127,6 +127,11 @@ The actual maps are made by me and retain the same license.
 The player sprites (character.png), zombie sprite (NPC_test.png) and NPC sprite
 (log.png) come from those same sets.
 
+The file jumblysprite.png is upscaled from
+
+"Monster Sprites" by Kemono licensed CC BY-SA 3.0:
+https://opengameart.org/content/monster-sprites
+
 The spark effect in effects.png comes from:
 
 "5x special effects - 2D" by rubberduck licensed CC0 1.0 Universal:
