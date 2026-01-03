@@ -105,16 +105,16 @@ client_area
 enum
 player_action
   {
-    PLAYER_DO_NOTHING,
-    PLAYER_QUIT,
-    PLAYER_MOVE_LEFT,
-    PLAYER_MOVE_RIGHT,
-    PLAYER_MOVE_UP,
-    PLAYER_MOVE_DOWN,
-    PLAYER_INTERACT,
-    PLAYER_SHOOT,
-    PLAYER_STAB,
-    PLAYER_SEARCH
+    ACTION_DO_NOTHING,
+    ACTION_PAUSE,
+    ACTION_MOVE_LEFT,
+    ACTION_MOVE_RIGHT,
+    ACTION_MOVE_UP,
+    ACTION_MOVE_DOWN,
+    ACTION_INTERACT,
+    ACTION_SHOOT,
+    ACTION_STAB,
+    ACTION_SEARCH
   };
 
 
@@ -169,15 +169,15 @@ display_string (const char *string, SDL_Rect rect, TTF_Font *font, SDL_Color col
 
 void
 display_strings_centrally (TTF_Font *font, int scaling, SDL_Color col,
-			   SDL_Renderer *rend, ...)
+			   SDL_Renderer *rend, int cursor, ...)
 {
   SDL_Texture *str;
-  SDL_Rect rect;
+  SDL_Rect rect, cursorrect;
   va_list valist;
   char *s;
   int n = 0, xcenter = WINDOW_WIDTH*scaling/2, ystep;
 
-  va_start (valist, rend);
+  va_start (valist, cursor);
 
   while ((s = va_arg (valist, char *)))
     {
@@ -189,7 +189,9 @@ display_strings_centrally (TTF_Font *font, int scaling, SDL_Color col,
   ystep = WINDOW_HEIGHT*scaling/n;
   rect.y = ystep/2-HUD_FONT_SIZE*scaling/2;
 
-  va_start (valist, rend);
+  n = 0;
+
+  va_start (valist, cursor);
 
   while ((s = va_arg (valist, char *)))
     {
@@ -200,9 +202,22 @@ display_strings_centrally (TTF_Font *font, int scaling, SDL_Color col,
 	  rect.x = xcenter-rect.w/2;
 
 	  SDL_RenderCopy (rend, str, NULL, &rect);
+
+	  if (n == cursor)
+	    {
+	      cursorrect.x = rect.x-20*scaling;
+	      cursorrect.y = rect.y-10*scaling;
+	      cursorrect.w = rect.w+40*scaling;
+	      cursorrect.h = rect.h+20*scaling;
+
+	      SDL_SetRenderDrawColor (rend, 0, 0, 0, 255);
+	      SDL_RenderDrawRect (rend, &cursorrect);
+	    }
+
 	  SDL_DestroyTexture (str);
 	}
 
+      n++;
       rect.y += ystep;
     }
 
@@ -249,7 +264,7 @@ display_death_screen_and_exit (TTF_Font *font, int scaling, SDL_Color col,
 	{
 	  SDL_RenderClear (rend);
 
-	  display_strings_centrally (font, scaling, col, rend, "", "YOU DIED",
+	  display_strings_centrally (font, scaling, col, rend, -1, "", "YOU DIED",
 				     "Press any key to quit...", "", (char *) NULL);
 
 	  SDL_RenderPresent (rend);
@@ -594,7 +609,8 @@ main (int argc, char *argv[])
   Mix_Chunk *shootsfx, *stabsfx, *healsfx, *reloadsfx, *eatsfx, *drinksfx,
     *pondsfx;
 
-  int quit = 0, i, j, scaling = 1, limit_fps = 1, verbose = 0, config_keys = 0;
+  int quit = 0, i, j, scaling = 1, limit_fps = 1, verbose = 0, config_keys = 0,
+    pause = 0, menu_cursor = 0;
   Uint32 frame_counter = 1, fc, latest_update_ticks = 0, last_sent_update = 0,
     last_display = 0, ticks;
 
@@ -906,19 +922,19 @@ main (int argc, char *argv[])
 
   if (!config_keys)
     {
-      controls [SDL_SCANCODE_A] = controls [SDL_SCANCODE_LEFT] = PLAYER_MOVE_LEFT;
-      controls [SDL_SCANCODE_D] = controls [SDL_SCANCODE_RIGHT] = PLAYER_MOVE_RIGHT;
-      controls [SDL_SCANCODE_W] = controls [SDL_SCANCODE_UP] = PLAYER_MOVE_UP;
-      controls [SDL_SCANCODE_S] = controls [SDL_SCANCODE_DOWN] = PLAYER_MOVE_DOWN;
-      controls [SDL_SCANCODE_SPACE] = PLAYER_INTERACT;
-      controls [SDL_SCANCODE_F] = PLAYER_SHOOT;
-      controls [SDL_SCANCODE_R] = PLAYER_STAB;
-      controls [SDL_SCANCODE_Q] = PLAYER_SEARCH;
+      controls [SDL_SCANCODE_A] = controls [SDL_SCANCODE_LEFT] = ACTION_MOVE_LEFT;
+      controls [SDL_SCANCODE_D] = controls [SDL_SCANCODE_RIGHT] = ACTION_MOVE_RIGHT;
+      controls [SDL_SCANCODE_W] = controls [SDL_SCANCODE_UP] = ACTION_MOVE_UP;
+      controls [SDL_SCANCODE_S] = controls [SDL_SCANCODE_DOWN] = ACTION_MOVE_DOWN;
+      controls [SDL_SCANCODE_SPACE] = ACTION_INTERACT;
+      controls [SDL_SCANCODE_F] = ACTION_SHOOT;
+      controls [SDL_SCANCODE_R] = ACTION_STAB;
+      controls [SDL_SCANCODE_Q] = ACTION_SEARCH;
     }
   else
     configure_keys (controls);
 
-  controls [SDL_SCANCODE_ESCAPE] = PLAYER_QUIT;
+  controls [SDL_SCANCODE_ESCAPE] = ACTION_PAUSE;
 
 
   SDL_RenderCopy (rend, field.texture [0], NULL, NULL);
@@ -941,11 +957,17 @@ main (int argc, char *argv[])
 	    case SDL_KEYDOWN:
 	      switch (controls [event.key.keysym.scancode])
 		{
-		case PLAYER_QUIT:
-		  exit_game ();
+		case ACTION_PAUSE:
+		  pause = !pause;
+
+		  if (pause)
+		    menu_cursor = 0;
+		  else
+		    SDL_SetRenderDrawColor (rend, 100, 100, 100, 255);
 		  break;
-		case PLAYER_MOVE_LEFT:
-		  if (!is_searching)
+		case ACTION_MOVE_LEFT:
+		  if (pause);
+		  else if (!is_searching)
 		    {
 		      loc_char_speed_x = -2;
 		      if (!loc_char_speed_y || loc_char_facing == FACING_RIGHT)
@@ -957,8 +979,9 @@ main (int argc, char *argv[])
 						   is_searching == 2);
 		    }
 		  break;
-		case PLAYER_MOVE_RIGHT:
-		  if (!is_searching)
+		case ACTION_MOVE_RIGHT:
+		  if (pause);
+		  else if (!is_searching)
 		    {
 		      loc_char_speed_x = 2;
 		      if (!loc_char_speed_y || loc_char_facing == FACING_LEFT)
@@ -970,8 +993,12 @@ main (int argc, char *argv[])
 						   is_searching == 2);
 		    }
 		  break;
-		case PLAYER_MOVE_UP:
-		  if (!is_searching)
+		case ACTION_MOVE_UP:
+		  if (pause)
+		    {
+		      menu_cursor = !menu_cursor;
+		    }
+		  else if (!is_searching)
 		    {
 		      loc_char_speed_y = -2;
 		      if (!loc_char_speed_x || loc_char_facing == FACING_DOWN)
@@ -983,8 +1010,12 @@ main (int argc, char *argv[])
 						   is_searching == 2);
 		    }
 		  break;
-		case PLAYER_MOVE_DOWN:
-		  if (!is_searching)
+		case ACTION_MOVE_DOWN:
+		  if (pause)
+		    {
+		      menu_cursor = !menu_cursor;
+		    }
+		  else if (!is_searching)
 		    {
 		      loc_char_speed_y = 2;
 		      if (!loc_char_speed_x || loc_char_facing == FACING_UP)
@@ -996,8 +1027,18 @@ main (int argc, char *argv[])
 						   is_searching == 2);
 		    }
 		  break;
-		case PLAYER_INTERACT:
-		  if (is_searching)
+		case ACTION_INTERACT:
+		  if (pause)
+		    {
+		      if (!menu_cursor)
+			{
+			  pause = 0;
+			  SDL_SetRenderDrawColor (rend, 100, 100, 100, 255);
+			}
+		      else
+			exit_game ();
+		    }
+		  else if (is_searching)
 		    {
 		      if (bagswap1 >= 0)
 			{
@@ -1022,21 +1063,21 @@ main (int argc, char *argv[])
 			textlines = 0;
 		    }
 		  break;
-		case PLAYER_SHOOT:
+		case ACTION_SHOOT:
 		  if (SHOOT_REST*FRAME_DURATION < ticks-last_shoot)
 		    {
 		      do_shoot = RESEND_ACTION;
 		      last_shoot = ticks;
 		    }
 		  break;
-		case PLAYER_STAB:
+		case ACTION_STAB:
 		  if (STAB_REST*FRAME_DURATION < ticks-last_stab)
 		    {
 		      do_stab = RESEND_ACTION;
 		      last_stab = ticks;
 		    }
 		  break;
-		case PLAYER_SEARCH:
+		case ACTION_SEARCH:
 		  do_search = !do_search;
 		  break;
 		default:
@@ -1046,28 +1087,28 @@ main (int argc, char *argv[])
 	    case SDL_KEYUP:
 	      switch (controls [event.key.keysym.scancode])
 		{
-		case PLAYER_MOVE_LEFT:
+		case ACTION_MOVE_LEFT:
 		  if (loc_char_speed_x == -2)
 		    loc_char_speed_x = 0;
 		  if (loc_char_speed_y)
 		    loc_char_facing = (loc_char_speed_y > 0) ? FACING_DOWN
 		      : FACING_UP;
 		  break;
-		case PLAYER_MOVE_RIGHT:
+		case ACTION_MOVE_RIGHT:
 		  if (loc_char_speed_x == 2)
 		    loc_char_speed_x = 0;
 		  if (loc_char_speed_y)
 		    loc_char_facing = loc_char_speed_y > 0 ? FACING_DOWN
 		      : FACING_UP;
 		  break;
-		case PLAYER_MOVE_UP:
+		case ACTION_MOVE_UP:
 		  if (loc_char_speed_y == -2)
 		    loc_char_speed_y = 0;
 		  if (loc_char_speed_x)
 		    loc_char_facing = loc_char_speed_x > 0 ? FACING_RIGHT
 		      : FACING_LEFT;
 		  break;
-		case PLAYER_MOVE_DOWN:
+		case ACTION_MOVE_DOWN:
 		  if (loc_char_speed_y == 2)
 		    loc_char_speed_y = 0;
 		  if (loc_char_speed_x)
@@ -1181,6 +1222,21 @@ main (int argc, char *argv[])
 	    printf ("warning: at least one display frame was skipped\n");
 
 	  last_display = frame_counter;
+
+
+	  if (pause)
+	    {
+	      SDL_SetRenderDrawColor (rend, 255, 255, 255, 255);
+	      SDL_RenderClear (rend);
+
+	      display_strings_centrally (hudfont, scaling, textcol, rend,
+					 menu_cursor+2, "PAUSE", "", "Continue",
+					 "Quit", (char *) NULL);
+
+	      SDL_RenderPresent (rend);
+
+	      continue;
+	    }
 
 
 	  state = (struct message *)latest_srv_state;
