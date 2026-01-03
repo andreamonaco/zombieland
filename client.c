@@ -24,6 +24,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <strings.h>
 #include <sys/types.h>
@@ -48,6 +49,9 @@
 #define AREA_FRAME_DURATION 130
 
 #define RESEND_ACTION 3
+
+
+#define HUD_FONT_SIZE 12
 
 
 struct
@@ -115,9 +119,9 @@ player_action
 
 
 
-void
-render_string (const char *string, SDL_Rect rect, TTF_Font *font, SDL_Color col,
-	       SDL_Renderer *rend)
+SDL_Texture *
+render_string (const char *string, TTF_Font *font, SDL_Color col,
+	       SDL_Renderer *rend, int *w, int *h)
 {
   SDL_Surface *surf;
   SDL_Texture *txtr;
@@ -139,12 +143,120 @@ render_string (const char *string, SDL_Rect rect, TTF_Font *font, SDL_Color col,
       exit (1);
     }
 
-  rect.w = surf->w;
-  rect.h = surf->h;
+  *w = surf->w;
+  *h = surf->h;
+
+  SDL_FreeSurface (surf);
+
+  return txtr;
+}
+
+
+void
+display_string (const char *string, SDL_Rect rect, TTF_Font *font, SDL_Color col,
+		SDL_Renderer *rend)
+{
+  int w, h;
+  SDL_Texture *txtr = render_string (string, font, col, rend, &w, &h);
+
+  rect.w = w;
+  rect.h = h;
 
   SDL_RenderCopy (rend, txtr, NULL, &rect);
   SDL_DestroyTexture (txtr);
-  SDL_FreeSurface (surf);
+}
+
+
+void
+display_strings_centrally (TTF_Font *font, int scaling, SDL_Color col,
+			   SDL_Renderer *rend, ...)
+{
+  SDL_Texture *str;
+  SDL_Rect rect;
+  va_list valist;
+  char *s;
+  int n = 0, xcenter = WINDOW_WIDTH*scaling/2, ystep;
+
+  va_start (valist, rend);
+
+  while ((s = va_arg (valist, char *)))
+    {
+      n++;
+    }
+
+  va_end (valist);
+
+  ystep = WINDOW_HEIGHT*scaling/n;
+  rect.y = ystep/2-HUD_FONT_SIZE*scaling/2;
+
+  va_start (valist, rend);
+
+  while ((s = va_arg (valist, char *)))
+    {
+      if (*s)
+	{
+	  str = render_string (s, font, col, rend, &rect.w, &rect.h);
+
+	  rect.x = xcenter-rect.w/2;
+
+	  SDL_RenderCopy (rend, str, NULL, &rect);
+	  SDL_DestroyTexture (str);
+	}
+
+      rect.y += ystep;
+    }
+
+  va_end (valist);
+}
+
+
+void
+exit_game (void)
+{
+  printf ("you quit the game.  Make sure that no client is "
+	  "started from this system in the next 60 seconds\n");
+  exit (0);
+}
+
+
+void
+display_death_screen_and_exit (TTF_Font *font, int scaling, SDL_Color col,
+			       SDL_Renderer *rend)
+{
+  SDL_Event event;
+  int ticks, last_refresh = 0;
+
+  SDL_SetRenderDrawColor (rend, 255, 255, 255, 255);
+
+  while (1)
+    {
+      ticks = SDL_GetTicks ();
+
+      while (SDL_PollEvent (&event))
+	{
+	  switch (event.type)
+	    {
+	    case SDL_KEYDOWN:
+	    case SDL_QUIT:
+	      exit_game ();
+	      break;
+	    default:
+	      break;
+	    }
+	}
+
+      if (ticks-last_refresh > DURATION_OF_DISPLAY_FRAME)
+	{
+	  SDL_RenderClear (rend);
+
+	  display_strings_centrally (font, scaling, col, rend, "", "YOU DIED",
+				     "Press any key to quit...", "", (char *) NULL);
+
+	  SDL_RenderPresent (rend);
+
+	  last_refresh = ticks;
+	}
+    }
 }
 
 
@@ -704,7 +816,7 @@ main (int argc, char *argv[])
 
   SDL_SetWindowIcon (win, iconsurf);
 
-  hudfont = load_font ("Boxy-Bold.ttf", 12*scaling);
+  hudfont = load_font ("Boxy-Bold.ttf", HUD_FONT_SIZE*scaling);
   textfont = load_font ("DigitalJots.ttf", 20*scaling);
 
   shootsfx = load_wav ("bang_01.ogg");
@@ -830,9 +942,7 @@ main (int argc, char *argv[])
 	      switch (controls [event.key.keysym.scancode])
 		{
 		case PLAYER_QUIT:
-		  printf ("you quit the game.  Make sure that no client is "
-			  "started from this system in the next 60 seconds\n");
-		  quit = 1;
+		  exit_game ();
 		  break;
 		case PLAYER_MOVE_LEFT:
 		  if (!is_searching)
@@ -969,9 +1079,7 @@ main (int argc, char *argv[])
 		}
 	      break;
 	    case SDL_QUIT:
-	      printf ("you quit the game.  Make sure that no client is "
-		      "started from this system in the next 60 seconds\n");
-	      quit = 1;
+	      exit_game ();
 	      break;
 	    }
 	}
@@ -1048,8 +1156,8 @@ main (int argc, char *argv[])
 		}
 	      break;
 	    case MSG_PLAYER_DIED:
-	      printf ("you died!\n");
-	      return 1;
+	      display_death_screen_and_exit (hudfont, scaling, textcol, rend);
+	      break;
 	    default:
 	      fprintf (stderr, "got wrong response from server (%d)\n", state->type);
 	      return 1;
@@ -1406,16 +1514,16 @@ main (int argc, char *argv[])
 	    }
 
 	  sprintf (hudtext, "LIFE %2d/%2d", life, MAX_PLAYER_HEALTH);
-	  render_string (hudtext, charliferect, hudfont, textcol, rend);
+	  display_string (hudtext, charliferect, hudfont, textcol, rend);
 
 	  sprintf (hudtext, "AMMO %2d/16", bullets);
-	  render_string (hudtext, bulletsrect, hudfont, textcol, rend);
+	  display_string (hudtext, bulletsrect, hudfont, textcol, rend);
 
 	  sprintf (hudtext, "HUNGER %2d/20", hunger);
-	  render_string (hudtext, hungerrect, hudfont, textcol, rend);
+	  display_string (hudtext, hungerrect, hudfont, textcol, rend);
 
 	  sprintf (hudtext, "THIRST %2d/20", thirst);
-	  render_string (hudtext, thirstrect, hudfont, textcol, rend);
+	  display_string (hudtext, thirstrect, hudfont, textcol, rend);
 
 	  if (state->args.server_state.is_searching)
 	    {
@@ -1471,8 +1579,8 @@ main (int argc, char *argv[])
 		  SDL_RenderCopy (rend, bagtxtr, &bagswapsrc, &bagcursordest);
 		}
 
-	      render_string (objcaptions [ntohl (state->args.server_state.bag [bagcursor])],
-			     objcaptionrect, hudfont, textcol, rend);
+	      display_string (objcaptions [ntohl (state->args.server_state.bag [bagcursor])],
+			      objcaptionrect, hudfont, textcol, rend);
 	    }
 	  else
 	    is_searching = 0;
