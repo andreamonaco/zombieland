@@ -1000,7 +1000,11 @@ main (int argc, char *argv[])
   character_dest.h = character_origin [bodytype].h;
   SDL_RenderCopy (rend, charactertxtr, &character_srcs [loc_char_facing],
 		  &character_dest);
+
+  SDL_ShowCursor (SDL_DISABLE);
+
   SDL_RenderPresent (rend);
+
 
   while (!quit)
     {
