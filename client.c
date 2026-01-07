@@ -609,7 +609,8 @@ main (int argc, char *argv[])
     screen_overlay = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
     leftscreen = {0, 0, WINDOW_WIDTH/2, WINDOW_HEIGHT},
     singlebagsrc = {0, 0, WINDOW_WIDTH/2, WINDOW_HEIGHT},
-    doublebagsrc = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
+    doublebagsrc = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
+    viewport;
 
   Mix_Chunk *shootsfx, *stabsfx, *healsfx, *reloadsfx, *eatsfx, *drinksfx,
     *pondsfx;
@@ -963,7 +964,16 @@ main (int argc, char *argv[])
     }
 
   if (fullscreen)
-    SDL_RenderSetClipRect (rend, &screen_dest);
+    {
+      SDL_GetRendererOutputSize (rend, &viewport.w, &viewport.h);
+
+      viewport.x = viewport.w/2-screen_dest.w/2;
+      viewport.y = viewport.h/2-screen_dest.h/2;
+      viewport.w = screen_dest.w;
+      viewport.h = screen_dest.h;
+
+      SDL_RenderSetViewport (rend, &viewport);
+    }
 
 
   if (!config_keys)
