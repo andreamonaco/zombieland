@@ -239,6 +239,7 @@ display_death_screen_and_exit (TTF_Font *font, int scaling, SDL_Color col,
 			       SDL_Renderer *rend)
 {
   SDL_Event event;
+  SDL_Rect screen = {0, 0, WINDOW_WIDTH*scaling, WINDOW_HEIGHT*scaling};
   int ticks, last_refresh = 0;
 
   SDL_SetRenderDrawColor (rend, 255, 255, 255, 255);
@@ -262,7 +263,7 @@ display_death_screen_and_exit (TTF_Font *font, int scaling, SDL_Color col,
 
       if (ticks-last_refresh > DURATION_OF_DISPLAY_FRAME)
 	{
-	  SDL_RenderClear (rend);
+	  SDL_RenderFillRect (rend, &screen);
 
 	  display_strings_centrally (font, scaling, col, rend, -1, "", "YOU DIED",
 				     "Press any key to quit...", "", (char *) NULL);
@@ -1272,7 +1273,7 @@ main (int argc, char *argv[])
 	  if (pause)
 	    {
 	      SDL_SetRenderDrawColor (rend, 255, 255, 255, 255);
-	      SDL_RenderClear (rend);
+	      SDL_RenderFillRect (rend, &screen_dest);
 
 	      display_strings_centrally (hudfont, scaling, textcol, rend,
 					 menu_cursor+2, "PAUSE", "", "Continue",
