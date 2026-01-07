@@ -1,4 +1,4 @@
-/*  Copyright (C) 2025 Andrea Monaco
+/*  Copyright (C) 2025-2026 Andrea Monaco
  *
  *  This file is part of zombieland, an MMO game.
  *
