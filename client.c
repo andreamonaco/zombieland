@@ -429,11 +429,14 @@ load_wav (const char *name)
 void
 print_help_and_exit (void)
 {
-  printf ("Usage: zombieland SERVER_ADDRESS PLAYER_NAME [BODY_TYPE] [OPTIONS]\n"
+  printf ("Usage: zombieland [OPTIONS] SERVER_ADDRESS PLAYER_NAME\n"
+	  "Options:\n"
+	  "\t-b, --body-type NUM   body type, must be between 0 and 6\n"
 	  "\t-d, --double-size     double the resolution through upscaling\n"
 	  "\t-u, --dont-limit-fps  don't limit display fps, otherwise it's 30 fps\n"
 	  "\t-v, --verbose         if limiting fps, print a warning for each missed frame\n"
 	  "\t-k, --configure-keys  configure controls before playing\n"
+	  "\t--                    stop parsing options\n"
 	  "\t-h, --help            display this help and exit\n");
   exit (0);
 }
@@ -609,54 +612,89 @@ main (int argc, char *argv[])
   Mix_Chunk *shootsfx, *stabsfx, *healsfx, *reloadsfx, *eatsfx, *drinksfx,
     *pondsfx;
 
+  char *servername = NULL, *playername = NULL;
   int quit = 0, i, j, scaling = 1, limit_fps = 1, verbose = 0, config_keys = 0,
-    pause = 0, menu_cursor = 0;
+    pause = 0, menu_cursor = 0, need_arg = 0, options_finished = 0;
   Uint32 frame_counter = 1, fc, latest_update_ticks = 0, last_sent_update = 0,
     last_display = 0, ticks;
 
 
-  print_welcome_message ();
-
-  if (argc < 3)
+  for (i = 1; i < argc; i++)
     {
-      fprintf (stderr, "need a server address and a login name as arguments!\n");
-      return 1;
+      if (need_arg)
+	{
+	  switch (need_arg)
+	    {
+	    case 'b':
+	      if (strlen (argv [i]) != 1 || *argv [i] < '0' || *argv [i] > '6')
+		{
+		  fprintf (stderr, "option 'b' requires an integer argument "
+			   "between 0 and 6\n");
+		  print_help_and_exit ();
+		}
+	      bodytype = *argv [i]-'0';
+	      break;
+	    }
+
+	  need_arg = 0;
+	}
+      else
+	{
+	  if (options_finished)
+	    goto parse_arg;
+	  else if (!strcmp (argv [i], "--body-type") || !strcmp (argv [i], "-b"))
+	    need_arg = 'b';
+	  else if (!strcmp (argv [i], "--double-size") || !strcmp (argv [i], "-d"))
+	    scaling = 2;
+	  else if (!strcmp (argv [i], "--dont-limit-fps") || !strcmp (argv [i], "-u"))
+	    limit_fps = 0;
+	  else if (!strcmp (argv [i], "--verbose") || !strcmp (argv [i], "-v"))
+	    verbose = 1;
+	  else if (!strcmp (argv [i], "--configure-keys") || !strcmp (argv [i], "-k"))
+	    config_keys = 1;
+	  else if (!strcmp (argv [i], "--"))
+	    options_finished = 1;
+	  else if (!strcmp (argv [i], "--help") || !strcmp (argv [i], "-h"))
+	    print_help_and_exit ();
+	  else
+	    {
+	      options_finished = 1;
+
+	    parse_arg:
+	      if (!servername)
+		servername = argv [i];
+	      else if (!playername)
+		playername = argv [i];
+	      else
+		{
+		  fprintf (stderr, "too many command-line arguments\n");
+		  print_help_and_exit ();
+		}
+	    }
+	}
     }
 
-  if (strlen (argv [2]) > MAX_LOGNAME_LEN)
+  if (need_arg)
+    {
+      fprintf (stderr, "option '%c' requires an argument\n", need_arg);
+      print_help_and_exit ();
+    }
+
+  if (!servername || !playername)
+    {
+      fprintf (stderr, "need a server address and a login name as arguments!\n");
+      print_help_and_exit ();
+    }
+
+
+  print_welcome_message ();
+
+
+  if (strlen (playername) > MAX_LOGNAME_LEN)
     {
       fprintf (stderr, "login name can't exceed %d bytes!\n", MAX_LOGNAME_LEN);
       return 1;
     }
-
-  if (argc >= 4)
-    {
-      if (strlen (argv [3]) == 1 && '0' <= *argv [3] && *argv [3] <= '6')
-	bodytype = *argv [3]-'0';
-      else
-	fprintf (stderr, "warning: body type must be between 0 and 6; "
-		 "defaulting to 0\n");
-    }
-
-  for (i = 4; i < argc; i++)
-    {
-      if (!strcmp (argv [i], "--double-size") || !strcmp (argv [i], "-d"))
-	scaling = 2;
-      else if (!strcmp (argv [i], "--dont-limit-fps") || !strcmp (argv [i], "-u"))
-	limit_fps = 0;
-      else if (!strcmp (argv [i], "--verbose") || !strcmp (argv [i], "-v"))
-	verbose = 1;
-      else if (!strcmp (argv [i], "--configure-keys") || !strcmp (argv [i], "-k"))
-	config_keys = 1;
-      else if (!strcmp (argv [i], "--help") || !strcmp (argv [i], "-h"))
-	print_help_and_exit ();
-      else
-	{
-	  fprintf (stderr, "option '%s' not valid\n", argv [i]);
-	  print_help_and_exit ();
-	}
-    }
-
 
   sockfd = socket (AF_INET, SOCK_DGRAM, 0);
 
@@ -689,7 +727,7 @@ main (int argc, char *argv[])
 
   printf ("listening on port %d...\n", ZOMBIELAND_PORT+portoff);
 
-  server = gethostbyname (argv [1]);
+  server = gethostbyname (servername);
 
   if (!server)
     {
@@ -707,10 +745,10 @@ main (int argc, char *argv[])
   msg.type = htonl (MSG_LOGIN);
   tmp = htons (portoff);
   memcpy (&msg.args.login.portoff, &tmp, sizeof (tmp));
-  strcpy (msg.args.login.logname, argv [2]);
+  strcpy (msg.args.login.logname, playername);
   msg.args.login.bodytype = htonl (bodytype);
 
-  printf ("contacting server %s... ", argv [1]);
+  printf ("contacting server %s... ", servername);
   fflush (stdout);
 
   if (sendto (sockfd, (char *)&msg, sizeof (msg), 0,
