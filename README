@@ -103,75 +103,7 @@ It should.  Let me know if you find any issue.
 
 __Who made the assets?__
 
-For the maps I used the following tilesets taken from https://opengameart.org:
-
-"Zelda-like tilesets and sprites" by ArMM1998 licensed CC0 1.0 Universal:
-https://opengameart.org/content/zelda-like-tilesets-and-sprites
-
-"RPG Urban Pack" by Kenney (www.kenney.nl) licensed CC0 1.0 Universal:
-https://opengameart.org/content/rpg-urban-pack
-
-The actual maps are made by me and retain the same license.
-
-The player sprites (character.png), zombie sprite (NPC_test.png) and NPC sprite
-(log.png) come from those same sets.
-
-The file jumblysprite.png is upscaled from
-
-"Monster Sprites" by Kemono licensed CC BY-SA 3.0:
-https://opengameart.org/content/monster-sprites
-
-The spark effect in effects.png comes from:
-
-"5x special effects - 2D" by rubberduck licensed CC0 1.0 Universal:
-https://opengameart.org/content/5x-special-effects-2d
-
-The icons in objects.png are made by me.
-
-The fonts are
-
-"Boxy Bold - TrueType Font" by Clint Bellanger (http://clintbellanger.net),
-cemkalyoncu, william.thompsonj and usr_share licensed CC0 1.0 Universal:
-https://opengameart.org/content/boxy-bold-truetype-font
-
-"Digital Jots 5x5 pixel font (with katakana)" by jdm0079 licensed CC0 1.0
-Universal:
-https://opengameart.org/content/digital-jots-5x5-pixel-font-with-katakana
-
-The sound effect bang_01.ogg comes from
-
-"25 CC0 bang / firework SFX" by rubberduck licensed CC0 1.0 Universal:
-https://opengameart.org/content/25-cc0-bang-firework-sfx
-
-while knifesharpener1.flac is taken from
-
-"Knife sharpening slice 1" by The Berklee College of Music licensed Attribution
-3.0 Unported (https://creativecommons.org/licenses/by/3.0):
-https://opengameart.org/content/knife-sharpening-slice-1
-
-reload.wav is an effect I edited starting from
-
-"Handgun Reload Sound Effect" by zer0_sol licensed CC0 1.0 Universal:
-https://opengameart.org/content/handgun-reload-sound-effect
-
-heartbeat.flac comes from
-
-"Heartbeat (single sound)" by Independent.nu licensed CC0 1.0 Universal:
-https://opengameart.org/content/heartbeat-single-sound
-
-eat.wav was edited from
-
-"7 Eating Crunches" by StarNinjas licensed CC0 1.0 Universal:
-https://opengameart.org/content/7-eating-crunches
-
-and bottle.wav comes from
-
-"RPG Sound Pack" by artisticdude licensed CC0 1.0 Universal:
-https://opengameart.org/content/rpg-sound-pack
-
-
-All these assets are not final, I will probably make my own along the way, but
-they show that the engine works.
+See ASSET-CREDITS.
 
 
 
