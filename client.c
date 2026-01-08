@@ -545,8 +545,8 @@ main (int argc, char *argv[])
 			  {0, 0, 16, 16}, {0, 0, 16, 16}, {0, 0, 16, 16},
 			  {0, 0, 16, 16}},
     character_box = RECT_BY_GRID (6, 0, 1, 1),
-    character_dest = {0, 0, 16, 21}, pers, shot_src = {40, 18, 16, 16},
-    sh = {0, 0, GRID_CELL_W, GRID_CELL_H}, *zombierects,
+    character_dest = {0, 0, 16, 21}, pers, shot1_src = {0, 32, 16, 16},
+    shot2_src = {16, 32, 16, 16}, sh = {0, 0, GRID_CELL_W, GRID_CELL_H}, *zombierects,
     zombie_srcs [] = {{0, 6, 16, 21}, {16, 6, 16, 21}, {48, 6, 16, 21},
 		      {0, 69, 16, 21}, {16, 69, 16, 21}, {48, 69, 16, 21},
 		      {0, 38, 16, 21}, {16, 38, 16, 21}, {48, 38, 16, 21},
@@ -571,8 +571,8 @@ main (int argc, char *argv[])
   SDL_Event event;
 
   SDL_Texture *overworldtxtr, *overworld2txtr, *overworld3txtr, *interiorstxtr,
-    *charactertxtr, *zombietxtr, *blobtxtr, *npctxtr, *effectstxtr, *texttxtr,
-    *bagtxtr, *objectstxtr;
+    *charactertxtr, *zombietxtr, *blobtxtr, *npctxtr, *texttxtr, *bagtxtr,
+    *objectstxtr;
   SDL_Surface *iconsurf, *textsurf;
   TTF_Font *hudfont, *textfont;
   char textbox [TEXTLINESIZE*MAXTEXTLINES+1], hudtext [20];
@@ -861,7 +861,6 @@ main (int argc, char *argv[])
   zombietxtr = load_texture ("NPC_test.png", rend);
   blobtxtr = load_texture ("jumblysprite.png", rend);
   npctxtr = load_texture ("log.png", rend);
-  effectstxtr = load_texture ("effects.png", rend);
   bagtxtr = load_texture ("bag.png", rend);
   objectstxtr = load_texture ("objects.png", rend);
 
@@ -1565,7 +1564,8 @@ main (int argc, char *argv[])
 	      sh.y = (-camera_src.y + area->walkable.y + ntohl (vis.y))*scaling;
 	      sh.w = GRID_CELL_W*scaling;
 	      sh.h = GRID_CELL_H*scaling;
-	      SDL_RenderCopy (rend, effectstxtr, &shot_src, &sh);
+	      SDL_RenderCopy (rend, objectstxtr, ntohl (vis.duration) > 5 ? &shot1_src
+			      : &shot2_src, &sh);
 	    }
 
 	  if (state->args.server_state.textbox_lines_num)

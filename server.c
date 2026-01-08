@@ -1323,6 +1323,7 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 	  && is_visible_by_player (pls [id].agent->place, ss->target))
 	{
 	  vis.type = htonl (VISIBLE_SHOT);
+	  vis.duration = htonl (ss->duration);
 	  vis.x = htonl (ss->target.x);
 	  vis.y = htonl (ss->target.y);
 	  vis.w = htonl (ss->target.w);

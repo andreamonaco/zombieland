@@ -139,6 +139,7 @@ visible
 {
   uint32_t type;
   uint32_t subtype;
+  uint32_t duration;
   uint32_t x, y, w, h;
   enum facing facing;
   int32_t speed_x, speed_y;
