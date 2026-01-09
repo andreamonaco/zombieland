@@ -311,6 +311,8 @@ move_bag_cursor (int command, int pos, int is_double)
       return (pos >= 2 && pos < 8) || pos > 9 ? pos-2 : pos;
     case SDLK_DOWN:
       return pos < 6 || (pos >= 8 && pos < 14) ? pos+2 : pos;
+    default:
+      return -1;
     }
 }
 
