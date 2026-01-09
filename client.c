@@ -78,17 +78,29 @@ npc
 
 
 struct
+animation
+{
+  SDL_Rect place;
+  int num_frames;
+  SDL_Rect *frames;
+};
+
+
+struct
 client_area
 {
   uint32_t id;
 
   SDL_Texture *texture [3];
   int respects_time;
-  SDL_Rect *display_srcs;
-  int area_frames_num;
 
-  SDL_Rect *overlay_srcs;
-  int overlay_frames_num;
+  SDL_Rect *background_src;
+
+  struct animation *background_anims;
+  int background_anims_num;
+
+  struct animation *overlay_anims;
+  int overlay_anims_num;
 
   SDL_Rect walkable;
 
@@ -342,6 +354,15 @@ configure_keys (enum player_action controls [])
 }
 
 
+SDL_Rect
+change_rect_origin (SDL_Rect *rect, SDL_Rect *neworig)
+{
+  SDL_Rect ret = {rect->x-neworig->x, rect->y-neworig->y, rect->w, rect->h};
+
+  return ret;
+}
+
+
 void
 scale_rect (SDL_Rect *rect, int factor)
 {
@@ -474,13 +495,26 @@ main (int argc, char *argv[])
   enum player_action controls [SDL_NUM_SCANCODES] = {0};
 
   struct client_area field;
-  SDL_Rect field_srcs [] = {RECT_BY_GRID (0, 0, 72, 64)},
-    field_overlays [] = {RECT_BY_GRID (0, 64, 72, 64),
-    RECT_BY_GRID (72, 64, 72, 64), RECT_BY_GRID (144, 64, 72, 64),
-    RECT_BY_GRID (216, 64, 72, 64), RECT_BY_GRID (288, 64, 72, 64)},
+  SDL_Rect anim, field_src = RECT_BY_GRID (0, 0, 72, 64),
+    field_fountain_frames []
+    = {RECT_BY_GRID (0, 64, 3, 3), RECT_BY_GRID (3, 64, 3, 3),
+       RECT_BY_GRID (6, 64, 3, 3)},
+    field_flag_frames []
+    = {RECT_BY_GRID (9, 64, 2, 2), RECT_BY_GRID (11, 64, 2, 2),
+       RECT_BY_GRID (13, 64, 2, 2), RECT_BY_GRID (15, 64, 2, 2),
+       RECT_BY_GRID (17, 64, 2, 2)},
+    field_roof = RECT_BY_GRID (19, 64, 5, 1),
     field_walkable = {0, 0, 512, 512},
     field_pond [] = {RECT_BY_GRID (63, 10, 2, 2), RECT_BY_GRID (65, 11, 4, 1),
 		     RECT_BY_GRID (69, 6, 3, 7)};
+  struct animation field_back_anim = {RECT_BY_GRID (41, 27, 3, 3), 3,
+				      field_fountain_frames};
+  struct animation field_overlay_anims [] =
+    {{RECT_BY_GRID (40, 20, 2, 2), 5, field_flag_frames},
+     {RECT_BY_GRID (41, 24, 2, 2), 5, field_flag_frames},
+     {RECT_BY_GRID (45, 24, 2, 2), 5, field_flag_frames},
+     {RECT_BY_GRID (45, 28, 2, 2), 5, field_flag_frames},
+     {RECT_BY_GRID (49, 9, 5, 1), 1, &field_roof}};
   struct walking_sfx field_sfx = {field_pond, 3, NULL, -1};
 
   struct client_area room;
@@ -606,7 +640,6 @@ main (int argc, char *argv[])
   SDL_Rect camera_src = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
     back_src = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
     screen_dest = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
-    screen_overlay = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
     leftscreen = {0, 0, WINDOW_WIDTH/2, WINDOW_HEIGHT},
     singlebagsrc = {0, 0, WINDOW_WIDTH/2, WINDOW_HEIGHT},
     doublebagsrc = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
@@ -616,7 +649,7 @@ main (int argc, char *argv[])
     *pondsfx;
 
   char *servername = NULL, *playername = NULL;
-  int quit = 0, i, j, scaling = 1, fullscreen = 0, limit_fps = 1, verbose = 0,
+  int quit = 0, i, j, frame, scaling = 1, fullscreen = 0, limit_fps = 1, verbose = 0,
     config_keys = 0, pause = 0, menu_cursor = 0, need_arg = 0, options_finished = 0;
   Uint32 frame_counter = 1, fc, latest_update_ticks = 0, last_sent_update = 0,
     last_display = 0, ticks;
@@ -892,10 +925,11 @@ main (int argc, char *argv[])
   field.texture [1] = overworld2txtr;
   field.texture [2] = overworld3txtr;
   field.respects_time = 1;
-  field.display_srcs = field_srcs;
-  field.area_frames_num = 1;
-  field.overlay_srcs = field_overlays;
-  field.overlay_frames_num = 5;
+  field.background_src = &field_src;
+  field.background_anims = &field_back_anim;
+  field.background_anims_num = 1;
+  field.overlay_anims = field_overlay_anims;
+  field.overlay_anims_num = 5;
   field.walkable = field_walkable;
   field_sfx.sfx = pondsfx;
   field.walk_sfxs = &field_sfx;
@@ -906,10 +940,7 @@ main (int argc, char *argv[])
 
   room.id = 1;
   room.texture [0] = interiorstxtr;
-  room.display_srcs = &room_src;
-  room.area_frames_num = 1;
-  room.overlay_srcs = NULL;
-  room.overlay_frames_num = 0;
+  room.background_src = &room_src;
   room.walkable = room_walkable;
   room_npcs [0].texture = npctxtr;
   room.npcs = room_npcs;
@@ -918,15 +949,13 @@ main (int argc, char *argv[])
 
   basement.id = 2;
   basement.texture [0] = interiorstxtr;
-  basement.display_srcs = &basement_src;
-  basement.area_frames_num = 1;
+  basement.background_src = &basement_src;
   basement.walkable = basement_walkable;
   basement.next = &hotel_ground;
 
   hotel_ground.id = 3;
   hotel_ground.texture [0] = interiorstxtr;
-  hotel_ground.display_srcs = &hotel_ground_src;
-  hotel_ground.area_frames_num = 1;
+  hotel_ground.background_src = &hotel_ground_src;
   hotel_ground.walkable = hotel_ground_walkable;
   hotel_ground_npcs [0].texture = npctxtr;
   hotel_ground.npcs = hotel_ground_npcs;
@@ -935,8 +964,7 @@ main (int argc, char *argv[])
 
   hotel_room.id = 4;
   hotel_room.texture [0] = interiorstxtr;
-  hotel_room.display_srcs = &hotel_room_src;
-  hotel_room.area_frames_num = 1;
+  hotel_room.background_src = &hotel_room_src;
   hotel_room.walkable = hotel_room_walkable;
 
 
@@ -1377,26 +1405,22 @@ main (int argc, char *argv[])
 	    {
 	      camera_src.x = 0;
 	    }
-	  else if (camera_src.x+WINDOW_WIDTH > area->display_srcs->w)
+	  else if (camera_src.x+WINDOW_WIDTH > area->background_src->w)
 	    {
-	      camera_src.x = area->display_srcs->w-WINDOW_WIDTH;
+	      camera_src.x = area->background_src->w-WINDOW_WIDTH;
 	    }
 
 	  if (camera_src.y < 0)
 	    {
 	      camera_src.y = 0;
 	    }
-	  else if (camera_src.y+WINDOW_HEIGHT > area->display_srcs->h)
+	  else if (camera_src.y+WINDOW_HEIGHT > area->background_src->h)
 	    {
-	      camera_src.y = area->display_srcs->h-WINDOW_HEIGHT;
+	      camera_src.y = area->background_src->h-WINDOW_HEIGHT;
 	    }
 
-	  back_src.x = area->display_srcs
-	    [frame_counter%(area->area_frames_num*AREA_FRAME_DURATION)
-	     /AREA_FRAME_DURATION].x + camera_src.x;
-	  back_src.y = area->display_srcs
-	    [frame_counter%(area->area_frames_num*AREA_FRAME_DURATION)
-	     /AREA_FRAME_DURATION].y + camera_src.y;
+	  back_src.x = area->background_src->x + camera_src.x;
+	  back_src.y = area->background_src->y + camera_src.y;
 
 	  SDL_RenderClear (rend);
 
@@ -1406,6 +1430,22 @@ main (int argc, char *argv[])
 
 	  SDL_RenderCopy (rend, area->texture [area->respects_time ? phase : 0],
 			  &back_src, &screen_dest);
+
+	  for (i = 0; i < area->background_anims_num; i++)
+	    {
+	      if (SDL_HasIntersection (&area->background_anims [i].place,
+				       &camera_src))
+		{
+		  frame = frame_counter/AREA_FRAME_DURATION
+		    %area->background_anims [i].num_frames;
+
+		  anim = change_rect_origin (&area->background_anims [i].place,
+					     &camera_src);
+
+		  SDL_RenderCopy (rend, area->texture [area->respects_time ? phase : 0],
+				  &area->background_anims [i].frames [frame], &anim);
+		}
+	    }
 
 	  for (i = 0; i < area->npcs_num; i++)
 	    {
@@ -1540,16 +1580,20 @@ main (int argc, char *argv[])
 			      : &searchingiconrect, &pers);
 	    }
 
-	  if (area->overlay_frames_num)
+	  for (i = 0; i < area->overlay_anims_num; i++)
 	    {
-	      screen_overlay.x = area->overlay_srcs
-		[frame_counter%(area->overlay_frames_num*AREA_FRAME_DURATION)
-		 /AREA_FRAME_DURATION].x + camera_src.x;
-	      screen_overlay.y = area->overlay_srcs
-		[frame_counter%(area->overlay_frames_num*AREA_FRAME_DURATION)
-		 /AREA_FRAME_DURATION].y + camera_src.y;
-	      SDL_RenderCopy (rend, area->texture [area->respects_time ? phase : 0],
-			      &screen_overlay, &screen_dest);
+	      if (SDL_HasIntersection (&area->overlay_anims [i].place,
+				       &camera_src))
+		{
+		  frame = frame_counter/AREA_FRAME_DURATION
+		    %area->overlay_anims [i].num_frames;
+
+		  anim = change_rect_origin (&area->overlay_anims [i].place,
+					     &camera_src);
+
+		  SDL_RenderCopy (rend, area->texture [area->respects_time ? phase : 0],
+				  &area->overlay_anims [i].frames [frame], &anim);
+		}
 	    }
 
 	  for (i = 0; i < num_visibles; i++)
