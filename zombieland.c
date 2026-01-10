@@ -27,7 +27,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include <SDL2/SDL_ttf.h>
+
 #include "zombieland.h"
+#include "malloc.h"
 
 
 
@@ -80,4 +83,37 @@ send_message (int sockfd, struct sockaddr_in *addr, uint16_t portoff,
       fprintf (stderr, "could not send data\n");
       exit (1);
     }
+}
+
+
+char *
+concatenate_strings (const char *s1, const char *s2)
+{
+  char *ret = malloc_and_check (strlen (s1)+strlen (s2)+1);
+
+  strcpy (ret, s1);
+  strcpy (ret+strlen (s1), s2);
+
+  return ret;
+}
+
+
+TTF_Font *
+load_font (const char *name, int size)
+{
+  TTF_Font *ret;
+  char *path = concatenate_strings ("./assets/", name);
+
+  ret = TTF_OpenFont (path, size);
+
+  if (!ret)
+    {
+      fprintf (stderr, "could not load font %s: %s\n", path, TTF_GetError ());
+      SDL_Quit ();
+      exit (1);
+    }
+
+  free (path);
+
+  return ret;
 }

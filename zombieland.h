@@ -63,6 +63,11 @@
 #define TEXTLINESIZE 30
 
 
+
+#include <SDL2/SDL_ttf.h>
+
+
+
 enum
 facing
   {
@@ -208,3 +213,5 @@ message
 
 void send_message (int sockfd, struct sockaddr_in *addr, uint16_t portoff,
 		   uint32_t type, ...);
+char *concatenate_strings (const char *s1, const char *s2);
+TTF_Font *load_font (const char *name, int size);

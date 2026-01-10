@@ -270,18 +270,6 @@ scale_rect (SDL_Rect *rect, int factor)
 }
 
 
-char *
-concatenate_strings (const char *s1, const char *s2)
-{
-  char *ret = malloc_and_check (strlen (s1)+strlen (s2)+1);
-
-  strcpy (ret, s1);
-  strcpy (ret+strlen (s1), s2);
-
-  return ret;
-}
-
-
 SDL_Texture *
 load_texture (const char *name, SDL_Renderer *rend)
 {
@@ -293,27 +281,6 @@ load_texture (const char *name, SDL_Renderer *rend)
   if (!ret)
     {
       fprintf (stderr, "could not load texture %s: %s\n", path, SDL_GetError ());
-      SDL_Quit ();
-      exit (1);
-    }
-
-  free (path);
-
-  return ret;
-}
-
-
-TTF_Font *
-load_font (const char *name, int size)
-{
-  TTF_Font *ret;
-  char *path = concatenate_strings ("./assets/", name);
-
-  ret = TTF_OpenFont (path, size);
-
-  if (!ret)
-    {
-      fprintf (stderr, "could not load font %s: %s\n", path, TTF_GetError ());
       SDL_Quit ();
       exit (1);
     }

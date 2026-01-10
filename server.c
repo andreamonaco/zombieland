@@ -36,9 +36,12 @@
 #include <netinet/in.h>
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 
 #include "malloc.h"
 #include "zombieland.h"
+#include "gui.h"
 
 
 #define SIGN(x) ((x) > 0 ? 1 : -1)
@@ -1371,6 +1374,17 @@ send_server_state (int sockfd, uint32_t frame_counter, int id, struct player *pl
 
 
 void
+print_help_and_exit (void)
+{
+  printf ("Usage: zombielandd [OPTIONS]\n"
+	  "Options:\n"
+	  "\t-g, --display-gui     display a basic GUI\n"
+	  "\t-h, --help            display this help and exit\n");
+  exit (0);
+}
+
+
+void
 print_welcome_message (void)
 {
   puts ("zombieland server " PACKAGE_VERSION "\n"
@@ -1542,14 +1556,34 @@ main (int argc, char *argv[])
 
   struct private_server_area *par;
 
+  SDL_Window *win;
+  SDL_Renderer *rend;
+  SDL_Surface *iconsurf;
+  TTF_Font *hudfont;
+  SDL_Color textcol = {0, 0, 0, 255};
+  SDL_Rect screen = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
   SDL_Event event;
   SDL_Rect hitrect;
 
   uint32_t frame_counter = 1, id;
-  int char_hit, hit, quit = 0, i, j, speedx, speedy, dist,
-    zombie_spawn_counter = 0, object_spawn_counter = 0;
+  int char_hit, hit, quit = 0, i, j, display_gui = 0, last_refresh = 1, speedx,
+    speedy, dist, zombie_spawn_counter = 0, object_spawn_counter = 0;
   Uint32 t1, t2;
   double delay;
+
+
+  for (i = 1; i < argc; i++)
+    {
+      if (!strcmp (argv [i], "--display-gui") || !strcmp (argv [i], "-g"))
+	display_gui = 1;
+      else if (!strcmp (argv [i], "--help") || !strcmp (argv [i], "-h"))
+	print_help_and_exit ();
+      else
+	{
+	  fprintf (stderr, "invalid option '%s'\n", argv [i]);
+	  print_help_and_exit ();
+	}
+    }
 
 
   for (i = 0; i < MAX_PLAYERS; i++)
@@ -1667,6 +1701,54 @@ main (int argc, char *argv[])
 
   srand (time (NULL));
 
+
+  if (display_gui)
+    {
+      win = SDL_CreateWindow ("ZombieLand Server", SDL_WINDOWPOS_CENTERED,
+			      SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT,
+			      0);
+
+      if (!win)
+	{
+	  fprintf (stderr, "could not create window: %s\n", SDL_GetError ());
+	  SDL_Quit ();
+	  return 1;
+	}
+
+      if (TTF_Init() < 0)
+	{
+	  fprintf (stderr, "could not initialize SDL_ttf: %s\n", TTF_GetError ());
+	  SDL_Quit ();
+	  return 1;
+	}
+
+      rend = SDL_CreateRenderer (win, -1, SDL_RENDERER_ACCELERATED);
+
+      if (!rend)
+	{
+	  fprintf (stderr, "could not create renderer: %s\n", SDL_GetError ());
+	  SDL_Quit ();
+	  return 1;
+	}
+
+      iconsurf = IMG_Load ("assets/icon.png");
+
+      if (!iconsurf)
+	{
+	  fprintf (stderr, "could not load image ./assets/icon.png: %s\n", SDL_GetError ());
+	  SDL_Quit ();
+	  return 1;
+	}
+
+      SDL_SetWindowIcon (win, iconsurf);
+
+      hudfont = load_font ("Boxy-Bold.ttf", HUD_FONT_SIZE);
+
+      SDL_SetRenderDrawColor (rend, 255, 255, 255, 255);
+      SDL_RenderClear (rend);
+    }
+
+
   while (!quit)
     {
       t1 = SDL_GetTicks ();
@@ -1675,6 +1757,10 @@ main (int argc, char *argv[])
 	{
 	  switch (event.type)
 	    {
+	    case SDL_KEYDOWN:
+	      if (display_gui && event.key.keysym.sym == SDLK_ESCAPE)
+		quit = 1;
+	      break;
 	    case SDL_QUIT:
 	      quit = 1;
 	      break;
@@ -2483,6 +2569,21 @@ main (int argc, char *argv[])
       object_spawn_counter++;
 
       frame_counter++;
+
+
+      if (display_gui && t1-last_refresh > FRAME_DURATION)
+	{
+	  SDL_RenderFillRect (rend, &screen);
+
+	  display_strings_centrally (hudfont, 1, textcol, rend, -1, "",
+				     "ZombieLand Server", "is now running", "",
+				     "Press ESC", "or close this window",
+				     "to stop it.", "", (char *) NULL);
+
+	  SDL_RenderPresent (rend);
+	  last_refresh = t1;
+	}
+
 
       t2 = SDL_GetTicks ();
 
