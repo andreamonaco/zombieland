@@ -53,7 +53,7 @@ __I don't have the autotools...__
 You are truly the lazy type!  Then these commands will probably suffice:
 
  $ cc -o zombieland client.c malloc.c zombieland.c gui.c -lSDL2 -lSDL2_image -lSDL2_ttf -lSDL2_mixer
- $ cc -o zombielandd server.c zombieland.c malloc.c -lSDL2
+ $ cc -o zombielandd server.c malloc.c zombieland.c gui.c -lSDL2 -lSDL2_image -lSDL2_ttf
 
 
 
