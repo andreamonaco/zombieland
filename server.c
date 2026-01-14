@@ -47,10 +47,10 @@
 #define SIGN(x) ((x) > 0 ? 1 : -1)
 
 
-#define CHAR_SPEED 2
-
-#define ZOMBIE_WALKER_SPEED 2
-#define ZOMBIE_BLOB_SPEED 1
+/* in subpixels */
+#define CHAR_SPEED 20
+#define ZOMBIE_WALKER_SPEED 20
+#define ZOMBIE_BLOB_SPEED 10
 
 
 #define GUN_RANGE 120
@@ -163,12 +163,20 @@ agent_data_ptr
 };
 
 
+#define SUBPIXELS_PER_PIXEL 10
+
 struct
 agent
 {
   struct server_area *area;
   struct private_server_area *private_area;
+
   SDL_Rect place;
+
+  /* All coordinates in the server are in whole pixels unless specified like here;
+     also, the clients see only whole coordinates.
+     Whole coordinates must also be aligned, currently at even values. */
+  SDL_Rect place_in_subpixels;
 
   struct private_server_area *priv_areas;
 
@@ -293,6 +301,22 @@ set_rect (SDL_Rect *rect, int x, int y, int w, int h)
 }
 
 
+void
+set_position_from_pixels (SDL_Rect *rect_in_subpixels, SDL_Rect *rect_in_pixels)
+{
+  rect_in_subpixels->x = rect_in_pixels->x*SUBPIXELS_PER_PIXEL;
+  rect_in_subpixels->y = rect_in_pixels->y*SUBPIXELS_PER_PIXEL;
+}
+
+
+void
+set_position_from_subpixels (SDL_Rect *rect_in_pixels, SDL_Rect *rect_in_subpixels)
+{
+  rect_in_pixels->x = (rect_in_subpixels->x+SUBPIXELS_PER_PIXEL/2)/SUBPIXELS_PER_PIXEL/2*2;
+  rect_in_pixels->y = (rect_in_subpixels->y+SUBPIXELS_PER_PIXEL/2)/SUBPIXELS_PER_PIXEL/2*2;
+}
+
+
 struct private_server_area *
 allocate_private_areas (struct server_area *areas)
 {
@@ -380,6 +404,7 @@ create_player (char name[], uint32_t bodytype, struct sockaddr_in *addr,
   a->area = area;
   a->private_area = NULL;
   set_rect (&a->place, 16, 16, 16, 16);
+  set_position_from_pixels (&a->place_in_subpixels, &a->place);
 
   a->priv_areas = allocate_private_areas (area);
 
@@ -493,6 +518,7 @@ make_zombie (enum zombie_type type, int placex, int placey, enum facing facing,
   set_rect (&a->place, placex, placey,
 	    type == ZOMBIE_WALKER ? GRID_CELL_W : 2*GRID_CELL_W,
 	    type == ZOMBIE_WALKER ? GRID_CELL_H : 2*GRID_CELL_H);
+  set_position_from_pixels (&a->place_in_subpixels, &a->place);
   a->life = MAX_ZOMBIE_HEALTH;
   a->immortal = 0;
   a->type = AGENT_ZOMBIE;
@@ -539,20 +565,20 @@ is_rect_free (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect unwalkables [
 SDL_Rect
 check_and_resolve_collision (SDL_Rect charbox, int *speed_x, int *speed_y,
 			     SDL_Rect unwalkable, SDL_Rect unwalkables [],
-			     int unwalkables_num, int *did_collide)
+			     int unwalkables_num, int *collided_x, int *collided_y)
 {
   int new, can_move_x, can_move_y;
 
-  *did_collide = 0;
+  *collided_x = *collided_y = 0;
 
   if (RECT_INTERSECT (charbox, unwalkable))
     {
-      *did_collide = 1;
       charbox.x -= *speed_x;
       charbox.y -= *speed_y;
 
       if (RECT_X_INTERSECT (charbox, unwalkable))
 	{
+	  *collided_y = 1;
 	  charbox.x += *speed_x;
 
 	  if (*speed_y > 0)
@@ -569,6 +595,7 @@ check_and_resolve_collision (SDL_Rect charbox, int *speed_x, int *speed_y,
 	}
       else if (RECT_Y_INTERSECT (charbox, unwalkable))
 	{
+	  *collided_x = 1;
 	  charbox.y += *speed_y;
 
 	  if (*speed_x > 0)
@@ -592,6 +619,7 @@ check_and_resolve_collision (SDL_Rect charbox, int *speed_x, int *speed_y,
 
 	  if (can_move_x && !can_move_y)
 	    {
+	      *collided_y = 1;
 	      charbox.x += *speed_x;
 
 	      if (*speed_y > 0)
@@ -608,6 +636,7 @@ check_and_resolve_collision (SDL_Rect charbox, int *speed_x, int *speed_y,
 	    }
 	  else if (!can_move_x && can_move_y)
 	    {
+	      *collided_x = 1;
 	      charbox.y += *speed_y;
 
 	      if (*speed_x > 0)
@@ -624,6 +653,8 @@ check_and_resolve_collision (SDL_Rect charbox, int *speed_x, int *speed_y,
 	    }
 	  else
 	    {
+	      *collided_x = *collided_y = 1;
+
 	      if (*speed_y > 0)
 		{
 		  new = unwalkable.y-charbox.h;
@@ -658,21 +689,21 @@ check_and_resolve_collision (SDL_Rect charbox, int *speed_x, int *speed_y,
 SDL_Rect
 check_and_resolve_collisions (SDL_Rect charbox, int *speed_x, int *speed_y,
 			      SDL_Rect unwalkables [], int unwalkables_num,
-			      int *did_collide)
+			      int *collided_x, int *collided_y)
 {
-  int i, collided;
+  int i;
 
-  *did_collide = 0;
+  *collided_x = *collided_y = 0;
 
   for (i = 0; i < unwalkables_num; i++)
     {
       charbox = check_and_resolve_collision (charbox, speed_x, speed_y,
 					     unwalkables [i], unwalkables,
-					     unwalkables_num, &collided);
+					     unwalkables_num, collided_x,
+					     collided_y);
 
-      if (collided)
+      if (*collided_x || *collided_y)
 	{
-	  *did_collide = 1;
 	  return charbox;
 	}
     }
@@ -682,19 +713,34 @@ check_and_resolve_collisions (SDL_Rect charbox, int *speed_x, int *speed_y,
 
 
 SDL_Rect
-check_boundary (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable)
+check_boundary (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable,
+		int *collided_x, int *collided_y)
 {
+  *collided_x = *collided_y = 0;
+
   if (charbox.x+charbox.w > walkable.w)
-    charbox.x = walkable.w-charbox.w;
+    {
+      *collided_x = 1;
+      charbox.x = walkable.w-charbox.w;
+    }
 
   if (charbox.x < 0)
-    charbox.x = 0;
+    {
+      *collided_x = 1;
+      charbox.x = 0;
+    }
 
   if (charbox.y+charbox.h > walkable.h)
-    charbox.y = walkable.h-charbox.h;
+    {
+      *collided_y = 1;
+      charbox.y = walkable.h-charbox.h;
+    }
 
   if (charbox.y < 0)
-    charbox.y = 0;
+    {
+      *collided_y = 1;
+      charbox.y = 0;
+    }
 
   return charbox;
 }
@@ -703,32 +749,41 @@ check_boundary (SDL_Rect charbox, int speed_x, int speed_y, SDL_Rect walkable)
 SDL_Rect
 move_character (struct player *pl, SDL_Rect walkable, SDL_Rect full_obstacles [],
 		int full_obstacles_num, SDL_Rect half_obstacles [],
-		int half_obstacles_num, struct zombie *zs, int *character_hit)
+		int half_obstacles_num, struct zombie *zs)
 {
-  int collided, speed_x = pl->speed_x, speed_y = pl->speed_y;
+  int collided_x = 0, collided_y = 0, speed_x, speed_y;
   struct zombie *z;
-  SDL_Rect charbox = pl->agent->place;
+  SDL_Rect charbox = {0, 0, pl->agent->place.w, pl->agent->place.h};
 
-  *character_hit = 0;
-  charbox.x += speed_x;
-  charbox.y += speed_y;
+  pl->agent->place_in_subpixels.x += pl->speed_x;
+  pl->agent->place_in_subpixels.y += pl->speed_y;
+
+  set_position_from_subpixels (&charbox, &pl->agent->place_in_subpixels);
+  speed_x = charbox.x-pl->agent->place.x;
+  speed_y = charbox.y-pl->agent->place.y;
 
  restart:
+  if (collided_x)
+    pl->agent->place_in_subpixels.x = charbox.x*SUBPIXELS_PER_PIXEL;
+
+  if (collided_y)
+    pl->agent->place_in_subpixels.y = charbox.y*SUBPIXELS_PER_PIXEL;
+
   if (!speed_x && !speed_y)
     return charbox;
 
   charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y,
 					  full_obstacles, full_obstacles_num,
-					  &collided);
+					  &collided_x, &collided_y);
 
-  if (collided)
+  if (collided_x || collided_y)
     goto restart;
 
   charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y,
 					  half_obstacles, half_obstacles_num,
-					  &collided);
+					  &collided_x, &collided_y);
 
-  if (collided)
+  if (collided_x || collided_y)
     goto restart;
 
   z = zs;
@@ -737,9 +792,9 @@ move_character (struct player *pl, SDL_Rect walkable, SDL_Rect full_obstacles []
     {
       charbox = check_and_resolve_collision (charbox, &speed_x, &speed_y,
 					     z->agent->place, NULL, 0,
-					     &collided);
+					     &collided_x, &collided_y);
 
-      if (collided)
+      if (collided_x || collided_y)
 	{
 	  if (!pl->agent->immortal)
 	    {
@@ -751,44 +806,61 @@ move_character (struct player *pl, SDL_Rect walkable, SDL_Rect full_obstacles []
 	      pl->speed_y = -pl->speed_y*2;
 	    }
 
-	  *character_hit = 1;
 	  goto restart;
 	}
 
       z = z->next;
     }
 
-  return check_boundary (charbox, speed_x, speed_y, walkable);
+  charbox = check_boundary (charbox, speed_x, speed_y, walkable, &collided_x,
+			    &collided_y);
+
+  if (collided_x || collided_y)
+    goto restart;
+
+  return charbox;
 }
 
 
 SDL_Rect
-move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_y,
-	     SDL_Rect walkable, SDL_Rect full_obstacles [],
+move_zombie (struct zombie *zm, SDL_Rect walkable, SDL_Rect full_obstacles [],
 	     int full_obstacles_num, SDL_Rect half_obstacles [],
-	     int half_obstacles_num, struct player pls [], enum zombie_type zt)
+	     int half_obstacles_num, struct player pls [])
 {
-  int collided, i, sx = speed_x, sy = speed_y;
+  int collided_x = 0, collided_y = 0, i, speed_x, speed_y;
+  enum zombie_type zt = zm->type;
+  struct server_area *area = zm->agent->area;
+  SDL_Rect charbox = {0, 0, zm->agent->place.w, zm->agent->place.h};
 
-  charbox.x += speed_x;
-  charbox.y += speed_y;
+  zm->agent->place_in_subpixels.x += zm->speed_x;
+  zm->agent->place_in_subpixels.y += zm->speed_y;
+
+  set_position_from_subpixels (&charbox, &zm->agent->place_in_subpixels);
+  speed_x = charbox.x-zm->agent->place.x;
+  speed_y = charbox.y-zm->agent->place.y;
 
  restart:
+  if (collided_x)
+    zm->agent->place_in_subpixels.x = charbox.x*SUBPIXELS_PER_PIXEL;
+
+  if (collided_y)
+    zm->agent->place_in_subpixels.y = charbox.y*SUBPIXELS_PER_PIXEL;
+
   if (!speed_x && !speed_y)
     return charbox;
 
   charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y,
 					  full_obstacles, full_obstacles_num,
-					  &collided);
+					  &collided_x, &collided_y);
 
-  if (collided)
+  if (collided_x || collided_y)
     goto restart;
 
   charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y,
 					  half_obstacles, half_obstacles_num,
-					  &collided);
+					  &collided_x, &collided_y);
 
-  if (collided)
+  if (collided_x || collided_y)
     goto restart;
 
   for (i = 0; i < MAX_PLAYERS; i++)
@@ -798,9 +870,9 @@ move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_
 
       charbox = check_and_resolve_collision (charbox, &speed_x, &speed_y,
 					     pls [i].agent->place, NULL, 0,
-					     &collided);
+					     &collided_x, &collided_y);
 
-      if (collided)
+      if (collided_x || collided_y)
 	{
 	  if (!pls [i].agent->immortal)
 	    {
@@ -808,15 +880,22 @@ move_zombie (SDL_Rect charbox, struct server_area *area, int speed_x, int speed_
 	      pls [i].agent->life -= zt == ZOMBIE_WALKER
 		? TOUCH_DAMAGE_FROM_WALKER : TOUCH_DAMAGE_FROM_BLOB;
 	      pls [i].freeze = 6;
-	      pls [i].speed_x = sx*4;
-	      pls [i].speed_y = sy*4;
+	      pls [i].speed_x = zm->speed_x*4;
+	      pls [i].speed_y = zm->speed_y*4;
 	    }
 
 	  goto restart;
 	}
     }
 
-  return check_boundary (charbox, speed_x, speed_y, walkable);
+
+  charbox = check_boundary (charbox, speed_x, speed_y, walkable, &collided_x,
+			    &collided_y);
+
+  if (collided_x || collided_y)
+    goto restart;
+
+  return charbox;
 }
 
 
@@ -1566,8 +1645,8 @@ main (int argc, char *argv[])
   SDL_Rect hitrect;
 
   uint32_t frame_counter = 1, id;
-  int char_hit, hit, quit = 0, i, j, display_gui = 0, last_refresh = 1, speedx,
-    speedy, dist, zombie_spawn_counter = 0, object_spawn_counter = 0;
+  int hit, quit = 0, i, j, display_gui = 0, last_refresh = 1, speedx, speedy,
+    dist, zombie_spawn_counter = 0, object_spawn_counter = 0;
   Uint32 t1, t2;
   double delay;
 
@@ -2129,7 +2208,7 @@ main (int argc, char *argv[])
 			    players [i].agent->area->full_obstacles_num,
 			    players [i].agent->area->half_obstacles,
 			    players [i].agent->area->half_obstacles_num,
-			    players [i].agent->area->zombies, &char_hit);
+			    players [i].agent->area->zombies);
 
 	  if (players [i].interact)
 	    {
@@ -2287,6 +2366,9 @@ main (int argc, char *argv[])
 
 		  players [i].agent->place.x = w->spawn.x;
 		  players [i].agent->place.y = w->spawn.y;
+		  set_position_from_pixels (&players [i].agent->place_in_subpixels,
+					    &players [i].agent->place);
+
 		  break;
 		}
 
@@ -2476,14 +2558,11 @@ main (int argc, char *argv[])
 		}
 	      else
 		{
-		  z->agent->place = move_zombie (z->agent->place, area,
-						 z->speed_x, z->speed_y,
-						 area->walkable,
-						 area->full_obstacles,
-						 area->full_obstacles_num,
-						 area->half_obstacles,
-						 area->half_obstacles_num,
-						 players, z->type);
+		  z->agent->place =
+		    move_zombie (z, area->walkable, area->full_obstacles,
+				 area->full_obstacles_num,
+				 area->half_obstacles, area->half_obstacles_num,
+				 players);
 
 		  prz = z;
 		  z = z->next;
