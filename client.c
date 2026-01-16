@@ -612,7 +612,7 @@ main (int argc, char *argv[])
 
   while (portoff < 16)
     {
-      local_addr.sin_port = htons (ZOMBIELAND_PORT+portoff);
+      local_addr.sin_port = htons (ZOMBIELAND_CLIENT_BASE_PORT+portoff);
 
       if (!bind (sockfd, (struct sockaddr *) &local_addr, sizeof (local_addr)))
 	break;
@@ -622,12 +622,11 @@ main (int argc, char *argv[])
 
   if (portoff == 16)
     {
-      fprintf (stderr, "could not bind socket, maybe another program is bound to "
-	       "the same port?\n");
+      fprintf (stderr, "could not bind socket, maybe all tested ports are busy?\n");
       return 1;
     }
 
-  printf ("listening on port %d...\n", ZOMBIELAND_PORT+portoff);
+  printf ("listening on port %d...\n", ZOMBIELAND_CLIENT_BASE_PORT+portoff);
 
   server = gethostbyname (servername);
 
@@ -641,7 +640,7 @@ main (int argc, char *argv[])
   server_addr.sin_family = AF_INET;
   bcopy ((char *) server->h_addr, (char *) &server_addr.sin_addr.s_addr,
 	 server->h_length);
-  server_addr.sin_port = htons (ZOMBIELAND_PORT);
+  server_addr.sin_port = htons (ZOMBIELAND_SERVER_PORT);
 
   bzero ((char *) &msg, sizeof (msg));
   msg.type = htonl (MSG_LOGIN);

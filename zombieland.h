@@ -37,7 +37,9 @@
 				&&(i).y>=(j).y&&(i).y+(i).h<=(j).y+(j).h)
 
 
-#define ZOMBIELAND_PORT 19894
+#define ZOMBIELAND_SERVER_PORT 19894
+#define ZOMBIELAND_CLIENT_BASE_PORT 19895
+
 #define FRAME_DURATION 33.333f   /* 30 hz */
 #define CLIENT_TIMEOUT 1800
 #define SERVER_TIMEOUT 60000

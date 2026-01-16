@@ -441,7 +441,7 @@ create_player (char name[], uint32_t bodytype, struct sockaddr_in *addr,
   pls [i].id = i;
   pls [i].agent = a;
   memcpy (&pls [i].address, addr, sizeof (*addr));
-  pls [i].address.sin_port = htons (ZOMBIELAND_PORT+portoff);
+  pls [i].address.sin_port = htons (ZOMBIELAND_CLIENT_BASE_PORT+portoff);
   pls [i].portoffset = portoff;
   pls [i].last_update = 0;
   strcpy (pls [i].name, name);
@@ -1700,7 +1700,7 @@ main (int argc, char *argv[])
 
   bzero ((char *) &local_addr, sizeof(local_addr));
   local_addr.sin_family = AF_INET;
-  local_addr.sin_port = htons (ZOMBIELAND_PORT);
+  local_addr.sin_port = htons (ZOMBIELAND_SERVER_PORT);
   local_addr.sin_addr.s_addr = INADDR_ANY;
 
   if (bind (sockfd, (struct sockaddr *) &local_addr, sizeof (local_addr)) < 0)
@@ -1710,7 +1710,7 @@ main (int argc, char *argv[])
       return 1;
     }
 
-  printf ("listening on port %d...\n", ZOMBIELAND_PORT);
+  printf ("listening on port %d...\n", ZOMBIELAND_SERVER_PORT);
 
   field.id = 0;
   field.walkable = field_walkable;
@@ -1947,7 +1947,7 @@ main (int argc, char *argv[])
 	      msg->type = htonl (MSG_LOGINOK);
 	      msg->args.loginok.id = htonl (id);
 
-	      client_addr.sin_port = htons (ZOMBIELAND_PORT
+	      client_addr.sin_port = htons (ZOMBIELAND_CLIENT_BASE_PORT
 					    +players [id].portoffset);
 
 	      if (sendto (sockfd, (char *)msg, sizeof (*msg), 0,

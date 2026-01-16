@@ -44,7 +44,7 @@ send_message (int sockfd, struct sockaddr_in *addr, uint16_t portoff,
   bzero (&msg, sizeof (msg));
 
   if (portoff != (uint16_t)-1)
-    addr->sin_port = htons (ZOMBIELAND_PORT+portoff);
+    addr->sin_port = htons (ZOMBIELAND_CLIENT_BASE_PORT+portoff);
 
   msg.type = htonl (type);
 
