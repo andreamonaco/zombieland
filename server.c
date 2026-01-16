@@ -251,6 +251,8 @@ server_area
   int full_obstacles_num;
   SDL_Rect *half_obstacles;
   int half_obstacles_num;
+  SDL_Rect *zombie_obstacles;
+  int zombie_obstacles_num;
 
   struct warp *warps;
   struct interactible *interactibles;
@@ -825,7 +827,8 @@ move_character (struct player *pl, SDL_Rect walkable, SDL_Rect full_obstacles []
 SDL_Rect
 move_zombie (struct zombie *zm, SDL_Rect walkable, SDL_Rect full_obstacles [],
 	     int full_obstacles_num, SDL_Rect half_obstacles [],
-	     int half_obstacles_num, struct player pls [])
+	     int half_obstacles_num, SDL_Rect zombie_obstacles [],
+	     int zombie_obstacles_num, struct player pls [])
 {
   int collided_x = 0, collided_y = 0, i, speed_x, speed_y;
   enum zombie_type zt = zm->type;
@@ -858,6 +861,13 @@ move_zombie (struct zombie *zm, SDL_Rect walkable, SDL_Rect full_obstacles [],
 
   charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y,
 					  half_obstacles, half_obstacles_num,
+					  &collided_x, &collided_y);
+
+  if (collided_x || collided_y)
+    goto restart;
+
+  charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y,
+					  zombie_obstacles, zombie_obstacles_num,
 					  &collided_x, &collided_y);
 
   if (collided_x || collided_y)
@@ -1589,6 +1599,8 @@ main (int argc, char *argv[])
       R_BY_GR (64, 58, 1, 2), R_BY_GR (65, 59, 1, 2),
       R_BY_GR (66, 60, 1, 4)},
 
+    field_zombie_obs [] = {R_BY_GR (24, 21, 1, 1), R_BY_GR (51, 14, 1, 1)},
+
     field_zombie_spawns [] = {RECT_BY_GRID (0, 23, 1, 1),
 			      RECT_BY_GRID (31, 63, 1, 1),
 			      RECT_BY_GRID (44, 0, 1, 1),
@@ -1706,6 +1718,8 @@ main (int argc, char *argv[])
   field.full_obstacles_num = 109;
   field.half_obstacles = field_half_obs;
   field.half_obstacles_num = 31;
+  field.zombie_obstacles = field_zombie_obs;
+  field.zombie_obstacles_num = 2;
   field.warps = make_warp_by_grid (51, 13, 1, 1, &room, 5, 11,
 				   make_warp_by_grid (24, 20, 1, 1, &hotel_ground,
 						      5, 11, NULL));
@@ -2562,7 +2576,8 @@ main (int argc, char *argv[])
 		    move_zombie (z, area->walkable, area->full_obstacles,
 				 area->full_obstacles_num,
 				 area->half_obstacles, area->half_obstacles_num,
-				 players);
+				 area->zombie_obstacles,
+				 area->zombie_obstacles_num, players);
 
 		  prz = z;
 		  z = z->next;
