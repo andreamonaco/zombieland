@@ -911,7 +911,10 @@ main (int argc, char *argv[])
 		  pause = !pause;
 
 		  if (pause)
-		    menu_cursor = 0;
+		    {
+		      loc_char_speed_x = loc_char_speed_y = 0;
+		      menu_cursor = 0;
+		    }
 		  else
 		    SDL_SetRenderDrawColor (rend, 100, 100, 100, 255);
 		  break;
@@ -1014,21 +1017,24 @@ main (int argc, char *argv[])
 		    }
 		  break;
 		case ACTION_SHOOT:
-		  if (SHOOT_REST*FRAME_DURATION < ticks-last_shoot)
+		  if (!pause && !is_searching
+		      && SHOOT_REST*FRAME_DURATION < ticks-last_shoot)
 		    {
 		      do_shoot = RESEND_ACTION;
 		      last_shoot = ticks;
 		    }
 		  break;
 		case ACTION_STAB:
-		  if (STAB_REST*FRAME_DURATION < ticks-last_stab)
+		  if (!pause && !is_searching
+		      && STAB_REST*FRAME_DURATION < ticks-last_stab)
 		    {
 		      do_stab = RESEND_ACTION;
 		      last_stab = ticks;
 		    }
 		  break;
 		case ACTION_SEARCH:
-		  do_search = !do_search;
+		  if (!pause)
+		    do_search = !do_search;
 		  break;
 		default:
 		  break;
