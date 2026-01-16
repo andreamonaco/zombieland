@@ -1304,6 +1304,7 @@ main (int argc, char *argv[])
 
 		  anim = change_rect_origin (&area->background_anims [i].place,
 					     &camera_src);
+		  scale_rect (&anim, scaling);
 
 		  SDL_RenderCopy (rend, area->texture [area->respects_time ? phase : 0],
 				  &area->background_anims [i].frames [frame], &anim);
@@ -1453,6 +1454,7 @@ main (int argc, char *argv[])
 
 		  anim = change_rect_origin (&area->overlay_anims [i].place,
 					     &camera_src);
+		  scale_rect (&anim, scaling);
 
 		  SDL_RenderCopy (rend, area->texture [area->respects_time ? phase : 0],
 				  &area->overlay_anims [i].frames [frame], &anim);
