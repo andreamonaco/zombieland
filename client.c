@@ -124,6 +124,7 @@ player_action
     ACTION_MOVE_RIGHT,
     ACTION_MOVE_UP,
     ACTION_MOVE_DOWN,
+    ACTION_LOCK_AIM,
     ACTION_INTERACT,
     ACTION_SHOOT,
     ACTION_STAB,
@@ -217,7 +218,7 @@ configure_keys (enum player_action controls [])
 {
   SDL_Event ev;
   char *prompts [] = {"move left: ", "move right: ", "move up: ", "move down: ",
-		      "interact: ", "shoot: ", "stab: ", "search: "};
+		      "lock aim: ", "interact: ", "shoot: ", "stab: ", "search: "};
   int i, ret;
 
   printf ("\nconfiguring keys... for each action, please press the key of your "
@@ -514,7 +515,8 @@ main (int argc, char *argv[])
 
   char *servername = NULL, *playername = NULL;
   int quit = 0, i, j, frame, scaling = 1, fullscreen = 0, limit_fps = 1, verbose = 0,
-    config_keys = 0, pause = 0, menu_cursor = 0, need_arg = 0, options_finished = 0;
+    config_keys = 0, lock_aim = 0, pause = 0, menu_cursor = 0, need_arg = 0,
+    options_finished = 0;
   Uint32 frame_counter = 1, fc, latest_update_ticks = 0, last_sent_update = 0,
     last_display = 0, ticks;
 
@@ -872,6 +874,7 @@ main (int argc, char *argv[])
       controls [SDL_SCANCODE_D] = controls [SDL_SCANCODE_RIGHT] = ACTION_MOVE_RIGHT;
       controls [SDL_SCANCODE_W] = controls [SDL_SCANCODE_UP] = ACTION_MOVE_UP;
       controls [SDL_SCANCODE_S] = controls [SDL_SCANCODE_DOWN] = ACTION_MOVE_DOWN;
+      controls [SDL_SCANCODE_LCTRL] = controls [SDL_SCANCODE_RCTRL] = ACTION_LOCK_AIM;
       controls [SDL_SCANCODE_SPACE] = ACTION_INTERACT;
       controls [SDL_SCANCODE_F] = ACTION_SHOOT;
       controls [SDL_SCANCODE_R] = ACTION_STAB;
@@ -923,7 +926,9 @@ main (int argc, char *argv[])
 		  else if (!is_searching)
 		    {
 		      loc_char_speed_x = -2;
-		      if (!loc_char_speed_y || loc_char_facing == FACING_RIGHT)
+
+		      if (!lock_aim
+			  && (!loc_char_speed_y || loc_char_facing == FACING_RIGHT))
 			loc_char_facing = FACING_LEFT;
 		    }
 		  else
@@ -937,7 +942,9 @@ main (int argc, char *argv[])
 		  else if (!is_searching)
 		    {
 		      loc_char_speed_x = 2;
-		      if (!loc_char_speed_y || loc_char_facing == FACING_LEFT)
+
+		      if (!lock_aim
+			  && (!loc_char_speed_y || loc_char_facing == FACING_LEFT))
 			loc_char_facing = FACING_RIGHT;
 		    }
 		  else
@@ -954,7 +961,9 @@ main (int argc, char *argv[])
 		  else if (!is_searching)
 		    {
 		      loc_char_speed_y = -2;
-		      if (!loc_char_speed_x || loc_char_facing == FACING_DOWN)
+
+		      if (!lock_aim
+			  && (!loc_char_speed_x || loc_char_facing == FACING_DOWN))
 			loc_char_facing = FACING_UP;
 		    }
 		  else
@@ -971,7 +980,9 @@ main (int argc, char *argv[])
 		  else if (!is_searching)
 		    {
 		      loc_char_speed_y = 2;
-		      if (!loc_char_speed_x || loc_char_facing == FACING_UP)
+
+		      if (!lock_aim
+			  && (!loc_char_speed_x || loc_char_facing == FACING_UP))
 			loc_char_facing = FACING_DOWN;
 		    }
 		  else
@@ -979,6 +990,9 @@ main (int argc, char *argv[])
 		      bagcursor = move_bag_cursor (SDLK_DOWN, bagcursor,
 						   is_searching == 2);
 		    }
+		  break;
+		case ACTION_LOCK_AIM:
+		  lock_aim = 1;
 		  break;
 		case ACTION_INTERACT:
 		  if (pause)
@@ -1046,30 +1060,33 @@ main (int argc, char *argv[])
 		case ACTION_MOVE_LEFT:
 		  if (loc_char_speed_x == -2)
 		    loc_char_speed_x = 0;
-		  if (loc_char_speed_y)
+		  if (!lock_aim && loc_char_speed_y)
 		    loc_char_facing = (loc_char_speed_y > 0) ? FACING_DOWN
 		      : FACING_UP;
 		  break;
 		case ACTION_MOVE_RIGHT:
 		  if (loc_char_speed_x == 2)
 		    loc_char_speed_x = 0;
-		  if (loc_char_speed_y)
+		  if (!lock_aim && loc_char_speed_y)
 		    loc_char_facing = loc_char_speed_y > 0 ? FACING_DOWN
 		      : FACING_UP;
 		  break;
 		case ACTION_MOVE_UP:
 		  if (loc_char_speed_y == -2)
 		    loc_char_speed_y = 0;
-		  if (loc_char_speed_x)
+		  if (!lock_aim && loc_char_speed_x)
 		    loc_char_facing = loc_char_speed_x > 0 ? FACING_RIGHT
 		      : FACING_LEFT;
 		  break;
 		case ACTION_MOVE_DOWN:
 		  if (loc_char_speed_y == 2)
 		    loc_char_speed_y = 0;
-		  if (loc_char_speed_x)
+		  if (!lock_aim && loc_char_speed_x)
 		    loc_char_facing = loc_char_speed_x > 0 ? FACING_RIGHT
 		      : FACING_LEFT;
+		  break;
+		case ACTION_LOCK_AIM:
+		  lock_aim = 0;
 		  break;
 		default:
 		  break;
