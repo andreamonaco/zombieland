@@ -1567,11 +1567,17 @@ main (int argc, char *argv[])
 	  sprintf (hudtext, "AMMO %2d/16", bullets);
 	  display_string (hudtext, bulletsrect, hudfont, textcol, rend);
 
-	  sprintf (hudtext, "HUNGER %2d/20", hunger);
-	  display_string (hudtext, hungerrect, hudfont, textcol, rend);
+	  if (hunger < 20 || frame_counter%1600 < 800)
+	    {
+	      sprintf (hudtext, "HUNGER %2d/20", hunger);
+	      display_string (hudtext, hungerrect, hudfont, textcol, rend);
+	    }
 
-	  sprintf (hudtext, "THIRST %2d/20", thirst);
-	  display_string (hudtext, thirstrect, hudfont, textcol, rend);
+	  if (thirst < 20 || frame_counter%1600 < 800)
+	    {
+	      sprintf (hudtext, "THIRST %2d/20", thirst);
+	      display_string (hudtext, thirstrect, hudfont, textcol, rend);
+	    }
 
 	  if (state->args.server_state.is_searching)
 	    {
