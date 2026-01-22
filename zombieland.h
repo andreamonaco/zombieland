@@ -84,7 +84,8 @@ enum
 zombie_type
   {
     ZOMBIE_WALKER,
-    ZOMBIE_BLOB
+    ZOMBIE_BLOB,
+    ZOMBIE_CROW
   };
 
 

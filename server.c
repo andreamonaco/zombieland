@@ -51,11 +51,13 @@
 
 #define PLAYER_SPEED 20
 
-int zombie_speed [] = {20, 10};
+int zombie_speed [] = {20, 10, 10};
 
-int zombie_health [] = {12, 36};
+int zombie_health [] = {12, 36, 6};
 
-int zombie_touch_damage [] = {1, 5};
+int zombie_touch_damage [] = {1, 5, 1};
+
+int zombie_thinking_interval [] = {25, 75, 15};
 
 
 #define GUN_RANGE 120
@@ -124,10 +126,6 @@ player
 
   int timeout;
 };
-
-
-#define ZOMBIE_WALKER_THINKING_INTERVAL 25
-#define ZOMBIE_BLOB_THINKING_INTERVAL 75
 
 
 struct zombie
@@ -509,6 +507,26 @@ make_warp_by_grid (int placex, int placey, int placew, int placeh,
 }
 
 
+int zombie_type_frequency [] = {50, 20, 30};
+
+int
+pick_zombie_type (void)
+{
+  int s = 0, i, r = rand ()%100;
+
+  for (i = 0; i < sizeof (zombie_type_frequency) / sizeof (zombie_type_frequency [0]);
+       i++)
+    {
+      s += zombie_type_frequency [i];
+
+      if (s > r)
+	return i;
+    }
+
+  return 0;
+}
+
+
 struct zombie *
 make_zombie (enum zombie_type type, int placex, int placey, enum facing facing,
 	     struct server_area *area, struct zombie *next, struct agent **agents)
@@ -518,8 +536,8 @@ make_zombie (enum zombie_type type, int placex, int placey, enum facing facing,
 
   a->area = area;
   set_rect (&a->place, placex, placey,
-	    type == ZOMBIE_WALKER ? GRID_CELL_W : 2*GRID_CELL_W,
-	    type == ZOMBIE_WALKER ? GRID_CELL_H : 2*GRID_CELL_H);
+	    type == ZOMBIE_BLOB ? 2*GRID_CELL_W : GRID_CELL_W,
+	    type == ZOMBIE_BLOB ? 2*GRID_CELL_H : GRID_CELL_H);
   set_position_from_pixels (&a->place_in_subpixels, &a->place);
   a->life = zombie_health [type];
   a->immortal = 0;
@@ -857,12 +875,15 @@ move_zombie (struct zombie *zm, SDL_Rect walkable, SDL_Rect full_obstacles [],
   if (collided_x || collided_y)
     goto restart;
 
-  charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y,
-					  half_obstacles, half_obstacles_num,
-					  &collided_x, &collided_y);
+  if (zm->type != ZOMBIE_CROW)
+    {
+      charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y,
+					      half_obstacles, half_obstacles_num,
+					      &collided_x, &collided_y);
 
-  if (collided_x || collided_y)
-    goto restart;
+      if (collided_x || collided_y)
+	goto restart;
+    }
 
   charbox = check_and_resolve_collisions (charbox, &speed_x, &speed_y,
 					  zombie_obstacles, zombie_obstacles_num,
@@ -2054,10 +2075,10 @@ main (int argc, char *argv[])
 		{
 		  if (!z->next_thinking)
 		    {
-		      if (z->type == ZOMBIE_WALKER)
+		      if (z->type != ZOMBIE_BLOB)
 			id = compute_nearest_player (z, players, &dist);
 
-		      if (z->type == ZOMBIE_WALKER && id != -1
+		      if (z->type != ZOMBIE_BLOB && id != -1
 			  && dist < ZOMBIE_SIGHT)
 			{
 			  if (z->agent->place.x != players [id].agent->place.x)
@@ -2093,9 +2114,7 @@ main (int argc, char *argv[])
 			    : z->speed_y < 0 ? FACING_UP : z->facing;
 			}
 
-		      z->next_thinking = z->type == ZOMBIE_WALKER
-			? ZOMBIE_WALKER_THINKING_INTERVAL
-			: ZOMBIE_BLOB_THINKING_INTERVAL;
+		      z->next_thinking = zombie_thinking_interval [z->type];
 		    }
 		  else
 		    z->next_thinking--;
@@ -2130,8 +2149,7 @@ main (int argc, char *argv[])
 	      if (area->zombie_spawns_num && area->zombies_num < MAX_ZOMBIES)
 		{
 		  i = rand () % area->zombie_spawns_num;
-		  area->zombies = make_zombie (rand () % 10 < 8 ? ZOMBIE_WALKER
-					       : ZOMBIE_BLOB,
+		  area->zombies = make_zombie (pick_zombie_type (),
 					       area->zombie_spawns [i].x,
 					       area->zombie_spawns [i].y,
 					       FACING_DOWN, area, area->zombies,

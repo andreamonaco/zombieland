@@ -455,7 +455,12 @@ main (int argc, char *argv[])
 		    {0, 96, 32, 32}, {31, 96, 32, 32}, {95, 96, 32, 32},
 		    {0, 68, 32, 32}, {31, 68, 32, 32}, {95, 68, 32, 32},
 		    {0, 36, 32, 32}, {31, 36, 32, 32}, {95, 36, 32, 32}},
-    blob_origin = {0, 0, 0, 0};
+    blob_origin = {0, 0, 0, 0},
+    crow_srcs [] = {{0, 16, 16, 16}, {16, 16, 16, 16}, {32, 16, 16, 16},
+		    {0, 32, 16, 16}, {16, 32, 16, 16}, {32, 32, 16, 16},
+		    {0, 48, 16, 16}, {16, 48, 16, 16}, {32, 48, 16, 16},
+		    {0, 64, 16, 16}, {16, 64, 16, 16}, {32, 64, 16, 16}},
+    crow_origin = {0, 0, 0, 0};
 
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
     do_shoot = 0, do_stab = 0, do_search = 0, bodytype = 0,
@@ -470,8 +475,8 @@ main (int argc, char *argv[])
   SDL_Event event;
 
   SDL_Texture *overworldtxtr, *overworld2txtr, *overworld3txtr, *interiorstxtr,
-    *charactertxtr, *zombietxtr, *blobtxtr, *npctxtr, *texttxtr, *bagtxtr,
-    *objectstxtr;
+    *charactertxtr, *zombietxtr, *blobtxtr, *crowtxtr, *npctxtr, *texttxtr,
+    *bagtxtr, *objectstxtr;
   SDL_Surface *iconsurf, *textsurf;
   TTF_Font *hudfont, *textfont;
   char textbox [TEXTLINESIZE*MAXTEXTLINES+1], hudtext [20];
@@ -758,6 +763,7 @@ main (int argc, char *argv[])
   charactertxtr = load_texture ("character.png", rend);
   zombietxtr = load_texture ("NPC_test.png", rend);
   blobtxtr = load_texture ("jumblysprite.png", rend);
+  crowtxtr = load_texture ("raven.png", rend);
   npctxtr = load_texture ("log.png", rend);
   bagtxtr = load_texture ("bag.png", rend);
   objectstxtr = load_texture ("objects.png", rend);
@@ -1370,8 +1376,9 @@ main (int argc, char *argv[])
 	    {
 	      vis = state->args.server_state.visibles [i];
 	      vis.type = ntohl (vis.type);
+	      vis.subtype = ntohl (vis.subtype);
 
-	      if (vis.type != VISIBLE_ZOMBIE)
+	      if (vis.type != VISIBLE_ZOMBIE || vis.subtype == ZOMBIE_CROW)
 		continue;
 
 	      pers.x = (-camera_src.x + area->walkable.x + ntohl (vis.x)
@@ -1405,6 +1412,35 @@ main (int argc, char *argv[])
 					    ((vis.speed_x || vis.speed_y)
 					     ? 1+(frame_counter%400)/200 : 0)],
 			      &pers);
+	    }
+
+	  for (i = 0; i < num_visibles; i++)
+	    {
+	      vis = state->args.server_state.visibles [i];
+	      vis.type = ntohl (vis.type);
+	      vis.subtype = ntohl (vis.subtype);
+
+	      if (vis.type != VISIBLE_ZOMBIE || vis.subtype != ZOMBIE_CROW)
+		continue;
+
+	      pers.x = (-camera_src.x + area->walkable.x + ntohl (vis.x))*scaling;
+	      pers.y = (-camera_src.y + area->walkable.y + ntohl (vis.y))*scaling;
+	      pers.w = 16*scaling;
+	      pers.h = 16*scaling;
+
+	      pers.x += frame_counter%400/200*scaling;
+
+	      if (vis.is_immortal)
+		{
+		  if (frame_counter % 200 < 100)
+		    pers.x += (frame_counter%99/33-1)*5;
+		  else
+		    pers.y += (frame_counter%99/33-1)*5;
+		}
+
+	      SDL_RenderCopy (rend, crowtxtr,
+			      &crow_srcs [ntohl (vis.facing)*3+1
+					  +(frame_counter%400)/200], &pers);
 	    }
 
 	  for (i = 0; i < num_visibles; i++)
