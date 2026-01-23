@@ -462,12 +462,10 @@ main (int argc, char *argv[])
 		    {0, 96, 32, 32}, {31, 96, 32, 32}, {95, 96, 32, 32},
 		    {0, 68, 32, 32}, {31, 68, 32, 32}, {95, 68, 32, 32},
 		    {0, 36, 32, 32}, {31, 36, 32, 32}, {95, 36, 32, 32}},
-    blob_origin = {0, 0, 0, 0},
     crow_srcs [] = {{0, 16, 16, 16}, {16, 16, 16, 16}, {32, 16, 16, 16},
 		    {0, 32, 16, 16}, {16, 32, 16, 16}, {32, 32, 16, 16},
 		    {0, 48, 16, 16}, {16, 48, 16, 16}, {32, 48, 16, 16},
-		    {0, 64, 16, 16}, {16, 64, 16, 16}, {32, 64, 16, 16}},
-    crow_origin = {0, 0, 0, 0};
+		    {0, 64, 16, 16}, {16, 64, 16, 16}, {32, 64, 16, 16}};
 
   int32_t loc_char_speed_x = 0, loc_char_speed_y = 0, do_interact = 0,
     do_shoot = 0, do_stab = 0, do_search = 0, bodytype = 0,
@@ -1389,9 +1387,11 @@ main (int argc, char *argv[])
 		continue;
 
 	      pers.x = (-camera_src.x + area->walkable.x + ntohl (vis.x)
-			+ zombie_origin.x)*scaling;
+			+ (vis.subtype == ZOMBIE_WALKER ? zombie_origin.x : 0))
+		* scaling;
 	      pers.y = (-camera_src.y + area->walkable.y + ntohl (vis.y)
-			+ zombie_origin.y)*scaling;
+			+ (vis.subtype == ZOMBIE_WALKER ? zombie_origin.y : 0))
+		* scaling;
 
 	      if (vis.is_immortal)
 		{
