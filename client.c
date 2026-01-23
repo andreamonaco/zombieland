@@ -148,9 +148,11 @@ display_death_screen_and_exit (TTF_Font *font, int scaling, SDL_Color col,
 {
   SDL_Event event;
   SDL_Rect screen = {0, 0, WINDOW_WIDTH*scaling, WINDOW_HEIGHT*scaling};
-  int ticks, last_refresh = 0;
+  int ticks, last_refresh = 0, started;
 
   SDL_SetRenderDrawColor (rend, 255, 255, 255, 255);
+
+  started = SDL_GetTicks ();
 
   while (1)
     {
@@ -160,9 +162,12 @@ display_death_screen_and_exit (TTF_Font *font, int scaling, SDL_Color col,
 	{
 	  switch (event.type)
 	    {
-	    case SDL_KEYDOWN:
 	    case SDL_QUIT:
 	      exit_game ();
+	      break;
+	    case SDL_KEYDOWN:
+	      if (ticks-started > 1500)
+		exit_game ();
 	      break;
 	    default:
 	      break;
@@ -174,7 +179,9 @@ display_death_screen_and_exit (TTF_Font *font, int scaling, SDL_Color col,
 	  SDL_RenderFillRect (rend, &screen);
 
 	  display_strings_centrally (font, scaling, col, rend, -1, "", "YOU DIED",
-				     "Press any key to quit...", "", (char *) NULL);
+				     (ticks-started > 1000
+				      ? "Press any key to quit..." : ""), "",
+				     (char *) NULL);
 
 	  SDL_RenderPresent (rend);
 
