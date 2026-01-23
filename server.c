@@ -59,6 +59,8 @@ int zombie_touch_damage [] = {1, 5, 1};
 
 int zombie_thinking_interval [] = {25, 75, 15};
 
+int zombie_sight [] = {110, 0, 200};
+
 
 #define GUN_RANGE 120
 
@@ -66,9 +68,6 @@ int zombie_thinking_interval [] = {25, 75, 15};
 #define SHOOT_DAMAGE 6
 
 #define IMMORTAL_DURATION 20
-
-
-#define ZOMBIE_SIGHT 110
 
 
 #define MAX_HUNGER 20
@@ -2079,7 +2078,7 @@ main (int argc, char *argv[])
 			id = compute_nearest_player (z, players, &dist);
 
 		      if (z->type != ZOMBIE_BLOB && id != -1
-			  && dist < ZOMBIE_SIGHT)
+			  && dist < zombie_sight [z->type])
 			{
 			  if (z->agent->place.x != players [id].agent->place.x)
 			    {
