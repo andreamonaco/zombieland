@@ -367,16 +367,16 @@ main (int argc, char *argv[])
   enum player_action controls [SDL_NUM_SCANCODES] = {0};
 
   struct client_area field;
-  SDL_Rect anim, field_src = RECT_BY_GRID (0, 0, 72, 64),
+  SDL_Rect anim, field_src = RECT_BY_GRID (0, 0, 128, 128),
     field_fountain_frames []
-    = {RECT_BY_GRID (0, 64, 3, 3), RECT_BY_GRID (3, 64, 3, 3),
-       RECT_BY_GRID (6, 64, 3, 3)},
+    = {RECT_BY_GRID (0, 128, 3, 3), RECT_BY_GRID (3, 128, 3, 3),
+       RECT_BY_GRID (6, 128, 3, 3)},
     field_flag_frames []
-    = {RECT_BY_GRID (9, 64, 2, 2), RECT_BY_GRID (11, 64, 2, 2),
-       RECT_BY_GRID (13, 64, 2, 2), RECT_BY_GRID (15, 64, 2, 2),
-       RECT_BY_GRID (17, 64, 2, 2)},
-    field_roof = RECT_BY_GRID (19, 64, 5, 1),
-    field_walkable = {0, 0, 512, 512},
+    = {RECT_BY_GRID (9, 128, 2, 2), RECT_BY_GRID (11, 128, 2, 2),
+       RECT_BY_GRID (13, 128, 2, 2), RECT_BY_GRID (15, 128, 2, 2),
+       RECT_BY_GRID (17, 128, 2, 2)},
+    field_roof = RECT_BY_GRID (19, 128, 5, 1),
+    field_walkable = {0, 0, 2048, 2048},
     field_pond [] = {RECT_BY_GRID (63, 10, 2, 2), RECT_BY_GRID (65, 11, 4, 1),
 		     RECT_BY_GRID (69, 6, 3, 7)};
   struct animation field_back_anim = {RECT_BY_GRID (41, 27, 3, 3), 3,

@@ -1527,7 +1527,7 @@ main (int argc, char *argv[])
   struct bag *b;
 
   struct server_area field = {0}, *area;
-  SDL_Rect field_walkable = {0, 0, 1152, 1024},
+  SDL_Rect field_walkable = {0, 0, 2048, 2048},
     field_full_obs [] = {R_BY_GR (8, 0, 1, 4), R_BY_GR (8, 7, 1, 4), /* parking */
 			    R_BY_GR (8, 11, 24, 1), R_BY_GR (32, 0, 1, 12),
 			    R_BY_GR (12, 0, 1, 1), R_BY_GR (17, 0, 1, 1),
@@ -1570,6 +1570,33 @@ main (int argc, char *argv[])
 			    R_BY_GR (60, 8, 1, 2), R_BY_GR (64, 7, 1, 1),
 			    R_BY_GR (66, 1, 2, 2), R_BY_GR (68, 2, 2, 2),
 
+			    /* mountain */
+			    R_BY_GR (60, 17, 0, 3), R_BY_GR (60, 20, 6, 1),
+			    R_BY_GR (66, 21, 0, 4), R_BY_GR (66, 25, 3, 1),
+			    R_BY_GR (69, 26, 0, 4), R_BY_GR (69, 30, 23, 1),
+			    R_BY_GR (92, 29, 15, 3), R_BY_GR (92, 26, 0, 3),
+			    R_BY_GR (107, 25, 0, 4), R_BY_GR (107, 27, 9, 1),
+			    R_BY_GR (116, 23, 0, 4), R_BY_GR (116, 24, 12, 2),
+			    R_BY_GR (126, 18, 0, 1), R_BY_GR (126, 19, 2, 5),
+			    R_BY_GR (81, 0, 0, 5), R_BY_GR (78, 5, 3, 0),
+			    R_BY_GR (78, 5, 0, 3), R_BY_GR (74, 8, 4, 0),
+			    R_BY_GR (74, 8, 0, 3), R_BY_GR (74, 11, 4, 1),
+			    R_BY_GR (78, 12, 0, 1), R_BY_GR (74, 13, 4, 0),
+			    R_BY_GR (74, 13, 0, 2), R_BY_GR (74, 15, 1, 1),
+			    R_BY_GR (75, 16, 0, 5), R_BY_GR (75, 21, 11, 3),
+			    R_BY_GR (86, 18, 8, 3), R_BY_GR (94, 20, 15, 2),
+			    R_BY_GR (109, 15, 0, 1), R_BY_GR (109, 16, 12, 4),
+			    R_BY_GR (121, 14, 0, 2), R_BY_GR (83, 11, 0, 2),
+			    R_BY_GR (83, 13, 5, 2), R_BY_GR (88, 10, 0, 2),
+			    R_BY_GR (88, 12, 7, 2), R_BY_GR (95, 11, 5, 2),
+			    R_BY_GR (100, 9, 0, 1), R_BY_GR (100, 10, 9, 2),
+			    R_BY_GR (109, 12, 10, 1), R_BY_GR (119, 11, 0, 1),
+			    R_BY_GR (119, 6, 0, 1), R_BY_GR (119, 7, 9, 4),
+			    R_BY_GR (126, 0, 2, 7), R_BY_GR (87, 0, 0, 3),
+			    R_BY_GR (87, 3, 2, 1), R_BY_GR (89, 4, 0, 2),
+			    R_BY_GR (89, 6, 11, 1), R_BY_GR (100, 3, 0, 1),
+			    R_BY_GR (100, 4, 14, 2), R_BY_GR (114, 3, 0, 1),
+
 			    /* bottom field */
 			    R_BY_GR (61, 18, 1, 1), R_BY_GR (37, 31, 8, 1),
 			    R_BY_GR (49, 24, 3, 1), R_BY_GR (47, 29, 1, 2),
@@ -1582,24 +1609,27 @@ main (int argc, char *argv[])
 			    R_BY_GR (59, 26, 2, 12), R_BY_GR (59, 22, 1, 2),
 			    R_BY_GR (52, 28, 3, 2), R_BY_GR (63, 22, 2, 2),
 			    R_BY_GR (63, 25, 2, 2), R_BY_GR (63, 28, 2, 2),
-			    R_BY_GR (67, 26, 2, 2), R_BY_GR (60, 17, 0, 3),
-			    R_BY_GR (60, 20, 6, 1), R_BY_GR (66, 21, 0, 4),
-			    R_BY_GR (66, 25, 3, 1), R_BY_GR (69, 26, 0, 4),
-			    R_BY_GR (69, 30, 3, 1), R_BY_GR (65, 14, 3, 1),
+			    R_BY_GR (67, 26, 2, 2), R_BY_GR (65, 14, 3, 1),
 			    R_BY_GR (67, 16, 3, 1), R_BY_GR (41, 27, 3, 3),
 			    R_BY_GR (43, 24, 2, 2), R_BY_GR (37, 20, 4, 1),
 			    R_BY_GR (37, 26, 4, 1), R_BY_GR (45, 31, 1, 13),
 			    R_BY_GR (45, 46, 1, 13), R_BY_GR (45, 60, 1, 4),
-			    R_BY_GR (40, 21, 1, 1), R_BY_GR (41, 25, 1, 1),
-			    R_BY_GR (45, 25, 1, 1), R_BY_GR (45, 29, 1, 1),
-			    R_BY_GR (63, 32, 2, 2), R_BY_GR (66, 33, 2, 2),
-			    R_BY_GR (63, 35, 2, 2), R_BY_GR (66, 36, 2, 2),
-			    R_BY_GR (63, 38, 2, 2), R_BY_GR (70, 33, 2, 2),
-			    R_BY_GR (60, 47, 0, 10), R_BY_GR (61, 47, 0, 10),
-			    R_BY_GR (60, 60, 2, 3)},
+			    R_BY_GR (45, 65, 1, 21), R_BY_GR (44, 86, 1, 4),
+			    R_BY_GR (41, 92, 1, 3), R_BY_GR (40, 95, 1, 11),
+			    R_BY_GR (37, 108, 1, 4), R_BY_GR (36, 112, 1, 2),
+			    R_BY_GR (34, 115, 1, 2), R_BY_GR (32, 117, 2, 1),
+			    R_BY_GR (31, 117, 1, 3), R_BY_GR (29, 120, 2, 1),
+			    R_BY_GR (28, 120, 1, 3), R_BY_GR (27, 123, 1, 5),
+			    R_BY_GR (45, 60, 1, 4), R_BY_GR (40, 21, 1, 1),
+			    R_BY_GR (41, 25, 1, 1), R_BY_GR (45, 25, 1, 1),
+			    R_BY_GR (45, 29, 1, 1), R_BY_GR (63, 32, 2, 2),
+			    R_BY_GR (66, 33, 2, 2), R_BY_GR (63, 35, 2, 2),
+			    R_BY_GR (66, 36, 2, 2), R_BY_GR (63, 38, 2, 2),
+			    R_BY_GR (70, 33, 2, 2), R_BY_GR (60, 47, 0, 10),
+			    R_BY_GR (61, 47, 0, 10), R_BY_GR (60, 60, 2, 3)},
 
     field_half_obs [] = {/* lake */
-      R_BY_GR (48, 56, 1, 8), R_BY_GR (49, 54, 1, 3),
+      R_BY_GR (48, 56, 1, 25), R_BY_GR (49, 54, 1, 3),
       R_BY_GR (49, 54, 3, 1), R_BY_GR (51, 53, 1, 2),
       R_BY_GR (52, 52, 1, 2), R_BY_GR (52, 52, 3, 1),
       R_BY_GR (54, 50, 1, 3), R_BY_GR (55, 49, 1, 2),
@@ -1614,7 +1644,31 @@ main (int argc, char *argv[])
       R_BY_GR (59, 56, 1, 1), R_BY_GR (57, 59, 1, 5),
       R_BY_GR (61, 56, 3, 1), R_BY_GR (63, 56, 1, 3),
       R_BY_GR (64, 58, 1, 2), R_BY_GR (65, 59, 1, 2),
-      R_BY_GR (66, 60, 1, 4)},
+      R_BY_GR (66, 60, 1, 4), R_BY_GR (65, 64, 3, 1),
+      R_BY_GR (67, 65, 2, 1), R_BY_GR (68, 66, 1, 3),
+      R_BY_GR (66, 68, 2, 1), R_BY_GR (66, 69, 1, 2),
+      R_BY_GR (62, 70, 4, 1), R_BY_GR (62, 66, 1, 4),
+      R_BY_GR (63, 67, 1, 1), R_BY_GR (60, 66, 2, 1),
+      R_BY_GR (58, 65, 3, 1), R_BY_GR (57, 64, 2, 1),
+      R_BY_GR (49, 80, 1, 3), R_BY_GR (50, 82, 1, 3),
+      R_BY_GR (51, 84, 4, 1), R_BY_GR (54, 85, 2, 1),
+      R_BY_GR (55, 86, 2, 1), R_BY_GR (56, 87, 3, 1),
+      R_BY_GR (58, 88, 1, 2), R_BY_GR (59, 89, 1, 2),
+      R_BY_GR (60, 90, 3, 1), R_BY_GR (62, 89, 6, 1),
+      R_BY_GR (67, 88, 4, 1), R_BY_GR (70, 87, 2, 1),
+      R_BY_GR (71, 85, 1, 2), R_BY_GR (72, 83, 1, 3),
+      R_BY_GR (73, 81, 1, 3), R_BY_GR (74, 80, 1, 2),
+      R_BY_GR (75, 79, 1, 2), R_BY_GR (76, 78, 1, 2),
+      R_BY_GR (77, 77, 1, 2), R_BY_GR (78, 77, 2, 1),
+      R_BY_GR (79, 75, 1, 2), R_BY_GR (80, 75, 2, 1),
+      R_BY_GR (81, 72, 1, 3), R_BY_GR (82, 69, 1, 4),
+      R_BY_GR (83, 69, 2, 1), R_BY_GR (84, 66, 1, 3),
+      R_BY_GR (85, 65, 1, 2), R_BY_GR (86, 58, 1, 8),
+      R_BY_GR (85, 56, 1, 3), R_BY_GR (84, 54, 1, 3),
+      R_BY_GR (83, 50, 1, 5), R_BY_GR (82, 45, 1, 6),
+      R_BY_GR (81, 43, 1, 3), R_BY_GR (79, 43, 2, 1),
+      R_BY_GR (78, 42, 2, 1), R_BY_GR (78, 40, 1, 2),
+      R_BY_GR (77, 39, 1, 2), R_BY_GR (71, 38, 6, 1)},
 
     field_zombie_obs [] = {R_BY_GR (24, 21, 1, 1), R_BY_GR (51, 14, 1, 1)},
 
@@ -1732,9 +1786,9 @@ main (int argc, char *argv[])
   field.id = 0;
   field.walkable = field_walkable;
   field.full_obstacles = field_full_obs;
-  field.full_obstacles_num = 109;
+  field.full_obstacles_num = 166;
   field.half_obstacles = field_half_obs;
-  field.half_obstacles_num = 31;
+  field.half_obstacles_num = 80;
   field.zombie_obstacles = field_zombie_obs;
   field.zombie_obstacles_num = 2;
   field.warps = make_warp_by_grid (51, 13, 1, 1, &room, 5, 11,
