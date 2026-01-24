@@ -239,6 +239,10 @@ bag
 };
 
 
+#define MAX_ZOMBIES 20
+#define ZOMBIE_SPAWN_INTERVAL 300
+#define OBJECT_SPAWN_INTERVAL 300
+
 struct
 server_area
 {
@@ -1673,9 +1677,13 @@ main (int argc, char *argv[])
     field_zombie_obs [] = {R_BY_GR (24, 21, 1, 1), R_BY_GR (51, 14, 1, 1)},
 
     field_zombie_spawns [] = {RECT_BY_GRID (0, 23, 1, 1),
-			      RECT_BY_GRID (31, 63, 1, 1),
-			      RECT_BY_GRID (44, 0, 1, 1),
-			      RECT_BY_GRID (71, 32, 1, 1)};
+			      RECT_BY_GRID (0, 118, 1, 1),
+			      RECT_BY_GRID (42, 127, 1, 1),
+			      RECT_BY_GRID (118, 127, 1, 1),
+			      RECT_BY_GRID (127, 43, 1, 1),
+			      RECT_BY_GRID (127, 13, 1, 1),
+			      RECT_BY_GRID (6, 0, 1, 1),
+			      RECT_BY_GRID (63, 0, 1, 1)};
 
   struct server_area room = {0};
   SDL_Rect room_walkable = RECT_BY_GRID (0, 0, 12, 12),
@@ -1799,7 +1807,7 @@ main (int argc, char *argv[])
   field.zombies = NULL;
   field.zombies_num = 0;
   field.zombie_spawns = field_zombie_spawns;
-  field.zombie_spawns_num = 4;
+  field.zombie_spawns_num = 8;
   field.object_spawns = NULL;
   field.object_spawns_num = field.free_object_spawns_num = 0;
   field.next = &room;
