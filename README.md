@@ -68,25 +68,25 @@ __How can I play Zombieland?__
 
 Start the server (zombielandd) on some computer, then start the client
 (zombieland) with two arguments: the address of the server and any username you
-like.  Optionally, pass a third argument with a number between 0 and 6 to choose
-your appearance; see the file character.png to preview each look, numbered from
-0 to 6 going down.
+like.
+You can configure the controls before playing by passing the -k option to the
+client.  The display frame rate is limited to 30 fps by default; you can get
+unlimited fps with the -u option.  Run "zombieland -h" to see all the options.
 
 Move around with the arrows or with WASD, fire with F, stab with R to hit
 enemies nearby with the knife, interact with objects (reading signs and so on)
-with Space and close the game with Esc.  Any number of players can shoot at each
-other and at the zombies until they die.
+with Space and pause the game with Esc.
+
+Any number of players can shoot at each other and at the zombies until they die.
 You can also open and close the inventory with Q; you can collect rotten meat
-dropped by zombies in your bag.  If you find a searchable object in the
-environment, a symbol with a bag will appear on that object; pressing Q will
-then open both your inventory and that bag; with Space you can select an object
-and move it between the two inventories.
+dropped by zombies in your bag.
+
+If you find a searchable object in the environment, a symbol with a bag will
+appear on that object; pressing Q will then open both your inventory and that
+bag; with Space you can select an object and move it between the two
+inventories.
+
 There's a day-night cycle in the game.
-
-You can configure the controls before playing by passing the -k option.
-
-The client limits display frame rate to 30 fps by default; you can get unlimited
-fps with the -u option.
 
 
 
@@ -94,15 +94,14 @@ __Can I test Zombieland locally?__
 
 Yes.  After building, start first the server (zombielandd), then the client
 (zombieland) on another terminal, the latter with 127.0.0.1 and any username as
-arguments (optionally a third argument to choose your appearance, see "How can I
-play Zombieland?").  You can even run multiple clients on the same system.
+arguments.  You can even run multiple clients on the same system.
 
 
 
 __What is Zombieland capable to do?__
 
-I tested Zombieland on a LAN and I confirmed that multiple players can move in
-the same 2D map and fight.
+I tested Zombieland successfully on a LAN; it should work across the Internet
+too.
 
 
 
