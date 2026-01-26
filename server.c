@@ -57,7 +57,7 @@ int zombie_health [] = {12, 36, 6};
 
 int zombie_touch_damage [] = {1, 5, 1};
 
-int zombie_thinking_interval [] = {25, 75, 15};
+int zombie_thinking_interval [][2] = {{20, 30}, {70, 80}, {10, 20}};
 
 int zombie_sight [] = {110, 0, 200};
 
@@ -2175,7 +2175,10 @@ main (int argc, char *argv[])
 			    : z->speed_y < 0 ? FACING_UP : z->facing;
 			}
 
-		      z->next_thinking = zombie_thinking_interval [z->type];
+		      z->next_thinking = rand ()
+			% (zombie_thinking_interval [z->type][1]
+			   -zombie_thinking_interval [z->type][0])
+			+ zombie_thinking_interval [z->type][0];
 		    }
 		  else
 		    z->next_thinking--;
