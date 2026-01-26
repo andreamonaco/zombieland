@@ -71,7 +71,7 @@ Start the server (zombielandd) on some computer, then start the client
 like.
 You can configure the controls before playing by passing the -k option to the
 client.  The display frame rate is limited to 30 fps by default; you can get
-unlimited fps with the -u option.  Run "zombieland -h" to see all the options.
+unlimited fps with the -m option.  Run "zombieland -h" to see all the options.
 
 Move around with the arrows or with WASD, fire with F, stab with R to hit
 enemies nearby with the knife, interact with objects (reading signs and so on)
