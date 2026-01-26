@@ -169,7 +169,8 @@ move_in_menu (int menu_cursor, SDL_Keycode direction, int num_elements,
 
 void
 display_menu (TTF_Font *font, int scaling, SDL_Color col, SDL_Renderer *rend,
-	      struct menu *menu, int menu_cursor, int display_cursor)
+	      struct menu *menu, int menu_cursor, int submenu_cursor,
+	      int display_cursor)
 {
   SDL_Texture *str;
   SDL_Rect rect, cursorrect;
@@ -192,21 +193,61 @@ display_menu (TTF_Font *font, int scaling, SDL_Color col, SDL_Renderer *rend,
 
       str = render_string (menu->elements [i+menu_cursor-display_cursor].caption,
 			   font, col, rend, &rect.w, &rect.h);
-      rect.x = xcenter-rect.w/2;
-      SDL_RenderCopy (rend, str, NULL, &rect);
 
-      if (i == display_cursor)
+      if (menu->elements [i+menu_cursor-display_cursor].right_caption)
 	{
-	  cursorrect.x = rect.x-20*scaling;
-	  cursorrect.y = rect.y-10*scaling;
-	  cursorrect.w = rect.w+40*scaling;
-	  cursorrect.h = rect.h+20*scaling;
+	  rect.x = 30*scaling;
+	  SDL_RenderCopy (rend, str, NULL, &rect);
+	  SDL_DestroyTexture (str);
 
-	  SDL_SetRenderDrawColor (rend, 0, 0, 0, 255);
-	  SDL_RenderDrawRect (rend, &cursorrect);
+	  if (i == display_cursor && !submenu_cursor)
+	    {
+	      cursorrect.x = rect.x-20*scaling;
+	      cursorrect.y = rect.y-10*scaling;
+	      cursorrect.w = rect.w+40*scaling;
+	      cursorrect.h = rect.h+20*scaling;
+
+	      SDL_SetRenderDrawColor (rend, 0, 0, 0, 255);
+	      SDL_RenderDrawRect (rend, &cursorrect);
+	    }
+
+	  str = render_string (menu->elements [i+menu_cursor-display_cursor].
+			       right_caption,
+			       font, col, rend, &rect.w, &rect.h);
+	  rect.x = WINDOW_WIDTH*scaling-30*scaling-rect.w;
+
+	  if (i == display_cursor && submenu_cursor)
+	    {
+	      cursorrect.x = rect.x-20*scaling;
+	      cursorrect.y = rect.y-10*scaling;
+	      cursorrect.w = rect.w+40*scaling;
+	      cursorrect.h = rect.h+20*scaling;
+
+	      SDL_SetRenderDrawColor (rend, 0, 0, 0, 255);
+	      SDL_RenderDrawRect (rend, &cursorrect);
+	    }
+
+	  SDL_RenderCopy (rend, str, NULL, &rect);
+	  SDL_DestroyTexture (str);
 	}
+      else
+	{
+	  rect.x = xcenter-rect.w/2;
+	  SDL_RenderCopy (rend, str, NULL, &rect);
 
-      SDL_DestroyTexture (str);
+	  if (i == display_cursor)
+	    {
+	      cursorrect.x = rect.x-20*scaling;
+	      cursorrect.y = rect.y-10*scaling;
+	      cursorrect.w = rect.w+40*scaling;
+	      cursorrect.h = rect.h+20*scaling;
+
+	      SDL_SetRenderDrawColor (rend, 0, 0, 0, 255);
+	      SDL_RenderDrawRect (rend, &cursorrect);
+	    }
+
+	  SDL_DestroyTexture (str);
+	}
 
       rect.y += ystep;
     }

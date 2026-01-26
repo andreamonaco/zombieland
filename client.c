@@ -131,6 +131,10 @@ player_action
     ACTION_SEARCH
   };
 
+char *action_names [] = {"", "Pause", "Move left", "Move right", "Move up",
+			 "Move down", "Lock aim", "Interact", "Shoot", "Stab",
+			 "Search"};
+
 
 
 void
@@ -220,27 +224,40 @@ move_bag_cursor (int command, int pos, int is_double)
 }
 
 
+SDL_Scancode
+find_key_from_action (enum player_action controls [], enum player_action action)
+{
+  int i;
+
+  for (i = 0; i < SDL_NUM_SCANCODES; i++)
+    {
+      if (controls [i] == action)
+	return i;
+    }
+
+  return 0;
+}
+
+
 void
 configure_keys (enum player_action controls [])
 {
   SDL_Event ev;
-  char *prompts [] = {"move left: ", "move right: ", "move up: ", "move down: ",
-		      "lock aim: ", "interact: ", "shoot: ", "stab: ", "search: "};
   int i, ret;
 
   printf ("\nconfiguring keys... for each action, please press the key of your "
 	  "choice, while the windows has focus:\n");
 
-  for (i = 0; i < sizeof (prompts) / sizeof (prompts [0]); i++)
+  for (i = 1; i < sizeof (action_names) / sizeof (action_names [0]); i++)
     {
-      printf (prompts [i]);
+      printf ("%s: ", action_names [i]);
       fflush (stdout);
 
       while ((ret = SDL_WaitEvent (&ev)))
 	{
 	  if (ev.type == SDL_KEYDOWN)
 	    {
-	      controls [ev.key.keysym.scancode] = i+2;
+	      controls [ev.key.keysym.scancode] = i;
 	      printf (SDL_GetKeyName (ev.key.keysym.sym));
 	      break;
 	    }
@@ -256,6 +273,50 @@ configure_keys (enum player_action controls [])
     }
 
   printf ("\n");
+}
+
+
+char *
+copy_string (const char *str)
+{
+  char *out = malloc_and_check (strlen (str)+1);
+  int i;
+
+  for (i = 0; i < strlen (str); i++)
+    out [i] = str [i];
+
+  out [i] = 0;
+
+  return out;
+}
+
+
+void
+fill_controls_menu (struct menu_element *elems, enum player_action controls [])
+{
+  int i;
+
+  for (i = 0; i < SDL_NUM_SCANCODES; i++)
+    {
+      if (controls [i])
+	{
+	  elems [controls [i]-1].caption = action_names [controls [i]];
+	  elems [controls [i]-1].right_caption =
+	    copy_string (SDL_GetKeyName (SDL_GetKeyFromScancode (i)));
+	}
+    }
+}
+
+
+void
+free_controls_menu (struct menu_element *elems)
+{
+  int i;
+
+  for (i = 0; i < sizeof (action_names) / sizeof (action_names [0])-1; i++)
+    {
+      free (elems [i].right_caption);
+    }
 }
 
 
@@ -364,7 +425,8 @@ main (int argc, char *argv[])
 
   uint32_t id, latest_update = 0;
 
-  enum player_action controls [SDL_NUM_SCANCODES] = {0};
+  enum player_action new_controls [SDL_NUM_SCANCODES],
+    controls [SDL_NUM_SCANCODES] = {0}, read_key = -1;
 
   struct client_area field;
   SDL_Rect anim, field_src = RECT_BY_GRID (0, 0, 128, 128),
@@ -523,13 +585,21 @@ main (int argc, char *argv[])
   Mix_Chunk *shootsfx, *stabsfx, *healsfx, *reloadsfx, *eatsfx, *drinksfx,
     *pondsfx;
 
-  struct menu_element pause_elems [] = {{"Continue"}, {"Quit"}};
-  struct menu pause_menu = {"PAUSE", pause_elems, 2}, *curr_menu;
+  struct menu_element pause_elems [] = {{"Continue"}, {"Settings"}, {"Quit"}};
+  struct menu pause_menu = {"PAUSE", pause_elems, 3}, *curr_menu;
+  struct menu_element settings_elems [] = {{"Controls"}, {"Save settings"},
+					   {"Discard settings"}};
+  struct menu settings_menu = {"SETTINGS", settings_elems, 3};
+  struct menu_element set_controls_elems [(sizeof (action_names)
+					   / sizeof (action_names [0]))];
+  struct menu set_controls_menu = {"CONTROLS", set_controls_elems, sizeof (action_names)
+				   / sizeof (action_names [0])};
+
 
   char *servername = NULL, *playername = NULL;
   int quit = 0, i, j, frame, scaling = 1, fullscreen = 0, limit_fps = 1, verbose = 0,
-    config_keys = 0, lock_aim = 0, pause = 0, menu_cursor, display_cursor,
-    need_arg = 0, options_finished = 0;
+    config_keys = 0, lock_aim = 0, pause = 0, menu_cursor, submenu_cursor,
+    display_cursor, need_arg = 0, options_finished = 0;
   Uint32 frame_counter = 1, fc, latest_update_ticks = 0, last_sent_update = 0,
     last_display = 0, ticks;
 
@@ -884,11 +954,12 @@ main (int argc, char *argv[])
 
   if (!config_keys)
     {
-      controls [SDL_SCANCODE_A] = controls [SDL_SCANCODE_LEFT] = ACTION_MOVE_LEFT;
-      controls [SDL_SCANCODE_D] = controls [SDL_SCANCODE_RIGHT] = ACTION_MOVE_RIGHT;
-      controls [SDL_SCANCODE_W] = controls [SDL_SCANCODE_UP] = ACTION_MOVE_UP;
-      controls [SDL_SCANCODE_S] = controls [SDL_SCANCODE_DOWN] = ACTION_MOVE_DOWN;
-      controls [SDL_SCANCODE_LCTRL] = controls [SDL_SCANCODE_RCTRL] = ACTION_LOCK_AIM;
+      controls [SDL_SCANCODE_ESCAPE] = ACTION_PAUSE;
+      controls [SDL_SCANCODE_A] = ACTION_MOVE_LEFT;
+      controls [SDL_SCANCODE_D] = ACTION_MOVE_RIGHT;
+      controls [SDL_SCANCODE_W] = ACTION_MOVE_UP;
+      controls [SDL_SCANCODE_S] = ACTION_MOVE_DOWN;
+      controls [SDL_SCANCODE_LCTRL] = ACTION_LOCK_AIM;
       controls [SDL_SCANCODE_SPACE] = ACTION_INTERACT;
       controls [SDL_SCANCODE_F] = ACTION_SHOOT;
       controls [SDL_SCANCODE_R] = ACTION_STAB;
@@ -897,7 +968,17 @@ main (int argc, char *argv[])
   else
     configure_keys (controls);
 
-  controls [SDL_SCANCODE_ESCAPE] = ACTION_PAUSE;
+
+  pause_elems [1].destination = &settings_menu;
+
+  settings_elems [0].destination = &set_controls_menu;
+  settings_elems [1].destination = &pause_menu;
+  settings_elems [2].destination = &pause_menu;
+
+  set_controls_elems [sizeof (action_names)/sizeof (action_names [0])-1].caption
+    = "Ok";
+  set_controls_elems [sizeof (action_names)/sizeof (action_names [0])-1].destination
+    = &settings_menu;
 
 
   SDL_RenderCopy (rend, field.texture [0], NULL, NULL);
@@ -922,7 +1003,15 @@ main (int argc, char *argv[])
 	  switch (event.type)
 	    {
 	    case SDL_KEYDOWN:
-	      switch (controls [event.key.keysym.scancode])
+	      if (read_key != -1)
+		{
+		  new_controls [event.key.keysym.scancode] = read_key;
+		  free_controls_menu (set_controls_elems);
+		  fill_controls_menu (set_controls_elems, new_controls);
+		  submenu_cursor = 0;
+		  read_key = -1;
+		}
+	      else switch (controls [event.key.keysym.scancode])
 		{
 		case ACTION_PAUSE:
 		  if (pause && curr_menu == &pause_menu)
@@ -934,7 +1023,7 @@ main (int argc, char *argv[])
 		    {
 		      pause = 1;
 		      curr_menu = &pause_menu;
-		      menu_cursor = display_cursor = 0;
+		      menu_cursor = submenu_cursor = display_cursor = 0;
 		      loc_char_speed_x = loc_char_speed_y = 0;
 
 		      SDL_SetRenderDrawColor (rend, 100, 100, 100, 255);
@@ -973,7 +1062,7 @@ main (int argc, char *argv[])
 		    }
 		  break;
 		case ACTION_MOVE_UP:
-		  if (pause)
+		  if (pause && !submenu_cursor)
 		    {
 		      menu_cursor = move_in_menu (menu_cursor, SDLK_UP,
 						  curr_menu->num_elements,
@@ -994,7 +1083,7 @@ main (int argc, char *argv[])
 		    }
 		  break;
 		case ACTION_MOVE_DOWN:
-		  if (pause)
+		  if (pause && !submenu_cursor)
 		    {
 		      menu_cursor = move_in_menu (menu_cursor, SDLK_DOWN,
 						  curr_menu->num_elements,
@@ -1020,12 +1109,7 @@ main (int argc, char *argv[])
 		case ACTION_INTERACT:
 		  if (pause)
 		    {
-		      if (curr_menu->elements [menu_cursor].destination)
-			{
-			  curr_menu = curr_menu->elements [menu_cursor].destination;
-			  menu_cursor = display_cursor = 0;
-			}
-		      else if (curr_menu == &pause_menu)
+		      if (curr_menu == &pause_menu)
 			{
 			  switch (menu_cursor)
 			    {
@@ -1034,9 +1118,44 @@ main (int argc, char *argv[])
 			      SDL_SetRenderDrawColor (rend, 100, 100, 100, 255);
 			      break;
 			    case 1:
+			      memcpy (new_controls, controls, sizeof (new_controls));
+			      break;
+			    case 2:
 			      exit_game ();
 			      break;
 			    }
+			}
+		      else if (curr_menu == &settings_menu)
+			{
+			  switch (menu_cursor)
+			    {
+			    case 0:
+			      fill_controls_menu (set_controls_elems, new_controls);
+			      break;
+			    case 1:
+			      memcpy (controls, new_controls, sizeof (controls));
+			      break;
+			    case 2:
+			      break;
+			    }
+			}
+		      else if (curr_menu == &set_controls_menu)
+			{
+			  if (menu_cursor == curr_menu->num_elements-1)
+			    free_controls_menu (set_controls_elems);
+			}
+
+		      if (curr_menu->elements [menu_cursor].destination)
+			{
+			  curr_menu = curr_menu->elements [menu_cursor].destination;
+			  menu_cursor = display_cursor = 0;
+			}
+		      else if (curr_menu->elements [menu_cursor].right_caption)
+			{
+			  submenu_cursor = 1;
+			  read_key = menu_cursor+1;
+			  new_controls [find_key_from_action (new_controls,
+							      read_key)] = 0;
 			}
 		    }
 		  else if (is_searching)
@@ -1237,7 +1356,7 @@ main (int argc, char *argv[])
 	      SDL_RenderFillRect (rend, &screen_dest);
 
 	      display_menu (hudfont, scaling, textcol, rend, curr_menu,
-			    menu_cursor, display_cursor);
+			    menu_cursor, submenu_cursor, display_cursor);
 
 	      SDL_RenderPresent (rend);
 

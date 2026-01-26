@@ -35,6 +35,7 @@ struct
 menu_element
 {
   char *caption;
+  char *right_caption;
   struct menu *destination;
 };
 
@@ -59,4 +60,5 @@ void display_strings_centrally (TTF_Font *font, int scaling, SDL_Color col,
 int move_in_menu (int menu_cursor, SDL_Keycode direction, int num_elements,
 		  int num_displayed_elements, int *display_cursor);
 void display_menu (TTF_Font *font, int scaling, SDL_Color col, SDL_Renderer *rend,
-		   struct menu *menu, int menu_cursor, int display_cursor);
+		   struct menu *menu, int menu_cursor, int submenu_cursor,
+		   int display_cursor);
