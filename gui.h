@@ -31,9 +31,32 @@
 
 
 
+struct
+menu_element
+{
+  char *caption;
+  struct menu *destination;
+};
+
+
+struct
+menu
+{
+  char *title;
+  struct menu_element *elements;
+  int num_elements;
+};
+
+
+
 SDL_Texture *render_string (const char *string, TTF_Font *font, SDL_Color col,
 			    SDL_Renderer *rend, int *w, int *h);
 void display_string (const char *string, SDL_Rect rect, TTF_Font *font, SDL_Color col,
 		     SDL_Renderer *rend);
 void display_strings_centrally (TTF_Font *font, int scaling, SDL_Color col,
 				SDL_Renderer *rend, int cursor, ...);
+
+int move_in_menu (int menu_cursor, SDL_Keycode direction, int num_elements,
+		  int num_displayed_elements, int *display_cursor);
+void display_menu (TTF_Font *font, int scaling, SDL_Color col, SDL_Renderer *rend,
+		   struct menu *menu, int menu_cursor, int display_cursor);

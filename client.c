@@ -523,10 +523,13 @@ main (int argc, char *argv[])
   Mix_Chunk *shootsfx, *stabsfx, *healsfx, *reloadsfx, *eatsfx, *drinksfx,
     *pondsfx;
 
+  struct menu_element pause_elems [] = {{"Continue"}, {"Quit"}};
+  struct menu pause_menu = {"PAUSE", pause_elems, 2}, *curr_menu;
+
   char *servername = NULL, *playername = NULL;
   int quit = 0, i, j, frame, scaling = 1, fullscreen = 0, limit_fps = 1, verbose = 0,
-    config_keys = 0, lock_aim = 0, pause = 0, menu_cursor = 0, need_arg = 0,
-    options_finished = 0;
+    config_keys = 0, lock_aim = 0, pause = 0, menu_cursor, display_cursor,
+    need_arg = 0, options_finished = 0;
   Uint32 frame_counter = 1, fc, latest_update_ticks = 0, last_sent_update = 0,
     last_display = 0, ticks;
 
@@ -922,15 +925,20 @@ main (int argc, char *argv[])
 	      switch (controls [event.key.keysym.scancode])
 		{
 		case ACTION_PAUSE:
-		  pause = !pause;
-
-		  if (pause)
+		  if (pause && curr_menu == &pause_menu)
 		    {
-		      loc_char_speed_x = loc_char_speed_y = 0;
-		      menu_cursor = 0;
+		      pause = 0;
+		      SDL_SetRenderDrawColor (rend, 100, 100, 100, 255);
 		    }
-		  else
-		    SDL_SetRenderDrawColor (rend, 100, 100, 100, 255);
+		  else if (!pause)
+		    {
+		      pause = 1;
+		      curr_menu = &pause_menu;
+		      menu_cursor = display_cursor = 0;
+		      loc_char_speed_x = loc_char_speed_y = 0;
+
+		      SDL_SetRenderDrawColor (rend, 100, 100, 100, 255);
+		    }
 		  break;
 		case ACTION_MOVE_LEFT:
 		  if (pause);
@@ -967,7 +975,9 @@ main (int argc, char *argv[])
 		case ACTION_MOVE_UP:
 		  if (pause)
 		    {
-		      menu_cursor = !menu_cursor;
+		      menu_cursor = move_in_menu (menu_cursor, SDLK_UP,
+						  curr_menu->num_elements,
+						  3, &display_cursor);
 		    }
 		  else if (!is_searching)
 		    {
@@ -986,7 +996,9 @@ main (int argc, char *argv[])
 		case ACTION_MOVE_DOWN:
 		  if (pause)
 		    {
-		      menu_cursor = !menu_cursor;
+		      menu_cursor = move_in_menu (menu_cursor, SDLK_DOWN,
+						  curr_menu->num_elements,
+						  3, &display_cursor);
 		    }
 		  else if (!is_searching)
 		    {
@@ -1008,13 +1020,24 @@ main (int argc, char *argv[])
 		case ACTION_INTERACT:
 		  if (pause)
 		    {
-		      if (!menu_cursor)
+		      if (curr_menu->elements [menu_cursor].destination)
 			{
-			  pause = 0;
-			  SDL_SetRenderDrawColor (rend, 100, 100, 100, 255);
+			  curr_menu = curr_menu->elements [menu_cursor].destination;
+			  menu_cursor = display_cursor = 0;
 			}
-		      else
-			exit_game ();
+		      else if (curr_menu == &pause_menu)
+			{
+			  switch (menu_cursor)
+			    {
+			    case 0:
+			      pause = 0;
+			      SDL_SetRenderDrawColor (rend, 100, 100, 100, 255);
+			      break;
+			    case 1:
+			      exit_game ();
+			      break;
+			    }
+			}
 		    }
 		  else if (is_searching)
 		    {
@@ -1213,9 +1236,8 @@ main (int argc, char *argv[])
 	      SDL_SetRenderDrawColor (rend, 255, 255, 255, 255);
 	      SDL_RenderFillRect (rend, &screen_dest);
 
-	      display_strings_centrally (hudfont, scaling, textcol, rend,
-					 menu_cursor+2, "PAUSE", "", "Continue",
-					 "Quit", (char *) NULL);
+	      display_menu (hudfont, scaling, textcol, rend, curr_menu,
+			    menu_cursor, display_cursor);
 
 	      SDL_RenderPresent (rend);
 
