@@ -387,9 +387,9 @@ print_help_and_exit (void)
   printf ("Usage: zombieland [OPTIONS] SERVER_ADDRESS PLAYER_NAME\n"
 	  "Options:\n"
 	  "\t-b, --body-type NUM   body type, must be between 0 and 6\n"
-	  "\t-d, --double-size     double the resolution through upscaling\n"
+	  "\t-u, --upscale NUM     upscale by integer factor NUM between 1 and 9\n"
 	  "\t-f, --fullscreen      display in fullscreen\n"
-	  "\t-u, --dont-limit-fps  don't limit display fps, otherwise it's 30 fps\n"
+	  "\t-m, --dont-limit-fps  don't limit display fps, otherwise it's 30 fps\n"
 	  "\t-v, --verbose         if limiting fps, print a warning for each missed frame\n"
 	  "\t-k, --configure-keys  configure controls before playing\n"
 	  "\t--                    stop parsing options\n"
@@ -619,6 +619,15 @@ main (int argc, char *argv[])
 		}
 	      bodytype = *argv [i]-'0';
 	      break;
+	    case 'u':
+	      if (strlen (argv [i]) != 1 || *argv [i] < '1' || *argv [i] > '9')
+		{
+		  fprintf (stderr, "option 'u' requires an integer argument "
+			   "between 1 and 9\n");
+		  print_help_and_exit ();
+		}
+	      scaling = *argv [i]-'0';
+	      break;
 	    }
 
 	  need_arg = 0;
@@ -629,11 +638,11 @@ main (int argc, char *argv[])
 	    goto parse_arg;
 	  else if (!strcmp (argv [i], "--body-type") || !strcmp (argv [i], "-b"))
 	    need_arg = 'b';
-	  else if (!strcmp (argv [i], "--double-size") || !strcmp (argv [i], "-d"))
-	    scaling = 2;
+	  else if (!strcmp (argv [i], "--upscale") || !strcmp (argv [i], "-u"))
+	    need_arg = 'u';
 	  else if (!strcmp (argv [i], "--fullscreen") || !strcmp (argv [i], "-f"))
 	    fullscreen = 1;
-	  else if (!strcmp (argv [i], "--dont-limit-fps") || !strcmp (argv [i], "-u"))
+	  else if (!strcmp (argv [i], "--dont-limit-fps") || !strcmp (argv [i], "-m"))
 	    limit_fps = 0;
 	  else if (!strcmp (argv [i], "--verbose") || !strcmp (argv [i], "-v"))
 	    verbose = 1;
