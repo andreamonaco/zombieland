@@ -431,6 +431,7 @@ print_help_and_exit (void)
 	  "\t-u, --upscale NUM     upscale by integer factor NUM between 1 and 9\n"
 	  "\t-f, --fullscreen      display in fullscreen\n"
 	  "\t-m, --dont-limit-fps  don't limit display fps, otherwise it's 30 fps\n"
+	  "\t-s, --vsync           enable vsync, by default it's off\n"
 	  "\t-v, --verbose         if limiting fps, print a warning for each missed frame\n"
 	  "\t-k, --configure-keys  configure controls before playing\n"
 	  "\t--                    stop parsing options\n"
@@ -638,9 +639,10 @@ main (int argc, char *argv[])
 
 
   char *servername = NULL, *playername = NULL;
-  int quit = 0, i, j, frame, scaling = 1, fullscreen = 0, limit_fps = 1, verbose = 0,
-    config_keys = 0, lock_aim = 0, pause = 0, menu_cursor, submenu_cursor,
-    display_cursor, need_arg = 0, options_finished = 0, loaded_conf;
+  int quit = 0, i, j, frame, scaling = 1, fullscreen = 0, limit_fps = 1, vsync = 0,
+    verbose = 0, config_keys = 0, lock_aim = 0, pause = 0, menu_cursor,
+    submenu_cursor, display_cursor, need_arg = 0, options_finished = 0,
+    loaded_conf;
   Uint32 frame_counter = 1, fc, latest_update_ticks = 0, last_sent_update = 0,
     last_display = 0, ticks;
 
@@ -682,9 +684,11 @@ main (int argc, char *argv[])
 	  else if (!strcmp (argv [i], "--upscale") || !strcmp (argv [i], "-u"))
 	    need_arg = 'u';
 	  else if (!strcmp (argv [i], "--fullscreen") || !strcmp (argv [i], "-f"))
-	    fullscreen = 1;
+	    fullscreen = SDL_WINDOW_FULLSCREEN;
 	  else if (!strcmp (argv [i], "--dont-limit-fps") || !strcmp (argv [i], "-m"))
 	    limit_fps = 0;
+	  else if (!strcmp (argv [i], "--vsync") || !strcmp (argv [i], "-s"))
+	    vsync = SDL_RENDERER_PRESENTVSYNC;
 	  else if (!strcmp (argv [i], "--verbose") || !strcmp (argv [i], "-v"))
 	    verbose = 1;
 	  else if (!strcmp (argv [i], "--configure-keys") || !strcmp (argv [i], "-k"))
@@ -841,8 +845,7 @@ main (int argc, char *argv[])
 
   win = SDL_CreateWindow ("ZombieLand", SDL_WINDOWPOS_CENTERED,
 			  SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH*scaling,
-			  WINDOW_HEIGHT*scaling, SDL_WINDOW_OPENGL
-			  | (fullscreen ? SDL_WINDOW_FULLSCREEN : 0));
+			  WINDOW_HEIGHT*scaling, SDL_WINDOW_OPENGL | fullscreen);
 
   if (!win)
     {
@@ -872,8 +875,7 @@ main (int argc, char *argv[])
       return 1;
     }
 
-  rend = SDL_CreateRenderer (win, -1, SDL_RENDERER_ACCELERATED
-			     | SDL_RENDERER_PRESENTVSYNC);
+  rend = SDL_CreateRenderer (win, -1, SDL_RENDERER_ACCELERATED | vsync);
 
   if (!rend)
     {
