@@ -1298,6 +1298,16 @@ main (int argc, char *argv[])
 		  break;
 		}
 	      break;
+	    case SDL_WINDOWEVENT:
+	      /* This is a workaround.  On my system, when you Alt-Tab out of
+	      fullscreen mode and then re-enter it, the viewport is lost, so
+	      make sure to re-set it */
+	      if (fullscreen
+		  && event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED)
+		{
+		  SDL_RenderSetViewport (rend, &viewport);
+		}
+	      break;
 	    case SDL_QUIT:
 	      exit_game ();
 	      break;
