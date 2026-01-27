@@ -27,6 +27,8 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <strings.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -320,6 +322,45 @@ free_controls_menu (struct menu_element *elems)
 }
 
 
+int
+load_configuration (enum player_action controls [])
+{
+  int fd = open ("zombieland.dat", O_RDONLY), ret;
+
+  if (fd < 0)
+    {
+      printf ("couldn't read configuration from zombieland.dat\n");
+      return 0;
+    }
+
+  ret = read (fd, controls, SDL_NUM_SCANCODES*sizeof (enum player_action));
+
+  if (ret == SDL_NUM_SCANCODES*sizeof (enum player_action))
+    {
+      printf ("configuration read from zombieland.dat\n");
+      return 1;
+    }
+
+  return 0;
+}
+
+
+void
+save_configuration (enum player_action controls [])
+{
+  int fd = open ("zombieland.dat", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+  if (fd < 0)
+    {
+      printf ("couldn't write configuration to zombieland.dat\n");
+    }
+
+  write (fd, controls, SDL_NUM_SCANCODES*sizeof (enum player_action));
+
+  printf ("configuration written to zombieland.dat\n");
+}
+
+
 SDL_Rect
 change_rect_origin (SDL_Rect *rect, SDL_Rect *neworig)
 {
@@ -599,7 +640,7 @@ main (int argc, char *argv[])
   char *servername = NULL, *playername = NULL;
   int quit = 0, i, j, frame, scaling = 1, fullscreen = 0, limit_fps = 1, verbose = 0,
     config_keys = 0, lock_aim = 0, pause = 0, menu_cursor, submenu_cursor,
-    display_cursor, need_arg = 0, options_finished = 0;
+    display_cursor, need_arg = 0, options_finished = 0, loaded_conf;
   Uint32 frame_counter = 1, fc, latest_update_ticks = 0, last_sent_update = 0,
     last_display = 0, ticks;
 
@@ -684,6 +725,8 @@ main (int argc, char *argv[])
 
 
   print_welcome_message ();
+
+  loaded_conf = load_configuration (controls);
 
 
   if (strlen (playername) > MAX_LOGNAME_LEN)
@@ -961,7 +1004,7 @@ main (int argc, char *argv[])
     }
 
 
-  if (!config_keys)
+  if (!config_keys && !loaded_conf)
     {
       controls [SDL_SCANCODE_ESCAPE] = ACTION_PAUSE;
       controls [SDL_SCANCODE_A] = ACTION_MOVE_LEFT;
@@ -974,7 +1017,7 @@ main (int argc, char *argv[])
       controls [SDL_SCANCODE_R] = ACTION_STAB;
       controls [SDL_SCANCODE_Q] = ACTION_SEARCH;
     }
-  else
+  else if (config_keys)
     configure_keys (controls);
 
 
@@ -1143,6 +1186,7 @@ main (int argc, char *argv[])
 			      break;
 			    case 1:
 			      memcpy (controls, new_controls, sizeof (controls));
+			      save_configuration (controls);
 			      break;
 			    case 2:
 			      break;
